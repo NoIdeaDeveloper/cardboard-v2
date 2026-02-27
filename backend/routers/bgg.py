@@ -13,7 +13,7 @@ from schemas import BGGSearchResult, GameCreate
 logger = logging.getLogger("cardboard.bgg")
 router = APIRouter(prefix="/api/bgg", tags=["bgg"])
 
-BGG_API_BASE = "https://boardgamegeek.com/xmlapi2"
+BGG_API_BASE = "https://www.boardgamegeek.com/xmlapi2"
 HEADERS = {"User-Agent": "Cardboard/1.0 (board game collection manager)"}
 BGG_RETRY_ATTEMPTS = 4   # BGG returns 202 when a game is queued; retry up to this many times
 BGG_RETRY_DELAY = 2.0    # seconds to wait between retries
@@ -43,7 +43,7 @@ def clean_description(text: str) -> str:
 async def search_bgg(q: str = Query(..., min_length=2)):
     """Search BoardGameGeek for games by name."""
     logger.info("BGG search query: %r", q)
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=15.0, follow_redirects=True) as client:
         try:
             resp = await client.get(
                 f"{BGG_API_BASE}/search",
@@ -82,7 +82,7 @@ async def get_bgg_game(bgg_id: int):
     logger.info("BGG game fetch: bgg_id=%d", bgg_id)
 
     resp = None
-    async with httpx.AsyncClient(headers=HEADERS, timeout=20.0) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=20.0, follow_redirects=True) as client:
         for attempt in range(1, BGG_RETRY_ATTEMPTS + 1):
             try:
                 resp = await client.get(
