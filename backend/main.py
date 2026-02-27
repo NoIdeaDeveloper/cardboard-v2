@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 
 from database import engine, Base
 from routers import games, sessions, stats
@@ -31,6 +32,28 @@ logger.info("Data directory: %s", os.path.abspath(os.getenv("DATA_DIR", "/app/da
 # Create DB tables on startup
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables verified")
+
+# Migrate existing databases: add any columns that are missing from older schemas.
+# SQLite supports ADD COLUMN but not DROP/MODIFY, so this is safe to run on every start.
+_GAMES_MIGRATIONS = [
+    # (column_name, sqlite_type_and_default)
+    ("last_played",           "DATE"),
+    ("image_cached",          "INTEGER NOT NULL DEFAULT 0"),
+    ("instructions_filename", "TEXT"),
+    ("status",                "TEXT NOT NULL DEFAULT 'owned'"),
+    ("labels",                "TEXT"),
+    ("purchase_date",         "DATE"),
+    ("purchase_price",        "REAL"),
+    ("purchase_location",     "VARCHAR(255)"),
+]
+
+with engine.connect() as _conn:
+    _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(games)"))}
+    for _col, _typedef in _GAMES_MIGRATIONS:
+        if _col not in _existing:
+            _conn.execute(text(f"ALTER TABLE games ADD COLUMN {_col} {_typedef}"))
+            _conn.commit()
+            logger.info("Migration applied: games.%s added", _col)
 
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
 
