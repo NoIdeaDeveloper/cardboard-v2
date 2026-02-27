@@ -5,7 +5,6 @@ from datetime import date, datetime
 
 class GameBase(BaseModel):
     name: str
-    bgg_id: Optional[int] = None
     year_published: Optional[int] = None
     min_players: Optional[int] = None
     max_players: Optional[int] = None
@@ -55,10 +54,3 @@ class GameResponse(GameBase):
 
     class Config:
         from_attributes = True
-
-
-class BGGSearchResult(BaseModel):
-    bgg_id: int
-    name: str
-    year_published: Optional[int] = None
-    thumbnail_url: Optional[str] = None

@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from database import engine, Base
-from routers import games, bgg
+from routers import games
 
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
@@ -55,7 +55,6 @@ async def log_requests(request: Request, call_next):
 
 
 app.include_router(games.router)
-app.include_router(bgg.router)
 
 # Serve frontend static files
 FRONTEND_PATH = os.getenv("FRONTEND_PATH", "/app/frontend")

@@ -36,7 +36,4 @@ const API = {
   updateGame: (id, data) => request('PATCH', `/games/${id}`, data),
   deleteGame: (id)   => request('DELETE', `/games/${id}`),
 
-  // BGG
-  searchBGG: (q)    => request('GET', `/bgg/search?q=${encodeURIComponent(q)}`),
-  getBGGGame: (id)  => request('GET', `/bgg/game/${id}`),
 };

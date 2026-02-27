@@ -43,11 +43,6 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.GameResponse, status_code=201)
 def create_game(game: schemas.GameCreate, db: Session = Depends(get_db)):
-    if game.bgg_id:
-        existing = db.query(models.Game).filter(models.Game.bgg_id == game.bgg_id).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="Game already in collection")
-
     db_game = models.Game(**game.model_dump())
     db.add(db_game)
     db.commit()

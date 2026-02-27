@@ -7,7 +7,6 @@ class Game(Base):
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True, index=True)
-    bgg_id = Column(Integer, nullable=True, unique=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     year_published = Column(Integer, nullable=True)
     min_players = Column(Integer, nullable=True)

@@ -193,70 +193,6 @@
 
   // ===== Add Game =====
   function bindAddGame() {
-    // Mode tabs
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`mode-${btn.dataset.mode}`).classList.add('active');
-      });
-    });
-
-    // BGG Search
-    const bggInput = document.getElementById('bgg-search');
-    const bggBtn   = document.getElementById('bgg-search-btn');
-
-    async function doBGGSearch() {
-      const q = bggInput.value.trim();
-      if (!q) return;
-
-      const results = document.getElementById('bgg-results');
-      const loading  = document.getElementById('bgg-loading');
-      const errEl    = document.getElementById('bgg-error');
-
-      results.style.display = 'none';
-      errEl.style.display   = 'none';
-      loading.style.display = 'flex';
-
-      try {
-        const data = await API.searchBGG(q);
-        loading.style.display = 'none';
-        results.innerHTML = '';
-
-        if (!data.length) {
-          results.innerHTML = '<p style="color:var(--text-3);padding:20px">No results found. Try a different search term.</p>';
-          results.style.display = 'block';
-          return;
-        }
-
-        data.forEach(item => {
-          const card = document.createElement('div');
-          card.className = 'bgg-result-card';
-          card.innerHTML = `
-            <div class="bgg-result-info">
-              <div class="bgg-result-name">${escapeHtml(item.name)}</div>
-              <div class="bgg-result-year">${item.year_published ? item.year_published : 'Unknown year'} · BGG #${item.bgg_id}</div>
-            </div>
-            <div class="bgg-result-add">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </div>`;
-          card.addEventListener('click', () => addBGGGame(item.bgg_id, item.name, card));
-          results.appendChild(card);
-        });
-
-        results.style.display = 'grid';
-      } catch (err) {
-        loading.style.display = 'none';
-        errEl.textContent = `Search failed: ${err.message}`;
-        errEl.style.display = 'block';
-      }
-    }
-
-    bggBtn.addEventListener('click', doBGGSearch);
-    bggInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doBGGSearch(); });
-
-    // Manual form
     document.getElementById('manual-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
@@ -269,17 +205,17 @@
       }
 
       const payload = {
-        name:          fd.get('name'),
+        name:           fd.get('name'),
         year_published: parseInt(fd.get('year_published')) || null,
-        min_players:   parseInt(fd.get('min_players')) || null,
-        max_players:   parseInt(fd.get('max_players')) || null,
-        min_playtime:  parseInt(fd.get('min_playtime')) || null,
-        max_playtime:  parseInt(fd.get('max_playtime')) || null,
-        difficulty:    parseFloat(fd.get('difficulty')) || null,
-        image_url:     fd.get('image_url') || null,
-        description:   fd.get('description') || null,
-        categories:    csvToJson('categories_raw'),
-        designers:     csvToJson('designers_raw'),
+        min_players:    parseInt(fd.get('min_players')) || null,
+        max_players:    parseInt(fd.get('max_players')) || null,
+        min_playtime:   parseInt(fd.get('min_playtime')) || null,
+        max_playtime:   parseInt(fd.get('max_playtime')) || null,
+        difficulty:     parseFloat(fd.get('difficulty')) || null,
+        image_url:      fd.get('image_url') || null,
+        description:    fd.get('description') || null,
+        categories:     csvToJson('categories_raw'),
+        designers:      csvToJson('designers_raw'),
       };
 
       try {
@@ -291,36 +227,6 @@
         showToast(`Failed to add game: ${err.message}`, 'error');
       }
     });
-  }
-
-  async function addBGGGame(bggId, name, cardEl) {
-    // Prevent double-clicks: disable the card and show a spinner while fetching
-    if (cardEl) {
-      cardEl.style.pointerEvents = 'none';
-      cardEl.style.opacity = '0.6';
-      const addIcon = cardEl.querySelector('.bgg-result-add');
-      if (addIcon) addIcon.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div>';
-    }
-
-    try {
-      const gameData = await API.getBGGGame(bggId);
-      const created  = await API.createGame(gameData);
-      showToast(`"${created.name}" added to collection!`, 'success');
-      switchView('collection');
-    } catch (err) {
-      // Re-enable the card on failure so the user can try again
-      if (cardEl) {
-        cardEl.style.pointerEvents = '';
-        cardEl.style.opacity = '';
-        const addIcon = cardEl.querySelector('.bgg-result-add');
-        if (addIcon) addIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-      }
-      if (err.message.toLowerCase().includes('already')) {
-        showToast(`"${name}" is already in your collection.`, 'error');
-      } else {
-        showToast(`Failed to add "${name}": ${err.message}`, 'error');
-      }
-    }
   }
 
 })();
