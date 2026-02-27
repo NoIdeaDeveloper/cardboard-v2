@@ -1172,6 +1172,30 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ===== Game Dates ===== */
+.game-date-added {
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+
+.game-dates-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-3);
+  padding-top: 4px;
+}
+
+.game-dates-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  color: var(--text-3);
+  margin-right: 4px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }

@@ -72,6 +72,12 @@ function formatDate(isoDate) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function formatDatetime(isoDatetime) {
+  if (!isoDatetime) return null;
+  const d = new Date(isoDatetime);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function parseList(json) {
   try { return JSON.parse(json) || []; } catch { return []; }
 }
@@ -127,6 +133,7 @@ function buildGameCard(game) {
       <div class="game-card-footer">
         <div class="rating-row">${ratingHtml}</div>
         ${lastPlayedHtml}
+        ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
       </div>
     </div>`;
 
@@ -157,6 +164,7 @@ function buildGameListItem(game) {
       <div class="list-title">${escapeHtml(game.name)}</div>
       ${metaParts.length ? `<div class="list-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : ''}
       ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
+      ${game.date_added ? `<div class="last-played-line">Added ${escapeHtml(formatDatetime(game.date_added))}</div>` : ''}
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
 
@@ -380,6 +388,12 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           </div>
         </div>
       </details>
+
+      ${(game.date_added || game.date_modified) ? `
+      <div class="game-dates-row">
+        ${game.date_added   ? `<span><span class="game-dates-label">Added</span> ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
+        ${game.date_modified ? `<span><span class="game-dates-label">Modified</span> ${escapeHtml(formatDatetime(game.date_modified))}</span>` : ''}
+      </div>` : ''}
 
       <div class="modal-actions">
         <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
