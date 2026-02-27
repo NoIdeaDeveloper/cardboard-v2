@@ -13,7 +13,7 @@ from schemas import BGGSearchResult, GameCreate
 logger = logging.getLogger("cardboard.bgg")
 router = APIRouter(prefix="/api/bgg", tags=["bgg"])
 
-BGG_API_BASE = "https://www.boardgamegeek.com/xmlapi2"
+BGG_API_BASE = "https://boardgamegeek.com/xmlapi2"
 HEADERS = {"User-Agent": "Cardboard/1.0 (board game collection manager)"}
 BGG_RETRY_ATTEMPTS = 4   # BGG returns 202 when a game is queued; retry up to this many times
 BGG_RETRY_DELAY = 2.0    # seconds to wait between retries

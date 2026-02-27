@@ -72,8 +72,9 @@ if os.path.exists(FRONTEND_PATH):
 
     @app.get("/{path:path}")
     async def serve_frontend(path: str):
-        file_path = os.path.join(FRONTEND_PATH, path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
+        frontend_real = os.path.realpath(FRONTEND_PATH)
+        file_path = os.path.realpath(os.path.join(FRONTEND_PATH, path))
+        if file_path.startswith(frontend_real + os.sep) and os.path.isfile(file_path):
             return FileResponse(file_path)
         return FileResponse(os.path.join(FRONTEND_PATH, "index.html"))
 
