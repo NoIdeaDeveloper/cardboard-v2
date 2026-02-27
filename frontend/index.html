@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cardboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="10" width="32" height="22" rx="3" fill="currentColor" opacity="0.15"/>
+          <rect x="4" y="10" width="32" height="22" rx="3" stroke="currentColor" stroke-width="2"/>
+          <rect x="9" y="4" width="22" height="6" rx="2" fill="currentColor" opacity="0.4"/>
+          <circle cx="20" cy="21" r="5" fill="currentColor" opacity="0.7"/>
+          <circle cx="20" cy="21" r="2" fill="currentColor"/>
+        </svg>
+        <span class="logo-text">Cardboard</span>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" data-view="collection" title="My Collection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h6v6h-6z"/></svg>
+          <span>Collection</span>
+        </button>
+        <button class="nav-btn" data-view="add" title="Add Game">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span>Add Game</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Collection View -->
+    <section id="view-collection" class="view active">
+      <div class="collection-toolbar">
+        <div class="search-wrapper">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="collection-search" class="search-input" placeholder="Search your collection…" autocomplete="off" />
+          <button class="clear-search" id="clear-search" title="Clear search" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="toolbar-controls">
+          <div class="sort-group">
+            <label class="sort-label">Sort by</label>
+            <select id="sort-by" class="select">
+              <option value="name">Name</option>
+              <option value="date_added">Date Added</option>
+              <option value="user_rating">My Rating</option>
+              <option value="min_playtime">Playtime</option>
+              <option value="min_players">Players</option>
+              <option value="difficulty">Difficulty</option>
+              <option value="last_played">Last Played</option>
+            </select>
+            <button id="sort-dir" class="icon-btn sort-dir-btn" title="Toggle sort direction" data-dir="asc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+            </button>
+          </div>
+          <div class="view-toggle">
+            <button class="icon-btn active" id="view-grid" title="Grid view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="icon-btn" id="view-list" title="List view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="collection-stats" class="collection-stats"></div>
+
+      <div id="games-container" class="games-grid">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Loading your collection…</p>
+        </div>
+      </div>
+
+      <div id="empty-state" class="empty-state" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h6v6h-6z"/></svg>
+        <h2>Your collection is empty</h2>
+        <p>Start building your collection by searching for games.</p>
+        <button class="btn btn-primary" data-view="add">Add your first game</button>
+      </div>
+    </section>
+
+    <!-- Add Game View -->
+    <section id="view-add" class="view">
+      <div class="add-view-inner">
+        <div class="page-header">
+          <h1>Add a Game</h1>
+          <p>Search BoardGameGeek or enter details manually.</p>
+        </div>
+
+        <div class="search-modes">
+          <button class="mode-btn active" data-mode="bgg">Search BGG</button>
+          <button class="mode-btn" data-mode="manual">Manual Entry</button>
+        </div>
+
+        <!-- BGG Search -->
+        <div id="mode-bgg" class="mode-panel active">
+          <div class="bgg-search-wrapper">
+            <div class="search-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" id="bgg-search" class="search-input" placeholder="Search BoardGameGeek…" autocomplete="off" />
+            </div>
+            <button class="btn btn-primary" id="bgg-search-btn">Search</button>
+          </div>
+
+          <div id="bgg-results" class="bgg-results" style="display:none"></div>
+          <div id="bgg-loading" class="bgg-loading" style="display:none">
+            <div class="spinner"></div><span>Searching…</span>
+          </div>
+          <div id="bgg-error" class="alert alert-error" style="display:none"></div>
+        </div>
+
+        <!-- Manual Entry -->
+        <div id="mode-manual" class="mode-panel">
+          <form id="manual-form" class="game-form">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="m-name">Game Name *</label>
+                <input type="text" id="m-name" name="name" required placeholder="e.g. Ticket to Ride" />
+              </div>
+              <div class="form-group">
+                <label for="m-year">Year Published</label>
+                <input type="number" id="m-year" name="year_published" placeholder="2004" min="1800" max="2030" />
+              </div>
+              <div class="form-group">
+                <label for="m-min-players">Min Players</label>
+                <input type="number" id="m-min-players" name="min_players" placeholder="2" min="1" max="20" />
+              </div>
+              <div class="form-group">
+                <label for="m-max-players">Max Players</label>
+                <input type="number" id="m-max-players" name="max_players" placeholder="5" min="1" max="20" />
+              </div>
+              <div class="form-group">
+                <label for="m-min-playtime">Min Playtime (min)</label>
+                <input type="number" id="m-min-playtime" name="min_playtime" placeholder="30" min="1" />
+              </div>
+              <div class="form-group">
+                <label for="m-max-playtime">Max Playtime (min)</label>
+                <input type="number" id="m-max-playtime" name="max_playtime" placeholder="90" min="1" />
+              </div>
+              <div class="form-group">
+                <label for="m-difficulty">Difficulty (1–5)</label>
+                <input type="number" id="m-difficulty" name="difficulty" placeholder="2.5" min="1" max="5" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label for="m-image-url">Image URL</label>
+                <input type="url" id="m-image-url" name="image_url" placeholder="https://…" />
+              </div>
+              <div class="form-group full-width">
+                <label for="m-description">Description</label>
+                <textarea id="m-description" name="description" rows="4" placeholder="A brief description of the game…"></textarea>
+              </div>
+              <div class="form-group full-width">
+                <label for="m-categories">Categories <span class="hint">(comma-separated)</span></label>
+                <input type="text" id="m-categories" name="categories_raw" placeholder="Strategy, Card Game" />
+              </div>
+              <div class="form-group full-width">
+                <label for="m-designers">Designers <span class="hint">(comma-separated)</span></label>
+                <input type="text" id="m-designers" name="designers_raw" placeholder="Alan Moon" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Add to Collection</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Game Detail Modal -->
+  <div id="game-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-container">
+      <div class="modal-inner" id="modal-inner"></div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

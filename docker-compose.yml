@@ -1,0 +1,48 @@
+services:
+  cardboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cardboard
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      # DATA PERSISTENCE
+      # Option A — Unraid / bind mount (recommended for Unraid):
+      #   Set DATA_PATH in a .env file or export it before running compose.
+      #   e.g. DATA_PATH=/mnt/user/appdata/cardboard
+      #   This keeps your database on the protected array and survives Docker resets.
+      # Option B — Docker named volume (default, works on any Docker host):
+      #   Remove the ${DATA_PATH:-...} line and uncomment the named volume line below,
+      #   or leave as-is; Docker manages the storage location automatically.
+      - ${DATA_PATH:-cardboard_data}:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/cardboard.db
+      - FRONTEND_PATH=/app/frontend
+      # Ensures Python stdout/stderr is flushed immediately so logs appear in `docker logs`
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    logging:
+      # Log rotation: Docker automatically rotates logs.
+      # max-size: each log file is capped at 10 MB before rotation.
+      # max-file: at most 3 rotated files are kept.
+      # Maximum total disk usage for logs: 3 × 10 MB = 30 MB.
+      # Logs are purged automatically — they will NOT pile up indefinitely.
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/games/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# Named volume definition (used when DATA_PATH is not set).
+# Data stored here survives `docker compose down` but is ONLY deleted by `docker compose down -v`
+# or `docker volume rm cardboard_data`. It is NOT deleted by stopping or restarting the container.
+volumes:
+  cardboard_data:
+    driver: local
