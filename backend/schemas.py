@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime
 
 
@@ -14,6 +14,7 @@ class GameBase(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    instructions_filename: Optional[str] = None
     categories: Optional[str] = None
     mechanics: Optional[str] = None
     designers: Optional[str] = None
@@ -49,8 +50,25 @@ class GameUpdate(BaseModel):
 
 class GameResponse(GameBase):
     id: int
+    image_cached: bool = False
     date_added: Optional[datetime] = None
     date_modified: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PlaySessionCreate(BaseModel):
+    played_at: date
+    player_count: Optional[int] = None
+    duration_minutes: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class PlaySessionResponse(PlaySessionCreate):
+    id: int
+    game_id: int
+    date_added: Optional[datetime] = None
 
     class Config:
         from_attributes = True

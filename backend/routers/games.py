@@ -1,16 +1,85 @@
+import glob
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc
+import mimetypes
+import os
+import re
+import urllib.request
 from typing import List, Optional
 
-from database import get_db
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
+from sqlalchemy import asc, desc
+from sqlalchemy.orm import Session
+
+from database import SessionLocal, get_db
 import models
 import schemas
 
 logger = logging.getLogger("cardboard.games")
 router = APIRouter(prefix="/api/games", tags=["games"])
 
+IMAGES_DIR = os.getenv("IMAGES_DIR", "/app/data/images")
+INSTRUCTIONS_DIR = os.getenv("INSTRUCTIONS_DIR", "/app/data/instructions")
+MAX_INSTRUCTIONS_SIZE = 20 * 1024 * 1024  # 20 MB
+ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
+
+
+# ---------------------------------------------------------------------------
+# Image caching
+# ---------------------------------------------------------------------------
+
+def _safe_ext(url: str, content_type: str) -> str:
+    """Derive a safe file extension from content-type or URL."""
+    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
+    if ext in (".jpe", ""):
+        # Fall back to URL extension
+        url_ext = os.path.splitext(url.split("?")[0])[1].lower()
+        ext = url_ext if url_ext in (".jpg", ".jpeg", ".png", ".gif", ".webp") else ".jpg"
+    return ext
+
+
+def _cache_game_image(game_id: int, image_url: str) -> None:
+    """Download image_url and store locally; update game record. Runs as a background task."""
+    if not image_url or image_url.startswith("/api/"):
+        return  # already local or empty
+
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+
+    try:
+        req = urllib.request.Request(image_url, headers={"User-Agent": "Cardboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "image/jpeg")
+            ext = _safe_ext(image_url, content_type)
+            dest = os.path.join(IMAGES_DIR, f"{game_id}{ext}")
+            with open(dest, "wb") as f:
+                f.write(resp.read())
+    except Exception as exc:
+        logger.warning("Image cache failed for game %d: %s", game_id, exc)
+        return
+
+    db = SessionLocal()
+    try:
+        game = db.query(models.Game).filter(models.Game.id == game_id).first()
+        if game:
+            game.image_url = f"/api/games/{game_id}/image"
+            game.image_cached = True
+            db.commit()
+            logger.info("Image cached for game %d", game_id)
+    finally:
+        db.close()
+
+
+def _delete_cached_image(game_id: int) -> None:
+    for path in glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*")):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Collection CRUD
+# ---------------------------------------------------------------------------
 
 @router.get("/", response_model=List[schemas.GameResponse])
 def get_games(
@@ -42,27 +111,48 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=schemas.GameResponse, status_code=201)
-def create_game(game: schemas.GameCreate, db: Session = Depends(get_db)):
+def create_game(
+    game: schemas.GameCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     db_game = models.Game(**game.model_dump())
     db.add(db_game)
     db.commit()
     db.refresh(db_game)
-    logger.info("Game added: id=%d name=%r bgg_id=%s", db_game.id, db_game.name, db_game.bgg_id)
+    logger.info("Game added: id=%d name=%r", db_game.id, db_game.name)
+
+    if db_game.image_url and not db_game.image_url.startswith("/api/"):
+        background_tasks.add_task(_cache_game_image, db_game.id, db_game.image_url)
+
     return db_game
 
 
 @router.patch("/{game_id}", response_model=schemas.GameResponse)
-def update_game(game_id: int, game: schemas.GameUpdate, db: Session = Depends(get_db)):
+def update_game(
+    game_id: int,
+    game: schemas.GameUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if not db_game:
         raise HTTPException(status_code=404, detail="Game not found")
 
     update_data = game.model_dump(exclude_unset=True)
+    new_image_url = update_data.get("image_url")
     for field, value in update_data.items():
         setattr(db_game, field, value)
 
     db.commit()
     db.refresh(db_game)
+
+    if new_image_url and not new_image_url.startswith("/api/"):
+        _delete_cached_image(game_id)
+        db_game.image_cached = False
+        db.commit()
+        background_tasks.add_task(_cache_game_image, game_id, new_image_url)
+
     return db_game
 
 
@@ -73,5 +163,113 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Game not found")
 
     logger.info("Game deleted: id=%d name=%r", db_game.id, db_game.name)
+
+    # Clean up files
+    _delete_cached_image(game_id)
+    if db_game.instructions_filename:
+        instr_path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+        try:
+            os.remove(instr_path)
+        except OSError:
+            pass
+
+    # Delete associated play sessions
+    db.query(models.PlaySession).filter(models.PlaySession.game_id == game_id).delete()
+
     db.delete(db_game)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Cached image endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/{game_id}/image")
+def get_game_image(game_id: int):
+    matches = glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="Image not cached")
+    return FileResponse(matches[0])
+
+
+# ---------------------------------------------------------------------------
+# Instructions endpoints
+# ---------------------------------------------------------------------------
+
+def _safe_filename(name: str) -> str:
+    """Strip path components and replace unsafe characters."""
+    name = os.path.basename(name)
+    name = re.sub(r"[^\w.\-]", "_", name)
+    return name[:200]  # cap length
+
+
+@router.post("/{game_id}/instructions", status_code=204)
+async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    safe_name = _safe_filename(file.filename or "instructions")
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_INSTRUCTIONS_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Only .pdf and .txt files are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_INSTRUCTIONS_SIZE:
+        raise HTTPException(status_code=413, detail="File exceeds 20 MB limit")
+
+    os.makedirs(INSTRUCTIONS_DIR, exist_ok=True)
+
+    # Remove old file if present
+    if db_game.instructions_filename:
+        old_path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+        try:
+            os.remove(old_path)
+        except OSError:
+            pass
+
+    dest = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{safe_name}")
+    with open(dest, "wb") as f:
+        f.write(content)
+
+    db_game.instructions_filename = safe_name
+    db.commit()
+    logger.info("Instructions uploaded for game %d: %s", game_id, safe_name)
+
+
+@router.get("/{game_id}/instructions")
+def get_instructions(game_id: int, db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game or not db_game.instructions_filename:
+        raise HTTPException(status_code=404, detail="No instructions uploaded")
+
+    path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Instructions file not found")
+
+    ext = os.path.splitext(db_game.instructions_filename)[1].lower()
+    media_type = "application/pdf" if ext == ".pdf" else "text/plain"
+    disposition = "inline" if ext == ".pdf" else "attachment"
+
+    return FileResponse(
+        path,
+        media_type=media_type,
+        headers={"Content-Disposition": f'{disposition}; filename="{db_game.instructions_filename}"'},
+    )
+
+
+@router.delete("/{game_id}/instructions", status_code=204)
+def delete_instructions(game_id: int, db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game or not db_game.instructions_filename:
+        raise HTTPException(status_code=404, detail="No instructions to delete")
+
+    path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+    db_game.instructions_filename = None
+    db.commit()
+    logger.info("Instructions deleted for game %d", game_id)

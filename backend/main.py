@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from database import engine, Base
-from routers import games
+from routers import games, sessions
 
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
@@ -19,10 +19,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("cardboard")
 
-# Ensure data directory exists
-data_dir = os.getenv("DATA_DIR", "./data")
-os.makedirs(data_dir, exist_ok=True)
-logger.info("Data directory: %s", os.path.abspath(data_dir))
+# Ensure data directories exist
+for subdir in ["", "images", "instructions"]:
+    path = os.path.join(os.getenv("DATA_DIR", "/app/data"), subdir)
+    os.makedirs(path, exist_ok=True)
+    if subdir:
+        logger.info("Data sub-directory ready: %s", path)
+
+logger.info("Data directory: %s", os.path.abspath(os.getenv("DATA_DIR", "/app/data")))
 
 # Create DB tables on startup
 Base.metadata.create_all(bind=engine)
@@ -55,6 +59,7 @@ async def log_requests(request: Request, call_next):
 
 
 app.include_router(games.router)
+app.include_router(sessions.router)
 
 # Serve frontend static files
 FRONTEND_PATH = os.getenv("FRONTEND_PATH", "/app/frontend")

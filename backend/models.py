@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Text, Date, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, Date, DateTime, Boolean, ForeignKey
 from database import Base
 
 
@@ -13,10 +13,12 @@ class Game(Base):
     max_players = Column(Integer, nullable=True)
     min_playtime = Column(Integer, nullable=True)
     max_playtime = Column(Integer, nullable=True)
-    difficulty = Column(Float, nullable=True)  # BGG weight 1-5
+    difficulty = Column(Float, nullable=True)
     description = Column(Text, nullable=True)
     image_url = Column(Text, nullable=True)
     thumbnail_url = Column(Text, nullable=True)
+    image_cached = Column(Boolean, default=False, nullable=False)
+    instructions_filename = Column(Text, nullable=True)
     categories = Column(Text, nullable=True)   # JSON array as string
     mechanics = Column(Text, nullable=True)    # JSON array as string
     designers = Column(Text, nullable=True)    # JSON array as string
@@ -27,3 +29,15 @@ class Game(Base):
     # Python-side defaults so they work reliably with SQLite
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
     date_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PlaySession(Base):
+    __tablename__ = "play_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    played_at = Column(Date, nullable=False)
+    player_count = Column(Integer, nullable=True)
+    duration_minutes = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)

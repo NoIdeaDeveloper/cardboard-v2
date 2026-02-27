@@ -72,7 +72,6 @@
       state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
       sortDirBtn.dataset.dir = state.sortDir;
       sortDirBtn.setAttribute('title', state.sortDir === 'asc' ? 'Sort ascending' : 'Sort descending');
-      // Flip icon
       sortDirBtn.querySelector('svg').style.transform = state.sortDir === 'desc' ? 'scaleY(-1)' : '';
       loadCollection();
     });
@@ -114,11 +113,11 @@
     const search = (state.search || '').toLowerCase();
     const filtered = state.games.filter(g => !search || g.name.toLowerCase().includes(search));
 
-    // Stats
     if (state.games.length > 0) {
       const shown = filtered.length !== state.games.length ? `${filtered.length} of ${state.games.length}` : state.games.length;
       const rated = state.games.filter(g => g.user_rating).length;
-      statsEl.textContent = `${shown} game${state.games.length !== 1 ? 's' : ''} in collection${rated ? ` · ${rated} rated` : ''}`;
+      const played = state.games.filter(g => g.last_played).length;
+      statsEl.textContent = `${shown} game${state.games.length !== 1 ? 's' : ''} in collection${rated ? ` · ${rated} rated` : ''}${played ? ` · ${played} played` : ''}`;
     } else {
       statsEl.textContent = '';
     }
@@ -148,7 +147,13 @@
 
   // ===== Game Modal =====
   async function openGameModal(game) {
-    const contentEl = buildModalContent(game, handleSaveGame, handleDeleteGame);
+    // Fetch sessions alongside opening
+    let sessions = [];
+    try {
+      sessions = await API.getSessions(game.id);
+    } catch (_) { /* non-fatal */ }
+
+    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions);
     openModal(contentEl);
   }
 
@@ -157,7 +162,6 @@
       const updated = await API.updateGame(gameId, payload);
       showToast('Changes saved!', 'success');
       closeModal();
-      // Update in state
       const idx = state.games.findIndex(g => g.id === gameId);
       if (idx !== -1) state.games[idx] = updated;
       renderCollection();
@@ -180,6 +184,57 @@
       renderCollection();
     } catch (err) {
       showToast(`Failed to remove: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleAddSession(gameId, sessionData, onSuccess) {
+    try {
+      const created = await API.addSession(gameId, sessionData);
+      showToast('Session logged!', 'success');
+      // Update last_played in local state
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1 && created.played_at) {
+        const current = state.games[idx].last_played;
+        if (!current || created.played_at > current) {
+          state.games[idx].last_played = created.played_at;
+        }
+      }
+      if (onSuccess) onSuccess(created);
+    } catch (err) {
+      showToast(`Failed to log session: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleDeleteSession(sessionId, onSuccess) {
+    try {
+      await API.deleteSession(sessionId);
+      if (onSuccess) onSuccess(sessionId);
+    } catch (err) {
+      showToast(`Failed to delete session: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleUploadInstructions(gameId, file, onSuccess) {
+    try {
+      await API.uploadInstructions(gameId, file);
+      showToast('Instructions uploaded!', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].instructions_filename = file.name;
+      if (onSuccess) onSuccess(file.name);
+    } catch (err) {
+      showToast(`Upload failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleDeleteInstructions(gameId, onSuccess) {
+    try {
+      await API.deleteInstructions(gameId);
+      showToast('Instructions removed.', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].instructions_filename = null;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Failed to remove instructions: ${err.message}`, 'error');
     }
   }
 

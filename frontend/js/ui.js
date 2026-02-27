@@ -1,452 +1,595 @@
 /**
- * Cardboard UI helpers
+ * Cardboard – UI helpers and component builders
  */
 
-// ===== Toast =====
+// ===== Notifications =====
+
 function showToast(message, type = 'info', duration = 3500) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+  toast.className = `toast toast-${type}`;
   toast.textContent = message;
   container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(20px)';
-    toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
+  setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 400); }, duration);
 }
 
-// ===== Confirm Dialog =====
 function showConfirm(title, message) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.innerHTML = `
-      <div class="confirm-box">
-        <h3>${escapeHtml(title)}</h3>
-        <p>${escapeHtml(message)}</p>
+      <div class="confirm-dialog">
+        <h3 class="confirm-title">${escapeHtml(title)}</h3>
+        <p class="confirm-message">${escapeHtml(message)}</p>
         <div class="confirm-actions">
           <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
-          <button class="btn btn-danger" id="confirm-ok">Delete</button>
+          <button class="btn btn-danger" id="confirm-ok">Remove</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
-    overlay.querySelector('#confirm-cancel').onclick = () => { overlay.remove(); resolve(false); };
-    overlay.querySelector('#confirm-ok').onclick = () => { overlay.remove(); resolve(true); };
-    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+    overlay.querySelector('#confirm-cancel').addEventListener('click', () => { overlay.remove(); resolve(false); });
+    overlay.querySelector('#confirm-ok').addEventListener('click', () => { overlay.remove(); resolve(true); });
   });
 }
 
-// ===== Render Stars (display, 5-star scale from 1-10 rating) =====
+// ===== Display Helpers =====
+
 function renderStars(rating) {
-  // Convert 1-10 rating to nearest whole star out of 5 (e.g. 9 → 5, 7 → 4, 5 → 3)
   const filled = Math.round((rating || 0) / 2);
   let html = '<div class="rating-stars">';
   for (let i = 1; i <= 5; i++) {
-    html += `<svg class="star${i <= filled ? '' : ' empty'}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    html += `<svg class="star${i <= filled ? '' : ' empty'}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
   }
-  html += '</div>';
-  return html;
+  return html + '</div>';
 }
 
-// ===== Difficulty Bar =====
 function renderDifficultyBar(difficulty) {
-  if (!difficulty) return '<span style="color:var(--text-3);font-size:0.75rem">—</span>';
-  const labels = ['', 'Light', 'Light-Med', 'Medium', 'Med-Heavy', 'Heavy'];
+  if (!difficulty) return '';
   const filled = Math.round(difficulty);
-  let html = '<div class="difficulty-bar"><div class="difficulty-segments">';
+  let bars = '';
   for (let i = 1; i <= 5; i++) {
-    html += `<div class="diff-seg${i <= filled ? ' filled' : ''}"></div>`;
+    bars += `<div class="diff-segment${i <= filled ? ' filled' : ''}"></div>`;
   }
-  html += `</div><span class="difficulty-label">${labels[filled] || difficulty.toFixed(1)}</span></div>`;
-  return html;
+  const label = difficulty <= 2 ? 'Light' : difficulty <= 3.5 ? 'Medium' : 'Heavy';
+  return `<div class="difficulty-bar">${bars}</div><span class="diff-label">${label}</span>`;
 }
 
-// ===== Format playtime =====
 function formatPlaytime(min, max) {
   if (!min && !max) return null;
   if (min === max || !max) return `${min} min`;
-  if (!min) return `${max} min`;
   return `${min}–${max} min`;
 }
 
-// ===== Format players =====
 function formatPlayers(min, max) {
   if (!min && !max) return null;
   if (min === max || !max) return `${min} player${min !== 1 ? 's' : ''}`;
-  if (!min) return `1–${max} players`;
   return `${min}–${max} players`;
 }
 
-// ===== Format date =====
-function formatDate(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + 'T00:00:00');
+function formatDate(isoDate) {
+  if (!isoDate) return null;
+  const d = new Date(isoDate + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// ===== Parse JSON list =====
-function parseList(str) {
-  if (!str) return [];
-  try { return JSON.parse(str); } catch { return []; }
+function parseList(json) {
+  try { return JSON.parse(json) || []; } catch { return []; }
 }
 
-// ===== Escape HTML =====
 function escapeHtml(str) {
-  if (!str) return '';
+  if (str == null) return '';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function placeholderSvg() {
-  return `<div class="game-card-image-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>`;
+  return `<svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+    <rect x="2" y="6" width="20" height="14" rx="2"/><rect x="6" y="2" width="12" height="4" rx="1"/>
+    <circle cx="12" cy="13" r="3"/><circle cx="12" cy="13" r="1.2" fill="currentColor" stroke="none"/>
+  </svg>`;
 }
 
-// ===== Build Game Card (grid) =====
+// ===== Game Card (Grid) =====
+
 function buildGameCard(game) {
-  const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
-  const players  = formatPlayers(game.min_players, game.max_players);
-  const chips = [players, playtime, game.year_published ? game.year_published : null]
-    .filter(Boolean)
-    .map(c => `<span class="meta-chip">${escapeHtml(String(c))}</span>`)
-    .join('');
+  const el = document.createElement('div');
+  el.className = 'game-card';
 
-  const ratingHtml = game.user_rating
-    ? `${renderStars(game.user_rating)}<span class="rating-value">${game.user_rating.toFixed(1)}</span>`
-    : '<span style="font-size:0.72rem;color:var(--text-3)">Unrated</span>';
-
-  const lastPlayed = game.last_played
-    ? `<div class="game-card-last-played">Played ${formatDate(game.last_played)}</div>`
-    : '';
-
-  const imageHtml = game.thumbnail_url || game.image_url
-    ? `<img src="${escapeHtml(game.thumbnail_url || game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="game-card-image-placeholder" style="display:none">${placeholderSvg()}</div>`
-    : placeholderSvg();
-
-  const card = document.createElement('div');
-  card.className = 'game-card';
-  card.dataset.id = game.id;
-  card.innerHTML = `
-    <div class="game-card-image">${imageHtml}</div>
-    <div class="game-card-body">
-      <div class="game-card-name">${escapeHtml(game.name)}</div>
-      <div class="game-card-meta">${chips}</div>
-      <div class="game-card-rating">${ratingHtml}</div>
-      ${lastPlayed}
-    </div>`;
-  return card;
-}
-
-// ===== Build Game List Item =====
-function buildGameListItem(game) {
   const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
   const players  = formatPlayers(game.min_players, game.max_players);
 
-  const thumbHtml = (game.thumbnail_url || game.image_url)
-    ? `<img src="${escapeHtml(game.thumbnail_url || game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none'" />`
-    : `<div class="game-list-image-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>`;
-
-  const metaParts = [players, playtime, game.difficulty ? `Difficulty: ${game.difficulty.toFixed(1)}/5` : null]
-    .filter(Boolean)
-    .map(p => `<span>${escapeHtml(p)}</span>`)
-    .join('');
+  let metaHtml = '';
+  if (players)  metaHtml += `<span class="chip">${escapeHtml(players)}</span>`;
+  if (playtime) metaHtml += `<span class="chip">${escapeHtml(playtime)}</span>`;
+  if (game.year_published) metaHtml += `<span class="chip">${game.year_published}</span>`;
 
   const ratingHtml = game.user_rating
-    ? `${renderStars(game.user_rating)}<span class="rating-value" style="font-size:0.8rem;color:var(--gold)">${game.user_rating.toFixed(1)}</span>`
+    ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
+    : `<span class="unrated">Unrated</span>`;
+
+  const lastPlayedHtml = game.last_played
+    ? `<span class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</span>`
     : '';
 
-  const item = document.createElement('div');
-  item.className = 'game-list-item';
-  item.dataset.id = game.id;
-  item.innerHTML = `
-    <div class="game-list-image">${thumbHtml}</div>
-    <div class="game-list-info">
-      <div class="game-list-name">${escapeHtml(game.name)}</div>
-      <div class="game-list-meta">${metaParts}</div>
+  el.innerHTML = `
+    <div class="game-card-image">
+      ${game.image_url
+        ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
+        : placeholderSvg()}
     </div>
-    <div class="game-list-right">
-      <div class="game-card-rating">${ratingHtml}</div>
-      ${game.last_played ? `<span style="font-size:0.75rem;color:var(--text-3)">${formatDate(game.last_played)}</span>` : ''}
+    <div class="game-card-body">
+      <div class="game-card-title">${escapeHtml(game.name)}</div>
+      ${metaHtml ? `<div class="game-card-meta">${metaHtml}</div>` : ''}
+      <div class="game-card-footer">
+        <div class="rating-row">${ratingHtml}</div>
+        ${lastPlayedHtml}
+      </div>
     </div>`;
-  return item;
+
+  return el;
 }
 
-// ===== Build Modal Content =====
-function buildModalContent(game, onSave, onDelete) {
+// ===== Game List Item =====
+
+function buildGameListItem(game) {
+  const el = document.createElement('div');
+  el.className = 'game-list-item';
+
+  const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
+  const players  = formatPlayers(game.min_players, game.max_players);
+  const metaParts = [players, playtime, game.difficulty ? `Difficulty ${game.difficulty.toFixed(1)}` : null].filter(Boolean);
+
+  const ratingHtml = game.user_rating
+    ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
+    : `<span class="unrated">Unrated</span>`;
+
+  el.innerHTML = `
+    <div class="list-thumb">
+      ${game.image_url
+        ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
+        : placeholderSvg()}
+    </div>
+    <div class="list-info">
+      <div class="list-title">${escapeHtml(game.name)}</div>
+      ${metaParts.length ? `<div class="list-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : ''}
+      ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
+    </div>
+    <div class="list-rating">${ratingHtml}</div>`;
+
+  return el;
+}
+
+// ===== Modal =====
+
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions) {
+  const el = document.createElement('div');
+
   const categories = parseList(game.categories);
   const mechanics  = parseList(game.mechanics);
   const designers  = parseList(game.designers);
   const publishers = parseList(game.publishers);
 
+  // Hero
+  const heroHtml = game.image_url
+    ? `<div class="modal-hero" style="background-image:url('${escapeHtml(game.image_url)}')">
+        <div class="modal-hero-overlay"></div>
+        <button class="modal-close" id="modal-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`
+    : `<div class="modal-hero modal-hero-placeholder">
+        ${placeholderSvg()}
+        <button class="modal-close" id="modal-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+
+  // Info chips
   const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
   const players  = formatPlayers(game.min_players, game.max_players);
+  let chipsHtml = '';
+  if (players)  chipsHtml += `<span class="chip">${escapeHtml(players)}</span>`;
+  if (playtime) chipsHtml += `<span class="chip">${escapeHtml(playtime)}</span>`;
+  if (game.difficulty) chipsHtml += `<span class="chip chip-difficulty">${game.difficulty.toFixed(1)} weight</span>`;
+  if (game.year_published) chipsHtml += `<span class="chip">${game.year_published}</span>`;
 
-  const heroHtml = (game.image_url || game.thumbnail_url)
-    ? `<img class="modal-hero-image" src="${escapeHtml(game.image_url || game.thumbnail_url)}" alt="${escapeHtml(game.name)}" /><div class="modal-hero-overlay"></div>`
-    : `<div class="modal-hero-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>`;
-
-  const chipsHtml = [
-    players  ? `<span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg>${escapeHtml(players)}</span>` : '',
-    playtime ? `<span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(playtime)}</span>` : '',
-    game.difficulty ? `<span class="chip accent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Difficulty ${game.difficulty.toFixed(1)}/5</span>` : '',
-    game.year_published ? `<span class="chip">${game.year_published}</span>` : '',
-  ].filter(Boolean).join('');
-
-  const tagsSections = [
-    { title: 'Categories', list: categories },
-    { title: 'Mechanics',  list: mechanics  },
-    { title: 'Designers',  list: designers  },
-    { title: 'Publishers', list: publishers },
-  ].filter(s => s.list.length > 0);
-
-  const tagsHtml = tagsSections.map(s => `
-    <div class="modal-tags-section">
-      <div class="modal-tags-title">${s.title}</div>
-      <div class="tags-list">${s.list.slice(0, 12).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
-    </div>`).join('');
-
-  // Build interactive rating stars (1–10 mapped to 10 half-stars, shown as 10 full stars)
-  const currentRating = game.user_rating || 0;
-  let starsHtml = '';
-  for (let i = 1; i <= 10; i++) {
-    starsHtml += `<button class="star-btn${i <= currentRating ? ' filled' : ''}" data-val="${i}" title="${i}/10" aria-label="Rate ${i} out of 10">
-      <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-    </button>`;
+  function tagsBlock(label, items) {
+    if (!items.length) return '';
+    return `<div class="modal-tags-group">
+      <span class="modal-tags-label">${label}</span>
+      <div class="modal-tags">${items.slice(0, 12).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+    </div>`;
   }
 
-  const lastPlayedVal = game.last_played || '';
+  function buildSessionsHtml(list) {
+    if (!list.length) return '<p class="no-sessions">No sessions logged yet.</p>';
+    return list.map(s => `
+      <div class="session-item" data-session-id="${s.id}">
+        <div class="session-info">
+          <span class="session-date">${escapeHtml(formatDate(s.played_at))}</span>
+          ${s.player_count ? `<span class="session-meta">${s.player_count} player${s.player_count !== 1 ? 's' : ''}</span>` : ''}
+          ${s.duration_minutes ? `<span class="session-meta">${s.duration_minutes} min</span>` : ''}
+          ${s.notes ? `<span class="session-notes">${escapeHtml(s.notes)}</span>` : ''}
+        </div>
+        <button class="session-delete" data-session-id="${s.id}" title="Delete session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>`).join('');
+  }
 
-  const el = document.createElement('div');
+  const hasInstructions = !!game.instructions_filename;
+
   el.innerHTML = `
-    <div class="modal-hero">${heroHtml}
-      <button class="modal-close" id="modal-close-btn" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
+    ${heroHtml}
     <div class="modal-body">
       <div class="modal-title-row">
         <h2 class="modal-title" id="modal-title">${escapeHtml(game.name)}</h2>
         ${game.year_published ? `<span class="modal-year">${game.year_published}</span>` : ''}
       </div>
-      <div class="modal-chips">${chipsHtml}</div>
 
-      <!-- Rating -->
-      <div class="rating-widget">
-        <span class="rating-label">My Rating</span>
-        <div class="rating-stars-interactive" id="rating-stars">${starsHtml}</div>
-        <span class="rating-number" id="rating-display">${currentRating ? currentRating.toFixed(1) : '—'}</span>
-        <button class="clear-rating-btn" id="clear-rating">Clear</button>
+      ${chipsHtml ? `<div class="modal-chips">${chipsHtml}</div>` : ''}
+      ${game.difficulty ? `<div class="modal-difficulty">${renderDifficultyBar(game.difficulty)}</div>` : ''}
+
+      ${tagsBlock('Categories', categories)}
+      ${tagsBlock('Mechanics', mechanics)}
+      ${tagsBlock('Designers', designers)}
+      ${tagsBlock('Publishers', publishers)}
+
+      <div class="modal-section">
+        <div class="section-label">My Rating</div>
+        <div class="rating-widget">
+          <div class="rating-stars-interactive" id="rating-stars">
+            ${Array.from({length: 10}, (_, i) => i + 1).map(n =>
+              `<button class="star-btn${(game.user_rating || 0) >= n ? ' active' : ''}" data-value="${n}" aria-label="${n} stars">
+                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              </button>`).join('')}
+          </div>
+          <span class="rating-display" id="rating-display">${game.user_rating || '—'}</span>
+          <button class="btn btn-ghost btn-sm" id="rating-clear">Clear</button>
+        </div>
       </div>
 
-      <!-- Last Played -->
-      <div class="last-played-row">
-        <span class="last-played-label">Last Played</span>
-        <input type="date" id="last-played-input" value="${lastPlayedVal}" />
-        <button class="today-btn" id="today-btn">Today</button>
+      <div class="modal-section">
+        <div class="section-label">Last Played</div>
+        <div class="last-played-row">
+          <input type="date" id="last-played-input" class="date-input" value="${game.last_played || ''}">
+          <button class="btn btn-ghost btn-sm" id="today-btn">Today</button>
+        </div>
       </div>
 
       ${game.description ? `
-        <div class="modal-description" id="modal-desc">${escapeHtml(game.description)}</div>
-        <button class="description-toggle" id="desc-toggle">Show more</button>` : ''}
+      <div class="modal-section">
+        <div class="section-label">Description</div>
+        <div class="description-text" id="desc-text">${escapeHtml(game.description)}</div>
+        <button class="btn btn-ghost btn-sm" id="desc-toggle" style="margin-top:6px">Show more</button>
+      </div>` : ''}
 
-      ${tagsHtml}
-
-      <!-- Notes -->
-      <div class="notes-section">
-        <label class="notes-label" for="notes-input">Personal Notes</label>
-        <textarea class="notes-textarea" id="notes-input" placeholder="Add your own notes about this game…">${escapeHtml(game.user_notes || '')}</textarea>
+      <div class="modal-section">
+        <div class="section-label">My Notes</div>
+        <textarea id="user-notes" class="notes-input" rows="3" placeholder="Personal notes, house rules, favourite moments…">${escapeHtml(game.user_notes || '')}</textarea>
       </div>
 
-      <!-- Edit Details -->
-      <details class="edit-mode-section" id="edit-details">
-        <summary class="edit-mode-title" style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit Game Details
-        </summary>
-        <div style="margin-top:16px;">
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label>Game Name</label>
-              <input type="text" id="edit-name" value="${escapeHtml(game.name)}" />
+      <div class="modal-section">
+        <div class="section-label">Rulebook</div>
+        <div class="instructions-existing" id="instructions-existing" style="${hasInstructions ? '' : 'display:none'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <a href="/api/games/${game.id}/instructions" target="_blank" class="instructions-link">${escapeHtml(game.instructions_filename || '')}</a>
+          <button class="btn btn-ghost btn-sm" id="delete-instructions-btn">Remove</button>
+        </div>
+        <div class="instructions-upload" id="instructions-upload" style="${hasInstructions ? 'display:none' : ''}">
+          <label class="upload-label">
+            <input type="file" id="instructions-file-input" accept=".pdf,.txt" style="display:none">
+            <span class="btn btn-secondary btn-sm upload-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload PDF or TXT
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="section-label-row">
+          <div class="section-label">Play History</div>
+          <button class="btn btn-ghost btn-sm" id="log-session-toggle">+ Log Session</button>
+        </div>
+        <div class="log-session-form" id="log-session-form" style="display:none">
+          <div class="session-form-grid">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="session-date" class="form-input" value="${new Date().toISOString().split('T')[0]}">
             </div>
             <div class="form-group">
-              <label>Year Published</label>
-              <input type="number" id="edit-year" value="${game.year_published || ''}" min="1800" max="2030" />
+              <label>Players</label>
+              <input type="number" id="session-players" class="form-input" placeholder="4" min="1" max="20">
             </div>
             <div class="form-group">
-              <label>Min Players</label>
-              <input type="number" id="edit-min-players" value="${game.min_players || ''}" min="1" max="20" />
-            </div>
-            <div class="form-group">
-              <label>Max Players</label>
-              <input type="number" id="edit-max-players" value="${game.max_players || ''}" min="1" max="20" />
-            </div>
-            <div class="form-group">
-              <label>Min Playtime (min)</label>
-              <input type="number" id="edit-min-playtime" value="${game.min_playtime || ''}" min="1" />
-            </div>
-            <div class="form-group">
-              <label>Max Playtime (min)</label>
-              <input type="number" id="edit-max-playtime" value="${game.max_playtime || ''}" min="1" />
-            </div>
-            <div class="form-group">
-              <label>Difficulty (1–5)</label>
-              <input type="number" id="edit-difficulty" value="${game.difficulty || ''}" min="1" max="5" step="0.1" />
-            </div>
-            <div class="form-group">
-              <label>Image URL</label>
-              <input type="url" id="edit-image-url" value="${escapeHtml(game.image_url || '')}" />
+              <label>Duration (min)</label>
+              <input type="number" id="session-duration" class="form-input" placeholder="90" min="1">
             </div>
             <div class="form-group full-width">
-              <label>Description</label>
-              <textarea id="edit-description" rows="4">${escapeHtml(game.description || '')}</textarea>
+              <label>Notes</label>
+              <input type="text" id="session-notes" class="form-input" placeholder="Who won? Any highlights?">
             </div>
-            <div class="form-group full-width">
-              <label>Categories <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="edit-categories" value="${escapeHtml(categories.join(', '))}" />
-            </div>
-            <div class="form-group full-width">
-              <label>Mechanics <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="edit-mechanics" value="${escapeHtml(mechanics.join(', '))}" />
-            </div>
-            <div class="form-group full-width">
-              <label>Designers <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="edit-designers" value="${escapeHtml(designers.join(', '))}" />
-            </div>
-            <div class="form-group full-width">
-              <label>Publishers <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="edit-publishers" value="${escapeHtml(publishers.join(', '))}" />
-            </div>
+          </div>
+          <div class="session-form-actions">
+            <button class="btn btn-primary btn-sm" id="session-submit">Save Session</button>
+            <button class="btn btn-ghost btn-sm" id="session-cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="sessions-list" id="sessions-list">${buildSessionsHtml(sessions)}</div>
+      </div>
+
+      <details class="edit-details">
+        <summary class="edit-details-summary">Edit Game Details</summary>
+        <div class="edit-form-grid">
+          <div class="form-group full-width">
+            <label>Name</label>
+            <input type="text" id="edit-name" class="form-input" value="${escapeHtml(game.name)}">
+          </div>
+          <div class="form-group">
+            <label>Year</label>
+            <input type="number" id="edit-year" class="form-input" value="${game.year_published || ''}">
+          </div>
+          <div class="form-group">
+            <label>Min Players</label>
+            <input type="number" id="edit-min-players" class="form-input" value="${game.min_players || ''}">
+          </div>
+          <div class="form-group">
+            <label>Max Players</label>
+            <input type="number" id="edit-max-players" class="form-input" value="${game.max_players || ''}">
+          </div>
+          <div class="form-group">
+            <label>Min Playtime (min)</label>
+            <input type="number" id="edit-min-playtime" class="form-input" value="${game.min_playtime || ''}">
+          </div>
+          <div class="form-group">
+            <label>Max Playtime (min)</label>
+            <input type="number" id="edit-max-playtime" class="form-input" value="${game.max_playtime || ''}">
+          </div>
+          <div class="form-group">
+            <label>Difficulty (1–5)</label>
+            <input type="number" id="edit-difficulty" class="form-input" min="1" max="5" step="0.1" value="${game.difficulty || ''}">
+          </div>
+          <div class="form-group">
+            <label>Image URL</label>
+            <input type="url" id="edit-image-url" class="form-input" value="${escapeHtml(game.image_url || '')}">
+          </div>
+          <div class="form-group full-width">
+            <label>Description</label>
+            <textarea id="edit-description" class="form-input" rows="3">${escapeHtml(game.description || '')}</textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Categories <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-categories" class="form-input" value="${escapeHtml(categories.join(', '))}">
+          </div>
+          <div class="form-group full-width">
+            <label>Mechanics <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-mechanics" class="form-input" value="${escapeHtml(mechanics.join(', '))}">
+          </div>
+          <div class="form-group full-width">
+            <label>Designers <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-designers" class="form-input" value="${escapeHtml(designers.join(', '))}">
+          </div>
+          <div class="form-group full-width">
+            <label>Publishers <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-publishers" class="form-input" value="${escapeHtml(publishers.join(', '))}">
           </div>
         </div>
       </details>
 
-      <!-- Actions -->
       <div class="modal-actions">
-        <button class="btn btn-danger btn-sm" id="delete-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          Remove
-        </button>
+        <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
         <div class="modal-actions-right">
-          <button class="btn btn-secondary" id="modal-cancel-btn">Cancel</button>
-          <button class="btn btn-primary" id="save-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save Changes
-          </button>
+          <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-btn">Save Changes</button>
         </div>
       </div>
     </div>`;
 
-  // Wire up interactive rating
-  let selectedRating = currentRating;
-  const starsContainer = el.querySelector('#rating-stars');
-  const ratingDisplay = el.querySelector('#rating-display');
+  // ===== Wire events =====
 
-  function updateStarsDisplay(val) {
+  el.querySelector('#modal-close-btn').addEventListener('click', closeModal);
+  el.querySelector('#cancel-btn').addEventListener('click', closeModal);
+
+  // Rating
+  let selectedRating = game.user_rating || null;
+  const starsContainer = el.querySelector('#rating-stars');
+  const ratingDisplay  = el.querySelector('#rating-display');
+
+  function updateStarDisplay(value) {
     starsContainer.querySelectorAll('.star-btn').forEach(btn => {
-      const bVal = parseInt(btn.dataset.val, 10);
-      btn.classList.toggle('filled', bVal <= val);
+      btn.classList.toggle('active', parseInt(btn.dataset.value) <= (value || 0));
     });
-    ratingDisplay.textContent = val ? val.toFixed(1) : '—';
+    ratingDisplay.textContent = value || '—';
   }
 
-  starsContainer.addEventListener('click', (e) => {
+  starsContainer.addEventListener('mouseover', e => {
     const btn = e.target.closest('.star-btn');
-    if (!btn) return;
-    selectedRating = parseInt(btn.dataset.val, 10);
-    updateStarsDisplay(selectedRating);
+    if (btn) updateStarDisplay(parseInt(btn.dataset.value));
   });
-
-  // Hover preview
-  starsContainer.addEventListener('mouseover', (e) => {
+  starsContainer.addEventListener('mouseleave', () => updateStarDisplay(selectedRating));
+  starsContainer.addEventListener('click', e => {
     const btn = e.target.closest('.star-btn');
-    if (!btn) return;
-    const hoverVal = parseInt(btn.dataset.val, 10);
-    starsContainer.querySelectorAll('.star-btn').forEach(b => {
-      b.classList.toggle('filled', parseInt(b.dataset.val, 10) <= hoverVal);
-    });
+    if (btn) { selectedRating = parseInt(btn.dataset.value); updateStarDisplay(selectedRating); }
   });
+  el.querySelector('#rating-clear').addEventListener('click', () => { selectedRating = null; updateStarDisplay(null); });
 
-  starsContainer.addEventListener('mouseleave', () => {
-    updateStarsDisplay(selectedRating);
-  });
-
-  el.querySelector('#clear-rating').addEventListener('click', () => {
-    selectedRating = 0;
-    updateStarsDisplay(0);
-  });
-
-  // Today btn
+  // Today button
   el.querySelector('#today-btn').addEventListener('click', () => {
     el.querySelector('#last-played-input').value = new Date().toISOString().split('T')[0];
   });
 
   // Description toggle
-  const descEl = el.querySelector('#modal-desc');
+  const descText = el.querySelector('#desc-text');
   const descToggle = el.querySelector('#desc-toggle');
-  if (descEl && descToggle) {
+  if (descText && descToggle) {
+    descText.style.webkitLineClamp = '4';
+    descText.style.overflow = 'hidden';
+    descText.style.display = '-webkit-box';
+    descText.style.webkitBoxOrient = 'vertical';
     descToggle.addEventListener('click', () => {
-      descEl.classList.toggle('expanded');
-      descToggle.textContent = descEl.classList.contains('expanded') ? 'Show less' : 'Show more';
+      const expanded = descText.style.webkitLineClamp === 'unset';
+      descText.style.webkitLineClamp = expanded ? '4' : 'unset';
+      descToggle.textContent = expanded ? 'Show more' : 'Show less';
     });
   }
 
-  // Close buttons
-  el.querySelector('#modal-close-btn').addEventListener('click', () => closeModal());
-  el.querySelector('#modal-cancel-btn').addEventListener('click', () => closeModal());
+  // Instructions upload
+  const fileInput = el.querySelector('#instructions-file-input');
+  const uploadTrigger = el.querySelector('.upload-trigger');
+  if (uploadTrigger) {
+    uploadTrigger.addEventListener('click', () => fileInput && fileInput.click());
+  }
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      onUploadInstructions(game.id, file, (filename) => {
+        const existing = el.querySelector('#instructions-existing');
+        existing.style.display = 'flex';
+        existing.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <a href="/api/games/${game.id}/instructions" target="_blank" class="instructions-link">${escapeHtml(filename)}</a>
+          <button class="btn btn-ghost btn-sm" id="delete-instructions-btn">Remove</button>`;
+        el.querySelector('#instructions-upload').style.display = 'none';
+        wireDeleteInstructions();
+      });
+    });
+  }
 
-  // Save
-  el.querySelector('#save-btn').addEventListener('click', async () => {
-    function csvToJson(str) {
-      if (!str.trim()) return null;
-      return JSON.stringify(str.split(',').map(s => s.trim()).filter(Boolean));
+  function wireDeleteInstructions() {
+    const deleteBtn = el.querySelector('#delete-instructions-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        onDeleteInstructions(game.id, () => {
+          el.querySelector('#instructions-existing').style.display = 'none';
+          el.querySelector('#instructions-upload').style.display = 'block';
+        });
+      });
     }
+  }
+  wireDeleteInstructions();
 
-    const lastPlayedVal = el.querySelector('#last-played-input').value;
-    const payload = {
-      user_rating:   selectedRating || null,
-      user_notes:    el.querySelector('#notes-input').value || null,
-      last_played:   lastPlayedVal || null,
-      name:          el.querySelector('#edit-name').value.trim() || game.name,
-      year_published: parseInt(el.querySelector('#edit-year').value) || null,
-      min_players:   parseInt(el.querySelector('#edit-min-players').value) || null,
-      max_players:   parseInt(el.querySelector('#edit-max-players').value) || null,
-      min_playtime:  parseInt(el.querySelector('#edit-min-playtime').value) || null,
-      max_playtime:  parseInt(el.querySelector('#edit-max-playtime').value) || null,
-      difficulty:    parseFloat(el.querySelector('#edit-difficulty').value) || null,
-      image_url:     el.querySelector('#edit-image-url').value.trim() || null,
-      description:   el.querySelector('#edit-description').value.trim() || null,
-      categories:    csvToJson(el.querySelector('#edit-categories').value),
-      mechanics:     csvToJson(el.querySelector('#edit-mechanics').value),
-      designers:     csvToJson(el.querySelector('#edit-designers').value),
-      publishers:    csvToJson(el.querySelector('#edit-publishers').value),
-    };
-    await onSave(game.id, payload);
+  // Session toggle
+  const sessionToggle = el.querySelector('#log-session-toggle');
+  const sessionForm   = el.querySelector('#log-session-form');
+  sessionToggle.addEventListener('click', () => {
+    const open = sessionForm.style.display !== 'none';
+    sessionForm.style.display = open ? 'none' : 'block';
+    sessionToggle.textContent = open ? '+ Log Session' : '− Cancel';
+  });
+  el.querySelector('#session-cancel').addEventListener('click', () => {
+    sessionForm.style.display = 'none';
+    sessionToggle.textContent = '+ Log Session';
   });
 
-  // Delete
-  el.querySelector('#delete-btn').addEventListener('click', () => onDelete(game.id, game.name));
+  el.querySelector('#session-submit').addEventListener('click', () => {
+    const dateVal = el.querySelector('#session-date').value;
+    if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
+
+    const sessionData = {
+      played_at:        dateVal,
+      player_count:     parseInt(el.querySelector('#session-players').value) || null,
+      duration_minutes: parseInt(el.querySelector('#session-duration').value) || null,
+      notes:            el.querySelector('#session-notes').value.trim() || null,
+    };
+
+    onAddSession(game.id, sessionData, (created) => {
+      const list = el.querySelector('#sessions-list');
+      const noSessions = list.querySelector('.no-sessions');
+      if (noSessions) noSessions.remove();
+
+      const item = document.createElement('div');
+      item.className = 'session-item';
+      item.dataset.sessionId = created.id;
+      item.innerHTML = `
+        <div class="session-info">
+          <span class="session-date">${escapeHtml(formatDate(created.played_at))}</span>
+          ${created.player_count ? `<span class="session-meta">${created.player_count} player${created.player_count !== 1 ? 's' : ''}</span>` : ''}
+          ${created.duration_minutes ? `<span class="session-meta">${created.duration_minutes} min</span>` : ''}
+          ${created.notes ? `<span class="session-notes">${escapeHtml(created.notes)}</span>` : ''}
+        </div>
+        <button class="session-delete" data-session-id="${created.id}" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>`;
+      list.prepend(item);
+
+      el.querySelector('#session-players').value = '';
+      el.querySelector('#session-duration').value = '';
+      el.querySelector('#session-notes').value = '';
+      sessionForm.style.display = 'none';
+      sessionToggle.textContent = '+ Log Session';
+    });
+  });
+
+  el.querySelector('#sessions-list').addEventListener('click', e => {
+    const btn = e.target.closest('.session-delete');
+    if (!btn) return;
+    const sessionId = parseInt(btn.dataset.sessionId);
+    onDeleteSession(sessionId, () => {
+      const item = el.querySelector(`.session-item[data-session-id="${sessionId}"]`);
+      if (item) item.remove();
+      if (!el.querySelector('#sessions-list .session-item')) {
+        el.querySelector('#sessions-list').innerHTML = '<p class="no-sessions">No sessions logged yet.</p>';
+      }
+    });
+  });
+
+  // Save
+  function csvToJson(val) {
+    const items = (val || '').split(',').map(s => s.trim()).filter(Boolean);
+    return items.length ? JSON.stringify(items) : null;
+  }
+
+  el.querySelector('#save-btn').addEventListener('click', () => {
+    const payload = {
+      user_rating:      selectedRating || null,
+      user_notes:       el.querySelector('#user-notes').value.trim() || null,
+      last_played:      el.querySelector('#last-played-input').value || null,
+      name:             el.querySelector('#edit-name').value.trim(),
+      year_published:   parseInt(el.querySelector('#edit-year').value) || null,
+      min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
+      max_players:      parseInt(el.querySelector('#edit-max-players').value) || null,
+      min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value) || null,
+      max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value) || null,
+      difficulty:       parseFloat(el.querySelector('#edit-difficulty').value) || null,
+      image_url:        el.querySelector('#edit-image-url').value.trim() || null,
+      description:      el.querySelector('#edit-description').value.trim() || null,
+      categories:       csvToJson(el.querySelector('#edit-categories').value),
+      mechanics:        csvToJson(el.querySelector('#edit-mechanics').value),
+      designers:        csvToJson(el.querySelector('#edit-designers').value),
+      publishers:       csvToJson(el.querySelector('#edit-publishers').value),
+    };
+    onSave(game.id, payload);
+  });
+
+  el.querySelector('#delete-game-btn').addEventListener('click', () => onDelete(game.id, game.name));
 
   return el;
 }
 
-// ===== Modal open/close =====
+// ===== Modal Management =====
+
 function openModal(contentEl) {
-  const modal = document.getElementById('game-modal');
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = '';
   inner.appendChild(contentEl);
+  const modal = document.getElementById('game-modal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => modal.classList.add('open'));
 }
 
 function closeModal() {
   const modal = document.getElementById('game-modal');
-  modal.style.display = 'none';
-  document.getElementById('modal-inner').innerHTML = '';
-  document.body.style.overflow = '';
+  modal.classList.remove('open');
+  setTimeout(() => {
+    modal.style.display = 'none';
+    document.getElementById('modal-inner').innerHTML = '';
+    document.body.style.overflow = '';
+  }, 200);
 }
