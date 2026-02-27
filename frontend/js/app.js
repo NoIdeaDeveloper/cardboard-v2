@@ -12,12 +12,14 @@
     sortBy: 'name',
     sortDir: 'asc',
     search: '',
+    statusFilter: 'all',
   };
 
   // ===== Init =====
   document.addEventListener('DOMContentLoaded', () => {
     bindNav();
     bindCollectionControls();
+    bindStatusPills();
     bindAddGame();
     bindModalBackdrop();
     loadCollection();
@@ -37,6 +39,7 @@
     if (viewEl) viewEl.classList.add('active');
     document.querySelectorAll(`[data-view="${view}"]`).forEach(btn => btn.classList.add('active'));
     if (view === 'collection') loadCollection();
+    if (view === 'stats') loadStats();
   }
 
   // ===== Collection Controls =====
@@ -111,7 +114,11 @@
     const statsEl     = document.getElementById('collection-stats');
 
     const search = (state.search || '').toLowerCase();
-    const filtered = state.games.filter(g => !search || g.name.toLowerCase().includes(search));
+    const filtered = state.games.filter(g => {
+      if (state.statusFilter !== 'all' && g.status !== state.statusFilter) return false;
+      if (search && !g.name.toLowerCase().includes(search)) return false;
+      return true;
+    });
 
     if (state.games.length > 0) {
       const shown = filtered.length !== state.games.length ? `${filtered.length} of ${state.games.length}` : state.games.length;
@@ -132,7 +139,8 @@
     emptyState.style.display = 'none';
 
     if (filtered.length === 0) {
-      container.innerHTML = `<div class="loading-spinner"><p style="color:var(--text-3)">No games match your search.</p></div>`;
+      const reason = state.search ? 'search' : 'filter';
+      container.innerHTML = `<div class="loading-spinner"><p style="color:var(--text-3)">No games match your ${reason}.</p></div>`;
       return;
     }
 
@@ -261,6 +269,7 @@
 
       const payload = {
         name:           fd.get('name'),
+        status:         fd.get('status') || 'owned',
         year_published: parseInt(fd.get('year_published')) || null,
         min_players:    parseInt(fd.get('min_players')) || null,
         max_players:    parseInt(fd.get('max_players')) || null,
@@ -271,6 +280,7 @@
         description:    fd.get('description') || null,
         categories:     csvToJson('categories_raw'),
         designers:      csvToJson('designers_raw'),
+        labels:         csvToJson('labels_raw'),
       };
 
       try {
@@ -282,6 +292,31 @@
         showToast(`Failed to add game: ${err.message}`, 'error');
       }
     });
+  }
+
+  // ===== Status Pills =====
+  function bindStatusPills() {
+    document.querySelectorAll('#status-pills .pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.statusFilter = btn.dataset.status;
+        document.querySelectorAll('#status-pills .pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        renderCollection();
+      });
+    });
+  }
+
+  // ===== Stats =====
+  async function loadStats() {
+    const el = document.getElementById('stats-content');
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
+    try {
+      const stats = await API.getStats();
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games));
+    } catch (err) {
+      el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
+    }
   }
 
 })();

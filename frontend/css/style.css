@@ -548,21 +548,6 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   letter-spacing: 0.05em;
 }
 
-.form-group input,
-.form-group textarea,
-.form-input {
-  padding: 9px 12px;
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 0.9rem;
-  font-family: inherit;
-  outline: none;
-  transition: border-color var(--transition);
-  width: 100%;
-}
-
 .form-group input:focus,
 .form-group textarea:focus,
 .form-input:focus { border-color: var(--accent); }
@@ -1194,6 +1179,315 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   font-size: 0.68rem;
   color: var(--text-3);
   margin-right: 4px;
+}
+
+/* ===== Status Filter Pills ===== */
+.status-pills {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.pill:hover { background: var(--bg-3); color: var(--text); border-color: var(--border-hover); }
+.pill.active { background: rgba(201,168,76,0.12); color: var(--accent); border-color: rgba(201,168,76,0.3); }
+
+/* ===== Status Badges ===== */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.status-wishlist {
+  background: rgba(232,160,32,0.12);
+  color: var(--warning);
+  border: 1px solid rgba(232,160,32,0.25);
+}
+
+.status-sold {
+  background: rgba(224,92,92,0.1);
+  color: var(--danger);
+  border: 1px solid rgba(224,92,92,0.2);
+}
+
+/* ===== Label Chips ===== */
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: rgba(106,181,114,0.1);
+  border: 1px solid rgba(106,181,114,0.22);
+  border-radius: 20px;
+  font-size: 0.68rem;
+  color: var(--success);
+  white-space: nowrap;
+}
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ===== Card / List title rows ===== */
+.game-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.game-card-title-row .game-card-title { flex: 1; min-width: 0; }
+
+.list-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-title-row .list-title { flex: 1; min-width: 0; }
+
+/* ===== Purchase Info ===== */
+.purchase-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.purchase-field {
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
+.purchase-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  margin-right: 4px;
+}
+
+/* ===== Form select ===== */
+.form-group select,
+.form-group input,
+.form-group textarea,
+.form-input {
+  padding: 9px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+
+.form-group select:focus { border-color: var(--accent); }
+.form-group select option { background: var(--bg-3); }
+
+/* ===== Stats View ===== */
+.stats-view {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.stats-header { margin-bottom: 24px; }
+
+.stats-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.stat-card-value {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-card-label {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+}
+
+.stats-section-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+/* Bar charts */
+.stat-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.stat-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-bar-label {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  width: 90px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  min-width: 3px;
+  transition: width 0.4s ease;
+}
+
+.stat-bar-count {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Most played */
+.most-played-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.most-played-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.most-played-rank {
+  width: 18px;
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-weight: 600;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.most-played-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.most-played-name {
+  font-size: 0.875rem;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.most-played-count {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Never played */
+.never-played-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.never-played-item {
+  padding: 3px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+.never-played-more {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  font-style: italic;
+  padding: 3px 0;
 }
 
 /* ===== Responsive ===== */

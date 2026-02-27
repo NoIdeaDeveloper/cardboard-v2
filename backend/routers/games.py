@@ -84,7 +84,7 @@ def _delete_cached_image(game_id: int) -> None:
 @router.get("/", response_model=List[schemas.GameResponse])
 def get_games(
     search: Optional[str] = None,
-    sort_by: Optional[str] = Query(None, pattern="^(name|min_playtime|max_playtime|min_players|max_players|difficulty|user_rating|date_added|last_played)$"),
+    sort_by: Optional[str] = Query(None, pattern="^(name|min_playtime|max_playtime|min_players|max_players|difficulty|user_rating|date_added|last_played|status|purchase_price|purchase_date)$"),
     sort_dir: Optional[str] = Query("asc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
 ):

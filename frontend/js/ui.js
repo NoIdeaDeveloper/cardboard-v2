@@ -92,6 +92,11 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function isSafeUrl(url) {
+  if (!url) return false;
+  return url.startsWith('/api/') || url.startsWith('https://') || url.startsWith('http://');
+}
+
 function placeholderSvg() {
   return `<svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
     <rect x="2" y="6" width="20" height="14" rx="2"/><rect x="6" y="2" width="12" height="4" rx="1"/>
@@ -121,18 +126,31 @@ function buildGameCard(game) {
     ? `<span class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</span>`
     : '';
 
+  const cardStatusBadge = game.status && game.status !== 'owned'
+    ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+    : '';
+
+  const cardLabels = parseList(game.labels);
+  const cardLabelsHtml = cardLabels.length
+    ? `<div class="label-chips">${cardLabels.slice(0, 3).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>`
+    : '';
+
   el.innerHTML = `
     <div class="game-card-image">
-      ${game.image_url
+      ${isSafeUrl(game.image_url)
         ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
         : placeholderSvg()}
     </div>
     <div class="game-card-body">
-      <div class="game-card-title">${escapeHtml(game.name)}</div>
+      <div class="game-card-title-row">
+        <div class="game-card-title">${escapeHtml(game.name)}</div>
+        ${cardStatusBadge}
+      </div>
       ${metaHtml ? `<div class="game-card-meta">${metaHtml}</div>` : ''}
       <div class="game-card-footer">
         <div class="rating-row">${ratingHtml}</div>
         ${lastPlayedHtml}
+        ${cardLabelsHtml}
         ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
       </div>
     </div>`;
@@ -154,15 +172,28 @@ function buildGameListItem(game) {
     ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
     : `<span class="unrated">Unrated</span>`;
 
+  const listStatusBadge = game.status && game.status !== 'owned'
+    ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+    : '';
+
+  const listLabels = parseList(game.labels);
+  const listLabelsHtml = listLabels.length
+    ? `<div class="label-chips">${listLabels.slice(0, 4).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>`
+    : '';
+
   el.innerHTML = `
     <div class="list-thumb">
-      ${game.image_url
+      ${isSafeUrl(game.image_url)
         ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
         : placeholderSvg()}
     </div>
     <div class="list-info">
-      <div class="list-title">${escapeHtml(game.name)}</div>
+      <div class="list-title-row">
+        <div class="list-title">${escapeHtml(game.name)}</div>
+        ${listStatusBadge}
+      </div>
       ${metaParts.length ? `<div class="list-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : ''}
+      ${listLabelsHtml}
       ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
       ${game.date_added ? `<div class="last-played-line">Added ${escapeHtml(formatDatetime(game.date_added))}</div>` : ''}
     </div>
@@ -180,9 +211,33 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const mechanics  = parseList(game.mechanics);
   const designers  = parseList(game.designers);
   const publishers = parseList(game.publishers);
+  const modalLabels = parseList(game.labels);
+
+  const modalStatusBadge = game.status && game.status !== 'owned'
+    ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+    : '';
+
+  const labelsDisplayHtml = modalLabels.length
+    ? `<div class="modal-tags-group">
+        <span class="modal-tags-label">My Labels</span>
+        <div class="modal-tags">${modalLabels.map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>
+      </div>`
+    : '';
+
+  const hasPurchaseInfo = game.purchase_date || game.purchase_price != null || game.purchase_location;
+  const purchaseDisplayHtml = hasPurchaseInfo
+    ? `<div class="modal-section">
+        <div class="section-label">Purchase Info</div>
+        <div class="purchase-info">
+          ${game.purchase_date ? `<span class="purchase-field"><span class="purchase-label">Date</span> ${escapeHtml(formatDate(game.purchase_date))}</span>` : ''}
+          ${game.purchase_price != null ? `<span class="purchase-field"><span class="purchase-label">Price</span> $${game.purchase_price.toFixed(2)}</span>` : ''}
+          ${game.purchase_location ? `<span class="purchase-field"><span class="purchase-label">From</span> ${escapeHtml(game.purchase_location)}</span>` : ''}
+        </div>
+      </div>`
+    : '';
 
   // Hero
-  const heroHtml = game.image_url
+  const heroHtml = isSafeUrl(game.image_url)
     ? `<div class="modal-hero" style="background-image:url('${escapeHtml(game.image_url)}')">
         <div class="modal-hero-overlay"></div>
         <button class="modal-close" id="modal-close-btn" aria-label="Close">
@@ -237,6 +292,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       <div class="modal-title-row">
         <h2 class="modal-title" id="modal-title">${escapeHtml(game.name)}</h2>
         ${game.year_published ? `<span class="modal-year">${game.year_published}</span>` : ''}
+        ${modalStatusBadge}
       </div>
 
       ${chipsHtml ? `<div class="modal-chips">${chipsHtml}</div>` : ''}
@@ -246,6 +302,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       ${tagsBlock('Mechanics', mechanics)}
       ${tagsBlock('Designers', designers)}
       ${tagsBlock('Publishers', publishers)}
+      ${labelsDisplayHtml}
+      ${purchaseDisplayHtml}
 
       <div class="modal-section">
         <div class="section-label">My Rating</div>
@@ -339,6 +397,14 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <input type="text" id="edit-name" class="form-input" value="${escapeHtml(game.name)}">
           </div>
           <div class="form-group">
+            <label>Status</label>
+            <select id="edit-status" class="form-input">
+              <option value="owned"${game.status === 'owned' || !game.status ? ' selected' : ''}>Owned</option>
+              <option value="wishlist"${game.status === 'wishlist' ? ' selected' : ''}>Wishlist</option>
+              <option value="sold"${game.status === 'sold' ? ' selected' : ''}>Sold</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Year</label>
             <input type="number" id="edit-year" class="form-input" value="${game.year_published || ''}">
           </div>
@@ -385,6 +451,22 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <div class="form-group full-width">
             <label>Publishers <span class="hint">(comma-separated)</span></label>
             <input type="text" id="edit-publishers" class="form-input" value="${escapeHtml(publishers.join(', '))}">
+          </div>
+          <div class="form-group full-width">
+            <label>Labels <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-labels" class="form-input" value="${escapeHtml(modalLabels.join(', '))}">
+          </div>
+          <div class="form-group">
+            <label>Purchase Date</label>
+            <input type="date" id="edit-purchase-date" class="form-input date-input" value="${game.purchase_date || ''}">
+          </div>
+          <div class="form-group">
+            <label>Purchase Price ($)</label>
+            <input type="number" id="edit-purchase-price" class="form-input" step="0.01" min="0" value="${game.purchase_price != null ? game.purchase_price : ''}">
+          </div>
+          <div class="form-group full-width">
+            <label>Purchase Location</label>
+            <input type="text" id="edit-purchase-location" class="form-input" value="${escapeHtml(game.purchase_location || '')}">
           </div>
         </div>
       </details>
@@ -565,6 +647,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       user_notes:       el.querySelector('#user-notes').value.trim() || null,
       last_played:      el.querySelector('#last-played-input').value || null,
       name:             el.querySelector('#edit-name').value.trim(),
+      status:           el.querySelector('#edit-status').value || 'owned',
       year_published:   parseInt(el.querySelector('#edit-year').value) || null,
       min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
       max_players:      parseInt(el.querySelector('#edit-max-players').value) || null,
@@ -577,6 +660,10 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       mechanics:        csvToJson(el.querySelector('#edit-mechanics').value),
       designers:        csvToJson(el.querySelector('#edit-designers').value),
       publishers:       csvToJson(el.querySelector('#edit-publishers').value),
+      labels:           csvToJson(el.querySelector('#edit-labels').value),
+      purchase_date:    el.querySelector('#edit-purchase-date').value || null,
+      purchase_price:   el.querySelector('#edit-purchase-price').value !== '' ? parseFloat(el.querySelector('#edit-purchase-price').value) : null,
+      purchase_location: el.querySelector('#edit-purchase-location').value.trim() || null,
     };
     onSave(game.id, payload);
   });
@@ -606,4 +693,124 @@ function closeModal() {
     document.getElementById('modal-inner').innerHTML = '';
     document.body.style.overflow = '';
   }, 200);
+}
+
+// ===== Stats View =====
+
+function buildStatsView(stats, games) {
+  const el = document.createElement('div');
+  el.className = 'stats-view';
+
+  // Stat cards
+  const statDefs = [
+    { label: 'Total Games',   value: stats.total_games },
+    { label: 'Owned',         value: stats.by_status.owned    || 0 },
+    { label: 'Wishlist',      value: stats.by_status.wishlist || 0 },
+    { label: 'Sold',          value: stats.by_status.sold     || 0 },
+    { label: 'Play Sessions', value: stats.total_sessions },
+    { label: 'Hours Played',  value: stats.total_hours },
+    ...(stats.avg_rating    != null ? [{ label: 'Avg Rating',   value: stats.avg_rating + ' / 10' }] : []),
+    ...(stats.total_spent   != null ? [{ label: 'Total Spent',  value: '$' + stats.total_spent.toFixed(2) }] : []),
+    { label: 'Never Played',  value: stats.never_played_count },
+  ];
+
+  const cardsHtml = `<div class="stat-cards">
+    ${statDefs.map(c => `
+      <div class="stat-card">
+        <div class="stat-card-value">${c.value}</div>
+        <div class="stat-card-label">${c.label}</div>
+      </div>`).join('')}
+  </div>`;
+
+  // Most played
+  const mostPlayedHtml = stats.most_played.length ? `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Most Played</h3>
+      <div class="most-played-list">
+        ${stats.most_played.map((entry, i) => {
+          const maxCount = stats.most_played[0].count;
+          const pct = Math.round((entry.count / maxCount) * 100);
+          return `<div class="most-played-item">
+            <div class="most-played-rank">${i + 1}</div>
+            <div class="most-played-info">
+              <div class="most-played-name">${escapeHtml(entry.name)}</div>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+            </div>
+            <div class="most-played-count">${entry.count} play${entry.count !== 1 ? 's' : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Rating distribution
+  const ratingEntries = Object.entries(stats.ratings_distribution);
+  const maxRating = Math.max(...ratingEntries.map(([, v]) => v), 1);
+  const ratingsHtml = `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Rating Distribution</h3>
+      <div class="stat-bar-chart">
+        ${ratingEntries.map(([bucket, count]) => `<div class="stat-bar-row">
+          <span class="stat-bar-label">${escapeHtml(bucket)}</span>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${count ? Math.round(count / maxRating * 100) : 0}%"></div></div>
+          <span class="stat-bar-count">${count}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Label breakdown
+  const labelEntries = Object.entries(stats.label_counts).slice(0, 10);
+  const maxLabel = Math.max(...labelEntries.map(([, v]) => v), 1);
+  const labelsHtml = labelEntries.length ? `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Labels</h3>
+      <div class="stat-bar-chart">
+        ${labelEntries.map(([label, count]) => `<div class="stat-bar-row">
+          <span class="stat-bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(count / maxLabel * 100)}%"></div></div>
+          <span class="stat-bar-count">${count}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Added by month
+  const addedMax = Math.max(...stats.added_by_month.map(e => e.count), 1);
+  const addedHtml = `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Added by Month</h3>
+      <div class="stat-bar-chart">
+        ${stats.added_by_month.map(entry => `<div class="stat-bar-row">
+          <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${entry.count ? Math.round(entry.count / addedMax * 100) : 0}%"></div></div>
+          <span class="stat-bar-count">${entry.count}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Never played — use same criterion as the API: no last_played date recorded
+  const neverPlayed = games.filter(g => !g.last_played);
+  const neverPlayedHtml = `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Never Played (${stats.never_played_count})</h3>
+      ${neverPlayed.length
+        ? `<div class="never-played-list">
+            ${neverPlayed.slice(0, 20).map(g => `<span class="never-played-item">${escapeHtml(g.name)}</span>`).join('')}
+            ${neverPlayed.length > 20 ? `<span class="never-played-more">…and ${neverPlayed.length - 20} more</span>` : ''}
+          </div>`
+        : '<p class="no-sessions">All your games have been played!</p>'}
+    </div>`;
+
+  el.innerHTML = `
+    <div class="stats-header">
+      <h1 class="stats-title">Collection Stats</h1>
+    </div>
+    ${cardsHtml}
+    <div class="stats-grid">
+      ${mostPlayedHtml}
+      ${ratingsHtml}
+      ${labelsHtml}
+      ${addedHtml}
+      ${neverPlayedHtml}
+    </div>`;
+
+  return el;
 }

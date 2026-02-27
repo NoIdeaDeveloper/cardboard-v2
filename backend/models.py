@@ -8,6 +8,7 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
+    status = Column(String(20), default='owned', nullable=False, index=True)
     year_published = Column(Integer, nullable=True)
     min_players = Column(Integer, nullable=True)
     max_players = Column(Integer, nullable=True)
@@ -23,6 +24,10 @@ class Game(Base):
     mechanics = Column(Text, nullable=True)    # JSON array as string
     designers = Column(Text, nullable=True)    # JSON array as string
     publishers = Column(Text, nullable=True)   # JSON array as string
+    labels = Column(Text, nullable=True)       # JSON array as string
+    purchase_date = Column(Date, nullable=True)
+    purchase_price = Column(Float, nullable=True)
+    purchase_location = Column(String(255), nullable=True)
     user_rating = Column(Float, nullable=True)  # 1-10
     user_notes = Column(Text, nullable=True)
     last_played = Column(Date, nullable=True)

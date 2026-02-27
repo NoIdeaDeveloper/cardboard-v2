@@ -52,4 +52,7 @@ const API = {
     return data;
   },
   deleteInstructions: (gameId) => request('DELETE', `/games/${gameId}/instructions`),
+
+  // Stats
+  getStats: () => request('GET', '/stats'),
 };

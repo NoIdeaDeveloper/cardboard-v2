@@ -1,10 +1,11 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
 
 class GameBase(BaseModel):
     name: str
+    status: str = Field('owned', pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
     max_players: Optional[int] = None
@@ -19,6 +20,10 @@ class GameBase(BaseModel):
     mechanics: Optional[str] = None
     designers: Optional[str] = None
     publishers: Optional[str] = None
+    labels: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_price: Optional[float] = None
+    purchase_location: Optional[str] = None
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = None
     last_played: Optional[date] = None
@@ -30,6 +35,7 @@ class GameCreate(GameBase):
 
 class GameUpdate(BaseModel):
     name: Optional[str] = None
+    status: Optional[str] = Field(None, pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
     max_players: Optional[int] = None
@@ -43,6 +49,10 @@ class GameUpdate(BaseModel):
     mechanics: Optional[str] = None
     designers: Optional[str] = None
     publishers: Optional[str] = None
+    labels: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_price: Optional[float] = None
+    purchase_location: Optional[str] = None
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = None
     last_played: Optional[date] = None
@@ -72,3 +82,30 @@ class PlaySessionResponse(PlaySessionCreate):
 
     class Config:
         from_attributes = True
+
+
+class MostPlayedEntry(BaseModel):
+    id: int
+    name: str
+    count: int
+    total_minutes: int
+
+
+class AddedByMonthEntry(BaseModel):
+    month: str
+    count: int
+
+
+class StatsResponse(BaseModel):
+    total_games: int
+    by_status: Dict[str, int]
+    total_sessions: int
+    total_hours: float
+    avg_session_minutes: float
+    most_played: List[MostPlayedEntry]
+    never_played_count: int
+    avg_rating: Optional[float]
+    total_spent: Optional[float]
+    label_counts: Dict[str, int]
+    ratings_distribution: Dict[str, int]
+    added_by_month: List[AddedByMonthEntry]
