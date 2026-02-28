@@ -12,7 +12,7 @@
     sortBy: 'name',
     sortDir: 'asc',
     search: '',
-    statusFilter: 'all',
+    statusFilter: 'owned',
   };
 
   // ===== Init =====

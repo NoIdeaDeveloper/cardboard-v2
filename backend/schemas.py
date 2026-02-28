@@ -96,6 +96,14 @@ class AddedByMonthEntry(BaseModel):
     count: int
 
 
+class RecentSessionEntry(BaseModel):
+    game_id: int
+    game_name: str
+    played_at: date
+    player_count: Optional[int] = None
+    duration_minutes: Optional[int] = None
+
+
 class StatsResponse(BaseModel):
     total_games: int
     by_status: Dict[str, int]
@@ -109,3 +117,5 @@ class StatsResponse(BaseModel):
     label_counts: Dict[str, int]
     ratings_distribution: Dict[str, int]
     added_by_month: List[AddedByMonthEntry]
+    sessions_by_month: List[AddedByMonthEntry]
+    recent_sessions: List[RecentSessionEntry]

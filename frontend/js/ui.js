@@ -869,6 +869,37 @@ function buildStatsView(stats, games) {
       </div>
     </div>`;
 
+  // Sessions by month
+  const sessionsMax = Math.max(...stats.sessions_by_month.map(e => e.count), 1);
+  const sessionsByMonthHtml = `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Sessions by Month</h3>
+      <div class="stat-bar-chart">
+        ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row">
+          <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
+          <div class="stat-bar-track"><div class="stat-bar-fill stat-bar-fill-sessions" style="width:${entry.count ? Math.round(entry.count / sessionsMax * 100) : 0}%"></div></div>
+          <span class="stat-bar-count">${entry.count}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Recently played (last 10 sessions)
+  const recentSessionsHtml = stats.recent_sessions.length ? `
+    <div class="stats-section">
+      <h3 class="stats-section-title">Recently Played</h3>
+      <div class="recent-sessions-list">
+        ${stats.recent_sessions.map(s => `
+          <div class="recent-session-item">
+            <div class="recent-session-name">${escapeHtml(s.game_name)}</div>
+            <div class="recent-session-meta">
+              <span class="recent-session-date">${escapeHtml(formatDate(s.played_at))}</span>
+              ${s.player_count ? `<span class="recent-session-detail">${s.player_count} player${s.player_count !== 1 ? 's' : ''}</span>` : ''}
+              ${s.duration_minutes ? `<span class="recent-session-detail">${s.duration_minutes} min</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
   // Never played — use last_played as the criterion (matches what's listed)
   const neverPlayed = games.filter(g => !g.last_played);
   const neverPlayedHtml = `
@@ -889,9 +920,11 @@ function buildStatsView(stats, games) {
     ${cardsHtml}
     <div class="stats-grid">
       ${mostPlayedHtml}
+      ${recentSessionsHtml}
       ${ratingsHtml}
       ${labelsHtml}
       ${addedHtml}
+      ${sessionsByMonthHtml}
       ${neverPlayedHtml}
     </div>`;
 
