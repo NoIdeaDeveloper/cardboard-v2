@@ -869,11 +869,11 @@ function buildStatsView(stats, games) {
       </div>
     </div>`;
 
-  // Never played — use same criterion as the API: no last_played date recorded
+  // Never played — use last_played as the criterion (matches what's listed)
   const neverPlayed = games.filter(g => !g.last_played);
   const neverPlayedHtml = `
     <div class="stats-section">
-      <h3 class="stats-section-title">Never Played (${stats.never_played_count})</h3>
+      <h3 class="stats-section-title">Never Played (${neverPlayed.length})</h3>
       ${neverPlayed.length
         ? `<div class="never-played-list">
             ${neverPlayed.slice(0, 20).map(g => `<span class="never-played-item">${escapeHtml(g.name)}</span>`).join('')}

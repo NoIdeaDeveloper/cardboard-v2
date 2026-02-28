@@ -30,6 +30,13 @@ ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
 # Image caching
 # ---------------------------------------------------------------------------
 
+def _safe_filename(name: str) -> str:
+    """Strip path components and replace unsafe characters."""
+    name = os.path.basename(name)
+    name = re.sub(r"[^\w.\-]", "_", name)
+    return name[:200]  # cap length
+
+
 def _safe_ext(url: str, content_type: str) -> str:
     """Derive a safe file extension from content-type or URL."""
     ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
@@ -45,6 +52,17 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
     if not image_url or image_url.startswith("/api/"):
         return  # already local or empty
 
+    # Abort early if the URL has already been changed (e.g. user uploaded a file
+    # or changed the URL before this background task ran).
+    db = SessionLocal()
+    try:
+        game = db.query(models.Game).filter(models.Game.id == game_id).first()
+        if not game or game.image_url != image_url:
+            logger.info("Image cache skipped for game %d: URL has changed", game_id)
+            return
+    finally:
+        db.close()
+
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
     try:
@@ -59,14 +77,19 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
         logger.warning("Image cache failed for game %d: %s", game_id, exc)
         return
 
+    # Verify the URL is still current before updating the DB — the user may have
+    # changed or uploaded a new image while we were downloading.
     db = SessionLocal()
     try:
         game = db.query(models.Game).filter(models.Game.id == game_id).first()
-        if game:
+        if game and game.image_url == image_url:
             game.image_url = f"/api/games/{game_id}/image"
             game.image_cached = True
             db.commit()
             logger.info("Image cached for game %d", game_id)
+        else:
+            _delete_cached_image(game_id)
+            logger.info("Image cache discarded for game %d: URL changed during download", game_id)
     finally:
         db.close()
 
@@ -142,7 +165,17 @@ def update_game(
         raise HTTPException(status_code=404, detail="Game not found")
 
     update_data = game.model_dump(exclude_unset=True)
-    new_image_url = update_data.get("image_url")
+
+    # If image_url is being explicitly changed, clean up the old cached file first.
+    if "image_url" in update_data:
+        new_image_url = update_data["image_url"] or None
+        update_data["image_url"] = new_image_url  # normalise empty string → None
+        if not new_image_url or not new_image_url.startswith("/api/"):
+            _delete_cached_image(game_id)
+            db_game.image_cached = False
+    else:
+        new_image_url = None
+
     for field, value in update_data.items():
         setattr(db_game, field, value)
 
@@ -150,9 +183,6 @@ def update_game(
     db.refresh(db_game)
 
     if new_image_url and not new_image_url.startswith("/api/"):
-        _delete_cached_image(game_id)
-        db_game.image_cached = False
-        db.commit()
         background_tasks.add_task(_cache_game_image, game_id, new_image_url)
 
     return db_game
@@ -242,13 +272,6 @@ def delete_image(game_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Instructions endpoints
 # ---------------------------------------------------------------------------
-
-def _safe_filename(name: str) -> str:
-    """Strip path components and replace unsafe characters."""
-    name = os.path.basename(name)
-    name = re.sub(r"[^\w.\-]", "_", name)
-    return name[:200]  # cap length
-
 
 @router.post("/{game_id}/instructions", status_code=204)
 async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
