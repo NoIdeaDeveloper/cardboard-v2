@@ -173,6 +173,7 @@
       const idx = state.games.findIndex(g => g.id === gameId);
       if (idx !== -1) state.games[idx] = updated;
       renderCollection();
+      refreshStatsBackground();
     } catch (err) {
       showToast(`Save failed: ${err.message}`, 'error');
     }
@@ -190,6 +191,7 @@
       closeModal();
       state.games = state.games.filter(g => g.id !== gameId);
       renderCollection();
+      refreshStatsBackground();
     } catch (err) {
       showToast(`Failed to remove: ${err.message}`, 'error');
     }
@@ -288,6 +290,7 @@
         showToast(`"${payload.name}" added to collection!`, 'success');
         form.reset();
         switchView('collection');
+        refreshStatsBackground();
       } catch (err) {
         showToast(`Failed to add game: ${err.message}`, 'error');
       }
@@ -317,6 +320,15 @@
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
+  }
+
+  async function refreshStatsBackground() {
+    try {
+      const stats = await API.getStats();
+      const el = document.getElementById('stats-content');
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games));
+    } catch (_) { /* non-fatal */ }
   }
 
 })();

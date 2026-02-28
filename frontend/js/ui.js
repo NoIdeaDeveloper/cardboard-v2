@@ -706,11 +706,10 @@ function buildStatsView(stats, games) {
     { label: 'Total Games',   value: stats.total_games },
     { label: 'Owned',         value: stats.by_status.owned    || 0 },
     { label: 'Wishlist',      value: stats.by_status.wishlist || 0 },
-    { label: 'Sold',          value: stats.by_status.sold     || 0 },
     { label: 'Play Sessions', value: stats.total_sessions },
     { label: 'Hours Played',  value: stats.total_hours },
-    ...(stats.avg_rating    != null ? [{ label: 'Avg Rating',   value: stats.avg_rating + ' / 10' }] : []),
-    ...(stats.total_spent   != null ? [{ label: 'Total Spent',  value: '$' + stats.total_spent.toFixed(2) }] : []),
+    ...(stats.avg_rating    != null ? [{ label: 'Avg Rating',        value: stats.avg_rating + ' / 10' }] : []),
+    { label: 'Collection Value', value: '$' + (stats.total_spent != null ? stats.total_spent.toFixed(2) : '0.00') },
     { label: 'Never Played',  value: stats.never_played_count },
   ];
 
