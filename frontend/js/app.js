@@ -155,13 +155,15 @@
 
   // ===== Game Modal =====
   async function openGameModal(game) {
-    // Fetch sessions alongside opening
-    let sessions = [];
+    let sessions = [], images = [];
     try {
-      sessions = await API.getSessions(game.id);
+      [sessions, images] = await Promise.all([
+        API.getSessions(game.id).catch(() => []),
+        API.getImages(game.id).catch(() => []),
+      ]);
     } catch (_) { /* non-fatal */ }
 
-    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan);
+    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan, images, handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages);
     openModal(contentEl);
   }
 
@@ -293,6 +295,44 @@
       if (onSuccess) onSuccess();
     } catch (err) {
       showToast(`Failed to remove 3D scan: ${err.message}`, 'error');
+    }
+  }
+
+  // ===== Gallery (Multi-Image) =====
+
+  async function handleUploadGalleryImage(gameId, file, onSuccess) {
+    try {
+      const newImg = await API.uploadGalleryImage(gameId, file);
+      // If first gallery image, update local state image_url
+      if (newImg.sort_order === 0) {
+        const idx = state.games.findIndex(g => g.id === gameId);
+        if (idx !== -1) state.games[idx].image_url = `/api/games/${gameId}/images/${newImg.id}/file`;
+      }
+      if (onSuccess) onSuccess(newImg);
+    } catch (err) {
+      showToast(`Photo upload failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleDeleteGalleryImage(gameId, imgId, newPrimaryUrl, onSuccess) {
+    try {
+      await API.deleteGalleryImage(gameId, imgId);
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].image_url = newPrimaryUrl;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Failed to remove photo: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleReorderGalleryImages(gameId, orderedIds, newPrimaryUrl, onSuccess) {
+    try {
+      await API.reorderGalleryImages(gameId, orderedIds);
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].image_url = newPrimaryUrl;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Failed to reorder photos: ${err.message}`, 'error');
     }
   }
 

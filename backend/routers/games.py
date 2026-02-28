@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 import models
 import schemas
+from routers.game_images import delete_all_gallery_images
 
 logger = logging.getLogger("cardboard.games")
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -208,6 +209,7 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
             os.remove(instr_path)
         except OSError:
             pass
+    delete_all_gallery_images(game_id, db)
 
     # Delete associated play sessions
     db.query(models.PlaySession).filter(models.PlaySession.game_id == game_id).delete()

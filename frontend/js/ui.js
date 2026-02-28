@@ -226,7 +226,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -362,6 +362,17 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         <textarea id="user-notes" class="notes-input" rows="3" placeholder="Personal notes, house rules, favourite moments…">${escapeHtml(game.user_notes || '')}</textarea>
       </div>
 
+      <div class="modal-section" id="gallery-section">
+        <div class="section-label-row">
+          <div class="section-label">Photo Gallery</div>
+          <label class="btn btn-ghost btn-sm gallery-add-label" title="Add photo">
+            <input type="file" id="gallery-file-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="display:none">
+            + Add Photo
+          </label>
+        </div>
+        <div class="gallery-list" id="gallery-list"></div>
+      </div>
+
       <div class="modal-section">
         <div class="section-label">Rulebook</div>
         <div class="instructions-existing" id="instructions-existing" style="${hasInstructions ? '' : 'display:none'}">
@@ -478,7 +489,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
                   ? `<img src="${escapeHtml(game.image_url)}" alt="Cover">`
                   : '<span class="image-edit-empty">No image</span>'}
               </div>
-              <div class="image-edit-controls">
+              <div class="image-edit-controls" id="image-edit-controls">
                 <input type="url" id="edit-image-url" class="form-input" placeholder="Paste image URL…" value="${escapeHtml(game.image_url && !game.image_url.startsWith('/api/') ? game.image_url : '')}">
                 <div class="image-edit-row">
                   <label class="btn btn-secondary btn-sm image-upload-label">
@@ -489,6 +500,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
                   <button class="btn btn-ghost btn-sm" id="remove-image-btn"${!game.image_url ? ' style="display:none"' : ''}>Remove</button>
                 </div>
               </div>
+              <p class="gallery-managed-note" id="gallery-managed-note" style="display:none">Cover set by gallery. Reorder photos above to change it.</p>
             </div>
           </div>
           <div class="form-group full-width">
@@ -660,8 +672,120 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   }
   wireScanButtons(game);
 
-  // Image management
+  // Image URL tracking (used by both gallery and cover image management)
   let currentImageUrl = game.image_url || null;
+
+  // ===== Gallery =====
+  let galleryImages = Array.isArray(images) ? [...images] : [];
+
+  function buildGalleryItemEl(img, index, total) {
+    const item = document.createElement('div');
+    item.className = 'gallery-list-item';
+    item.dataset.imgId = img.id;
+    item.innerHTML = `
+      <img class="gallery-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
+      <div class="gallery-item-info">
+        ${index === 0 ? '<span class="gallery-featured-badge">★ Featured</span>' : '<span class="gallery-item-num">#' + (index + 1) + '</span>'}
+      </div>
+      <div class="gallery-item-controls">
+        <button class="btn btn-ghost btn-sm gallery-move-up"${index === 0 ? ' disabled' : ''} title="Move up">↑</button>
+        <button class="btn btn-ghost btn-sm gallery-move-down"${index === total - 1 ? ' disabled' : ''} title="Move down">↓</button>
+        <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo">Remove</button>
+      </div>`;
+    return item;
+  }
+
+  function renderGallery() {
+    const list = el.querySelector('#gallery-list');
+    list.innerHTML = '';
+    if (galleryImages.length === 0) {
+      list.innerHTML = '<p class="no-gallery">No photos yet. Use "+ Add Photo" to upload images.</p>';
+      return;
+    }
+    galleryImages.forEach((img, i) => {
+      const item = buildGalleryItemEl(img, i, galleryImages.length);
+      list.appendChild(item);
+
+      item.querySelector('.gallery-move-up').addEventListener('click', () => {
+        [galleryImages[i - 1], galleryImages[i]] = [galleryImages[i], galleryImages[i - 1]];
+        const newPrimaryUrl = `/api/games/${game.id}/images/${galleryImages[0].id}/file`;
+        onReorderGalleryImages(game.id, galleryImages.map(g => g.id), newPrimaryUrl, () => {
+          renderGallery();
+          onGalleryPrimaryChanged(newPrimaryUrl);
+        });
+      });
+
+      item.querySelector('.gallery-move-down').addEventListener('click', () => {
+        [galleryImages[i], galleryImages[i + 1]] = [galleryImages[i + 1], galleryImages[i]];
+        const newPrimaryUrl = `/api/games/${game.id}/images/${galleryImages[0].id}/file`;
+        onReorderGalleryImages(game.id, galleryImages.map(g => g.id), newPrimaryUrl, () => {
+          renderGallery();
+          onGalleryPrimaryChanged(newPrimaryUrl);
+        });
+      });
+
+      item.querySelector('.gallery-delete').addEventListener('click', () => {
+        const wasFirst = i === 0;
+        const imgToDelete = galleryImages[i];
+        galleryImages.splice(i, 1);
+        const newPrimaryUrl = galleryImages.length > 0
+          ? `/api/games/${game.id}/images/${galleryImages[0].id}/file`
+          : null;
+        onDeleteGalleryImage(game.id, imgToDelete.id, newPrimaryUrl, () => {
+          renderGallery();
+          if (wasFirst) onGalleryPrimaryChanged(newPrimaryUrl);
+        });
+      });
+    });
+  }
+
+  function onGalleryPrimaryChanged(newUrl) {
+    currentImageUrl = newUrl;
+    updateHeroImage(newUrl);
+    updateImagePreview(newUrl);
+    const urlInput = el.querySelector('#edit-image-url');
+    if (urlInput) urlInput.value = '';
+    // Show/hide gallery managed note
+    const note = el.querySelector('#gallery-managed-note');
+    const controls = el.querySelector('#image-edit-controls');
+    if (note && controls) {
+      const isGalleryManaged = newUrl && newUrl.includes('/images/') && newUrl.includes('/file');
+      note.style.display = isGalleryManaged ? 'block' : 'none';
+      controls.style.display = isGalleryManaged ? 'none' : 'block';
+    }
+  }
+
+  // Wire gallery file input
+  const galleryFileInput = el.querySelector('#gallery-file-input');
+  if (galleryFileInput) {
+    galleryFileInput.addEventListener('change', async () => {
+      const files = Array.from(galleryFileInput.files);
+      for (const file of files) {
+        await onUploadGalleryImage(game.id, file, (newImg) => {
+          galleryImages.push(newImg);
+          renderGallery();
+          if (galleryImages.length === 1) {
+            onGalleryPrimaryChanged(`/api/games/${game.id}/images/${newImg.id}/file`);
+          }
+        });
+      }
+      galleryFileInput.value = '';
+    });
+  }
+
+  renderGallery();
+  // Init gallery-managed note (only update the note/controls visibility, not preview/hero)
+  (function initGalleryNote(url) {
+    const note = el.querySelector('#gallery-managed-note');
+    const controls = el.querySelector('#image-edit-controls');
+    if (note && controls) {
+      const isGalleryManaged = url && url.includes('/images/') && url.includes('/file');
+      note.style.display = isGalleryManaged ? 'block' : 'none';
+      controls.style.display = isGalleryManaged ? 'none' : 'block';
+    }
+  }(currentImageUrl));
+
+  // Image management (cover image)
   const imageUrlInput  = el.querySelector('#edit-image-url');
   const imageFileInput = el.querySelector('#image-file-input');
   const removeImageBtn = el.querySelector('#remove-image-btn');

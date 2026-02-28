@@ -69,6 +69,21 @@ class GameResponse(GameBase):
         from_attributes = True
 
 
+class GameImageResponse(BaseModel):
+    id: int
+    game_id: int
+    filename: str
+    sort_order: int
+    date_added: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ReorderImagesBody(BaseModel):
+    order: List[int]
+
+
 class PlaySessionCreate(BaseModel):
     played_at: date
     player_count: Optional[int] = None

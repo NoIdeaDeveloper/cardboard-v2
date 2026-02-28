@@ -37,6 +37,16 @@ class Game(Base):
     date_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+class GameImage(Base):
+    __tablename__ = "game_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
+    filename = Column(String(255), nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
+    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class PlaySession(Base):
     __tablename__ = "play_sessions"
 

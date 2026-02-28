@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from database import engine, Base
-from routers import games, sessions, stats
+from routers import games, sessions, stats, game_images
 
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger("cardboard")
 
 # Ensure data directories exist
-for subdir in ["", "images", "instructions", "scans"]:
+for subdir in ["", "images", "instructions", "scans", "gallery"]:
     path = os.path.join(os.getenv("DATA_DIR", "/app/data"), subdir)
     os.makedirs(path, exist_ok=True)
     if subdir:
@@ -83,6 +83,7 @@ async def log_requests(request: Request, call_next):
 
 
 app.include_router(games.router)
+app.include_router(game_images.router)
 app.include_router(sessions.router)
 app.include_router(stats.router)
 

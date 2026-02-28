@@ -77,6 +77,20 @@ const API = {
   },
   deleteScan: (gameId) => request('DELETE', `/games/${gameId}/scan`),
 
+  // Photo gallery (multi-image)
+  getImages: (gameId) => request('GET', `/games/${gameId}/images`),
+  uploadGalleryImage: async (gameId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(`${API_BASE}/games/${gameId}/images`, { method: 'POST', body: fd });
+    if (resp.status === 204) return null;
+    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+    return data;
+  },
+  deleteGalleryImage: (gameId, imgId) => request('DELETE', `/games/${gameId}/images/${imgId}`),
+  reorderGalleryImages: (gameId, order) => request('PATCH', `/games/${gameId}/images/reorder`, { order }),
+
   // Stats
   getStats: () => request('GET', '/stats'),
 };
