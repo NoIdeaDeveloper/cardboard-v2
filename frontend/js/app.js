@@ -333,6 +333,7 @@
       }
 
       const purchasePriceRaw = fd.get('purchase_price');
+      const purchasePriceParsed = parseFloat(purchasePriceRaw);
       const payload = {
         name:              fd.get('name'),
         status:            fd.get('status') || 'owned',
@@ -351,7 +352,7 @@
         publishers:        csvToJson('publishers_raw'),
         labels:            csvToJson('labels_raw'),
         purchase_date:     fd.get('purchase_date') || null,
-        purchase_price:    purchasePriceRaw !== '' ? (parseFloat(purchasePriceRaw) || null) : null,
+        purchase_price:    Number.isFinite(purchasePriceParsed) ? purchasePriceParsed : null,
         purchase_location: fd.get('purchase_location') || null,
       };
 

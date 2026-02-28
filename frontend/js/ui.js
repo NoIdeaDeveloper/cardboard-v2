@@ -553,10 +553,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
   // Instructions upload
   const fileInput = el.querySelector('#instructions-file-input');
-  const uploadTrigger = el.querySelector('.upload-trigger');
-  if (uploadTrigger) {
-    uploadTrigger.addEventListener('click', () => fileInput && fileInput.click());
-  }
   if (fileInput) {
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
@@ -629,7 +625,11 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
   imageUrlInput.addEventListener('input', () => {
     const val = imageUrlInput.value.trim();
-    currentImageUrl = val || null;
+    // Only commit to currentImageUrl when the value is empty (clearing) or a valid URL.
+    // Typing a partial URL mid-edit should not clobber the existing image reference.
+    if (!val || isSafeUrl(val)) {
+      currentImageUrl = val || null;
+    }
     updateImagePreview(currentImageUrl);
   });
 
