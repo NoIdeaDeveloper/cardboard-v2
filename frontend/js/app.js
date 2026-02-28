@@ -293,20 +293,26 @@
         return items.length ? JSON.stringify(items) : null;
       }
 
+      const purchasePriceRaw = fd.get('purchase_price');
       const payload = {
-        name:           fd.get('name'),
-        status:         fd.get('status') || 'owned',
-        year_published: parseInt(fd.get('year_published')) || null,
-        min_players:    parseInt(fd.get('min_players')) || null,
-        max_players:    parseInt(fd.get('max_players')) || null,
-        min_playtime:   parseInt(fd.get('min_playtime')) || null,
-        max_playtime:   parseInt(fd.get('max_playtime')) || null,
-        difficulty:     parseFloat(fd.get('difficulty')) || null,
-        image_url:      fd.get('image_url') || null,
-        description:    fd.get('description') || null,
-        categories:     csvToJson('categories_raw'),
-        designers:      csvToJson('designers_raw'),
-        labels:         csvToJson('labels_raw'),
+        name:              fd.get('name'),
+        status:            fd.get('status') || 'owned',
+        year_published:    parseInt(fd.get('year_published')) || null,
+        min_players:       parseInt(fd.get('min_players')) || null,
+        max_players:       parseInt(fd.get('max_players')) || null,
+        min_playtime:      parseInt(fd.get('min_playtime')) || null,
+        max_playtime:      parseInt(fd.get('max_playtime')) || null,
+        difficulty:        parseFloat(fd.get('difficulty')) || null,
+        image_url:         fd.get('image_url') || null,
+        description:       fd.get('description') || null,
+        categories:        csvToJson('categories_raw'),
+        mechanics:         csvToJson('mechanics_raw'),
+        designers:         csvToJson('designers_raw'),
+        publishers:        csvToJson('publishers_raw'),
+        labels:            csvToJson('labels_raw'),
+        purchase_date:     fd.get('purchase_date') || null,
+        purchase_price:    purchasePriceRaw !== '' ? (parseFloat(purchasePriceRaw) || null) : null,
+        purchase_location: fd.get('purchase_location') || null,
       };
 
       try {

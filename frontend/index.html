@@ -152,7 +152,7 @@
               <input type="number" id="m-difficulty" name="difficulty" placeholder="2.5" min="1" max="5" step="0.1" />
             </div>
             <div class="form-group">
-              <label for="m-image-url">Image URL</label>
+              <label for="m-image-url">Image URL <span class="hint">(upload available after adding)</span></label>
               <input type="url" id="m-image-url" name="image_url" placeholder="https://…" />
             </div>
             <div class="form-group full-width">
@@ -168,8 +168,28 @@
               <input type="text" id="m-categories" name="categories_raw" placeholder="Strategy, Card Game" />
             </div>
             <div class="form-group full-width">
+              <label for="m-mechanics">Mechanics <span class="hint">(comma-separated)</span></label>
+              <input type="text" id="m-mechanics" name="mechanics_raw" placeholder="Hand Management, Set Collection" />
+            </div>
+            <div class="form-group full-width">
               <label for="m-designers">Designers <span class="hint">(comma-separated)</span></label>
               <input type="text" id="m-designers" name="designers_raw" placeholder="Alan Moon" />
+            </div>
+            <div class="form-group full-width">
+              <label for="m-publishers">Publishers <span class="hint">(comma-separated)</span></label>
+              <input type="text" id="m-publishers" name="publishers_raw" placeholder="Days of Wonder" />
+            </div>
+            <div class="form-group">
+              <label for="m-purchase-date">Purchase Date</label>
+              <input type="date" id="m-purchase-date" name="purchase_date" class="date-input" />
+            </div>
+            <div class="form-group">
+              <label for="m-purchase-price">Purchase Price ($)</label>
+              <input type="number" id="m-purchase-price" name="purchase_price" placeholder="29.99" step="0.01" min="0" />
+            </div>
+            <div class="form-group full-width">
+              <label for="m-purchase-location">Purchase Location</label>
+              <input type="text" id="m-purchase-location" name="purchase_location" placeholder="Amazon, local game shop…" />
             </div>
           </div>
           <div class="form-actions">
