@@ -1490,6 +1490,63 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   padding: 3px 0;
 }
 
+/* ===== Image Edit Area ===== */
+.image-edit-area {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.image-edit-preview {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-edit-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-edit-empty {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 4px;
+  line-height: 1.3;
+}
+
+.image-edit-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.image-edit-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.image-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }

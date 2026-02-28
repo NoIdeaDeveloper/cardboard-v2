@@ -161,7 +161,7 @@
       sessions = await API.getSessions(game.id);
     } catch (_) { /* non-fatal */ }
 
-    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions);
+    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage);
     openModal(contentEl);
   }
 
@@ -245,6 +245,30 @@
       if (onSuccess) onSuccess();
     } catch (err) {
       showToast(`Failed to remove instructions: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleUploadImage(gameId, file, onSuccess) {
+    try {
+      await API.uploadImage(gameId, file);
+      showToast('Image updated!', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].image_url = `/api/games/${gameId}/image`;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Image upload failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleDeleteImage(gameId, onSuccess) {
+    try {
+      await API.deleteImage(gameId);
+      showToast('Image removed.', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].image_url = null;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Failed to remove image: ${err.message}`, 'error');
     }
   }
 

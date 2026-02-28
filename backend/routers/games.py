@@ -20,6 +20,8 @@ router = APIRouter(prefix="/api/games", tags=["games"])
 
 IMAGES_DIR = os.getenv("IMAGES_DIR", "/app/data/images")
 INSTRUCTIONS_DIR = os.getenv("INSTRUCTIONS_DIR", "/app/data/instructions")
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_INSTRUCTIONS_SIZE = 20 * 1024 * 1024  # 20 MB
 ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
 
@@ -190,6 +192,51 @@ def get_game_image(game_id: int):
     if not matches:
         raise HTTPException(status_code=404, detail="Image not cached")
     return FileResponse(matches[0])
+
+
+# ---------------------------------------------------------------------------
+# Image upload endpoint
+# ---------------------------------------------------------------------------
+
+@router.post("/{game_id}/image", status_code=204)
+async def upload_image(game_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    safe_name = _safe_filename(file.filename or "image.jpg")
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Only image files (.jpg, .png, .gif, .webp) are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=413, detail="File exceeds 10 MB limit")
+
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    _delete_cached_image(game_id)
+
+    dest = os.path.join(IMAGES_DIR, f"{game_id}{ext}")
+    with open(dest, "wb") as f:
+        f.write(content)
+
+    db_game.image_url = f"/api/games/{game_id}/image"
+    db_game.image_cached = True
+    db.commit()
+    logger.info("Image uploaded for game %d: %s", game_id, safe_name)
+
+
+@router.delete("/{game_id}/image", status_code=204)
+def delete_image(game_id: int, db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    _delete_cached_image(game_id)
+    db_game.image_url = None
+    db_game.image_cached = False
+    db.commit()
+    logger.info("Image deleted for game %d", game_id)
 
 
 # ---------------------------------------------------------------------------

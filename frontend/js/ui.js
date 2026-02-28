@@ -204,7 +204,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -428,9 +428,26 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <label>Difficulty (1–5)</label>
             <input type="number" id="edit-difficulty" class="form-input" min="1" max="5" step="0.1" value="${game.difficulty || ''}">
           </div>
-          <div class="form-group">
-            <label>Image URL</label>
-            <input type="url" id="edit-image-url" class="form-input" value="${escapeHtml(game.image_url || '')}">
+          <div class="form-group full-width">
+            <label>Cover Image</label>
+            <div class="image-edit-area">
+              <div class="image-edit-preview" id="image-edit-preview">
+                ${isSafeUrl(game.image_url)
+                  ? `<img src="${escapeHtml(game.image_url)}" alt="Cover">`
+                  : '<span class="image-edit-empty">No image</span>'}
+              </div>
+              <div class="image-edit-controls">
+                <input type="url" id="edit-image-url" class="form-input" placeholder="Paste image URL…" value="${escapeHtml(game.image_url && !game.image_url.startsWith('/api/') ? game.image_url : '')}">
+                <div class="image-edit-row">
+                  <label class="btn btn-secondary btn-sm image-upload-label">
+                    <input type="file" id="image-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload file
+                  </label>
+                  <button class="btn btn-ghost btn-sm" id="remove-image-btn"${!game.image_url ? ' style="display:none"' : ''}>Remove</button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="form-group full-width">
             <label>Description</label>
@@ -570,6 +587,73 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   }
   wireDeleteInstructions();
 
+  // Image management
+  let currentImageUrl = game.image_url || null;
+  const imageUrlInput  = el.querySelector('#edit-image-url');
+  const imageFileInput = el.querySelector('#image-file-input');
+  const removeImageBtn = el.querySelector('#remove-image-btn');
+
+  function updateImagePreview(url) {
+    const preview = el.querySelector('#image-edit-preview');
+    if (isSafeUrl(url)) {
+      preview.innerHTML = `<img src="${escapeHtml(url)}" alt="Cover">`;
+    } else {
+      preview.innerHTML = '<span class="image-edit-empty">No image</span>';
+    }
+    removeImageBtn.style.display = url ? '' : 'none';
+  }
+
+  function updateHeroImage(url) {
+    const hero = el.querySelector('.modal-hero');
+    if (!hero) return;
+    if (isSafeUrl(url)) {
+      hero.style.backgroundImage = `url('${escapeHtml(url)}')`;
+      hero.classList.remove('modal-hero-placeholder');
+      if (!hero.querySelector('.modal-hero-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-hero-overlay';
+        hero.insertBefore(overlay, hero.firstChild);
+      }
+      const placeholderEl = hero.querySelector('.placeholder-icon');
+      if (placeholderEl) placeholderEl.remove();
+    } else {
+      hero.style.backgroundImage = '';
+      hero.classList.add('modal-hero-placeholder');
+      const overlay = hero.querySelector('.modal-hero-overlay');
+      if (overlay) overlay.remove();
+      if (!hero.querySelector('.placeholder-icon')) {
+        hero.insertAdjacentHTML('afterbegin', placeholderSvg());
+      }
+    }
+  }
+
+  imageUrlInput.addEventListener('input', () => {
+    const val = imageUrlInput.value.trim();
+    currentImageUrl = val || null;
+    updateImagePreview(currentImageUrl);
+  });
+
+  imageFileInput.addEventListener('change', () => {
+    const file = imageFileInput.files[0];
+    if (!file) return;
+    onUploadImage(game.id, file, () => {
+      currentImageUrl = `/api/games/${game.id}/image`;
+      imageUrlInput.value = '';
+      const displayUrl = currentImageUrl + '?t=' + Date.now();
+      updateImagePreview(displayUrl);
+      updateHeroImage(displayUrl);
+    });
+  });
+
+  removeImageBtn.addEventListener('click', () => {
+    onDeleteImage(game.id, () => {
+      currentImageUrl = null;
+      imageUrlInput.value = '';
+      updateImagePreview(null);
+      updateHeroImage(null);
+    });
+  });
+
   // Session toggle
   const sessionToggle = el.querySelector('#log-session-toggle');
   const sessionForm   = el.querySelector('#log-session-form');
@@ -654,7 +738,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value) || null,
       max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value) || null,
       difficulty:       parseFloat(el.querySelector('#edit-difficulty').value) || null,
-      image_url:        el.querySelector('#edit-image-url').value.trim() || null,
+      image_url:        currentImageUrl,
       description:      el.querySelector('#edit-description').value.trim() || null,
       categories:       csvToJson(el.querySelector('#edit-categories').value),
       mechanics:        csvToJson(el.querySelector('#edit-mechanics').value),

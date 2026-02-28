@@ -41,6 +41,18 @@ const API = {
   addSession:    (gameId, data) => request('POST',   `/games/${gameId}/sessions`, data),
   deleteSession: (id)           => request('DELETE', `/sessions/${id}`),
 
+  // Images (uses raw fetch — multipart file upload)
+  uploadImage: async (gameId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(`${API_BASE}/games/${gameId}/image`, { method: 'POST', body: fd });
+    if (resp.status === 204) return null;
+    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+    return data;
+  },
+  deleteImage: (gameId) => request('DELETE', `/games/${gameId}/image`),
+
   // Instructions (uses raw fetch — multipart file upload)
   uploadInstructions: async (gameId, file) => {
     const fd = new FormData();
