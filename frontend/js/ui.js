@@ -707,31 +707,37 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       list.appendChild(item);
 
       item.querySelector('.gallery-move-up').addEventListener('click', () => {
-        [galleryImages[i - 1], galleryImages[i]] = [galleryImages[i], galleryImages[i - 1]];
-        const newPrimaryUrl = `/api/games/${game.id}/images/${galleryImages[0].id}/file`;
-        onReorderGalleryImages(game.id, galleryImages.map(g => g.id), newPrimaryUrl, () => {
+        const newOrder = [...galleryImages];
+        [newOrder[i - 1], newOrder[i]] = [newOrder[i], newOrder[i - 1]];
+        const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
+        onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
+          galleryImages.splice(0, galleryImages.length, ...newOrder);
           renderGallery();
           onGalleryPrimaryChanged(newPrimaryUrl);
         });
       });
 
       item.querySelector('.gallery-move-down').addEventListener('click', () => {
-        [galleryImages[i], galleryImages[i + 1]] = [galleryImages[i + 1], galleryImages[i]];
-        const newPrimaryUrl = `/api/games/${game.id}/images/${galleryImages[0].id}/file`;
-        onReorderGalleryImages(game.id, galleryImages.map(g => g.id), newPrimaryUrl, () => {
+        const newOrder = [...galleryImages];
+        [newOrder[i], newOrder[i + 1]] = [newOrder[i + 1], newOrder[i]];
+        const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
+        onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
+          galleryImages.splice(0, galleryImages.length, ...newOrder);
           renderGallery();
           onGalleryPrimaryChanged(newPrimaryUrl);
         });
       });
 
+      // Capture img.id (not index i) so concurrent deletes don't corrupt the reference
+      const imgId = img.id;
       item.querySelector('.gallery-delete').addEventListener('click', () => {
-        const wasFirst = i === 0;
-        const imgToDelete = galleryImages[i];
-        galleryImages.splice(i, 1);
-        const newPrimaryUrl = galleryImages.length > 0
-          ? `/api/games/${game.id}/images/${galleryImages[0].id}/file`
+        const afterDelete = galleryImages.filter(g => g.id !== imgId);
+        const wasFirst = galleryImages.findIndex(g => g.id === imgId) === 0;
+        const newPrimaryUrl = afterDelete.length > 0
+          ? `/api/games/${game.id}/images/${afterDelete[0].id}/file`
           : null;
-        onDeleteGalleryImage(game.id, imgToDelete.id, newPrimaryUrl, () => {
+        onDeleteGalleryImage(game.id, imgId, newPrimaryUrl, () => {
+          galleryImages.splice(0, galleryImages.length, ...afterDelete);
           renderGallery();
           if (wasFirst) onGalleryPrimaryChanged(newPrimaryUrl);
         });

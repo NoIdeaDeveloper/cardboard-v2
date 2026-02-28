@@ -93,14 +93,15 @@ async def upload_gallery_image(
 
     db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
     db.add(db_img)
-    db.commit()
-    db.refresh(db_img)
+    # Flush to get the auto-assigned ID, then update image_url in the same transaction
+    db.flush()
 
-    # If this is the first gallery image, update game.image_url to point to it
     if next_order == 0:
         game.image_url = _primary_url(game_id, db_img)
         game.image_cached = False
-        db.commit()
+
+    db.commit()
+    db.refresh(db_img)
 
     logger.info("Gallery image uploaded for game %d: %s (order=%d)", game_id, filename, next_order)
     return db_img
@@ -136,13 +137,7 @@ def delete_gallery_image(game_id: int, img_id: int, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Image not found")
 
     was_primary = img.sort_order == 0
-
-    # Delete file
-    path = _image_file_path(game_id, img.filename)
-    try:
-        os.remove(path)
-    except OSError:
-        pass
+    file_path = _image_file_path(game_id, img.filename)
 
     db.delete(img)
     db.flush()
@@ -157,8 +152,8 @@ def delete_gallery_image(game_id: int, img_id: int, db: Session = Depends(get_db
     for i, r in enumerate(remaining):
         r.sort_order = i
 
-    # Update game.image_url
-    if was_primary or (game.image_url and f"/images/{img_id}/file" in game.image_url):
+    # Update game.image_url when the deleted image was the primary
+    if was_primary or (game.image_url and f"/images/{img_id}/file" in (game.image_url or "")):
         if remaining:
             game.image_url = _primary_url(game_id, remaining[0])
             game.image_cached = False
@@ -167,6 +162,13 @@ def delete_gallery_image(game_id: int, img_id: int, db: Session = Depends(get_db
             game.image_cached = False
 
     db.commit()
+
+    # Delete file after DB commit so a commit failure doesn't leave orphaned records
+    try:
+        os.remove(file_path)
+    except OSError:
+        logger.warning("Could not delete gallery file %s (game %d)", file_path, game_id)
+
     logger.info("Gallery image %d deleted for game %d", img_id, game_id)
 
 
@@ -178,20 +180,25 @@ def reorder_gallery_images(
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    images = {
+    img_map = {
         img.id: img
         for img in db.query(models.GameImage)
         .filter(models.GameImage.game_id == game_id)
         .all()
     }
 
+    if set(body.order) != set(img_map.keys()):
+        raise HTTPException(
+            status_code=400,
+            detail="order must contain exactly the IDs of all images for this game",
+        )
+
     for i, img_id in enumerate(body.order):
-        if img_id in images:
-            images[img_id].sort_order = i
+        img_map[img_id].sort_order = i
 
     # Update game.image_url to new primary
-    if body.order and body.order[0] in images:
-        game.image_url = _primary_url(game_id, images[body.order[0]])
+    if body.order:
+        game.image_url = _primary_url(game_id, img_map[body.order[0]])
         game.image_cached = False
 
     db.commit()
