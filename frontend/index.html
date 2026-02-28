@@ -151,9 +151,24 @@
               <label for="m-difficulty">Difficulty (1–5)</label>
               <input type="number" id="m-difficulty" name="difficulty" placeholder="2.5" min="1" max="5" step="0.1" />
             </div>
-            <div class="form-group">
-              <label for="m-image-url">Image URL <span class="hint">(upload available after adding)</span></label>
-              <input type="url" id="m-image-url" name="image_url" placeholder="https://…" />
+            <div class="form-group full-width">
+              <label>Cover Image</label>
+              <div class="image-edit-area">
+                <div class="image-edit-preview" id="add-image-preview">
+                  <span class="image-edit-empty">No image</span>
+                </div>
+                <div class="image-edit-controls">
+                  <input type="url" id="m-image-url" name="image_url" class="form-input" placeholder="Paste image URL…" />
+                  <div class="image-edit-row">
+                    <label class="btn btn-secondary btn-sm image-upload-label">
+                      <input type="file" id="add-image-file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      Upload file
+                    </label>
+                    <button type="button" class="btn btn-ghost btn-sm" id="add-image-remove" style="display:none">Remove</button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="form-group full-width">
               <label for="m-description">Description</label>

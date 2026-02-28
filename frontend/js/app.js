@@ -282,10 +282,49 @@
 
   // ===== Add Game =====
   function bindAddGame() {
-    document.getElementById('manual-form').addEventListener('submit', async (e) => {
+    const form         = document.getElementById('manual-form');
+    const fileInput    = document.getElementById('add-image-file');
+    const urlInput     = document.getElementById('m-image-url');
+    const preview      = document.getElementById('add-image-preview');
+    const removeBtn    = document.getElementById('add-image-remove');
+
+    function setPreview(src) {
+      const safe = src && (isSafeUrl(src) || src.startsWith('blob:'));
+      if (safe) {
+        preview.innerHTML = `<img src="${escapeHtml(src)}" alt="Preview">`;
+        removeBtn.style.display = '';
+      } else {
+        preview.innerHTML = '<span class="image-edit-empty">No image</span>';
+        removeBtn.style.display = 'none';
+      }
+    }
+
+    fileInput.addEventListener('change', () => {
+      if (!fileInput.files[0]) return;
+      urlInput.value = '';
+      setPreview(URL.createObjectURL(fileInput.files[0]));
+    });
+
+    urlInput.addEventListener('input', () => {
+      const url = urlInput.value.trim();
+      if (url) {
+        fileInput.value = '';
+        setPreview(url);
+      } else {
+        setPreview(null);
+      }
+    });
+
+    removeBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      urlInput.value  = '';
+      setPreview(null);
+    });
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const form = e.target;
-      const fd = new FormData(form);
+      const fd   = new FormData(form);
+      const file = fileInput.files[0];
 
       function csvToJson(key) {
         const val = fd.get(key) || '';
@@ -303,7 +342,8 @@
         min_playtime:      parseInt(fd.get('min_playtime')) || null,
         max_playtime:      parseInt(fd.get('max_playtime')) || null,
         difficulty:        parseFloat(fd.get('difficulty')) || null,
-        image_url:         fd.get('image_url') || null,
+        // If a file is selected, skip the URL — image will be uploaded after creation
+        image_url:         file ? null : (fd.get('image_url') || null),
         description:       fd.get('description') || null,
         categories:        csvToJson('categories_raw'),
         mechanics:         csvToJson('mechanics_raw'),
@@ -316,9 +356,17 @@
       };
 
       try {
-        await API.createGame(payload);
+        const created = await API.createGame(payload);
+        if (file) {
+          try {
+            await API.uploadImage(created.id, file);
+          } catch (imgErr) {
+            showToast(`Game added but image upload failed: ${imgErr.message}`, 'error');
+          }
+        }
         showToast(`"${payload.name}" added to collection!`, 'success');
         form.reset();
+        setPreview(null);
         switchView('collection');
         refreshStatsBackground();
       } catch (err) {
