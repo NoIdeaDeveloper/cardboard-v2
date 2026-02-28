@@ -20,10 +20,13 @@ router = APIRouter(prefix="/api/games", tags=["games"])
 
 IMAGES_DIR = os.getenv("IMAGES_DIR", "/app/data/images")
 INSTRUCTIONS_DIR = os.getenv("INSTRUCTIONS_DIR", "/app/data/instructions")
+SCANS_DIR = os.getenv("SCANS_DIR", "/app/data/scans")
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_INSTRUCTIONS_SIZE = 20 * 1024 * 1024  # 20 MB
 ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
+MAX_SCAN_SIZE = 200 * 1024 * 1024  # 200 MB
+ALLOWED_SCAN_EXTENSIONS = {".usdz"}
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +201,7 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
 
     # Clean up files
     _delete_cached_image(game_id)
+    _delete_scan_file(game_id)
     if db_game.instructions_filename:
         instr_path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
         try:
@@ -343,3 +347,71 @@ def delete_instructions(game_id: int, db: Session = Depends(get_db)):
     db_game.instructions_filename = None
     db.commit()
     logger.info("Instructions deleted for game %d", game_id)
+
+
+# ---------------------------------------------------------------------------
+# 3D scan endpoints
+# ---------------------------------------------------------------------------
+
+def _delete_scan_file(game_id: int) -> None:
+    for path in glob.glob(os.path.join(SCANS_DIR, f"{game_id}.*")):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+@router.post("/{game_id}/scan", status_code=204)
+async def upload_scan(game_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    safe_name = _safe_filename(file.filename or "scan.usdz")
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_SCAN_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Only .usdz files are allowed")
+
+    content = await file.read()
+    if len(content) > MAX_SCAN_SIZE:
+        raise HTTPException(status_code=413, detail="File exceeds 200 MB limit")
+
+    os.makedirs(SCANS_DIR, exist_ok=True)
+    _delete_scan_file(game_id)
+
+    dest = os.path.join(SCANS_DIR, f"{game_id}{ext}")
+    with open(dest, "wb") as f:
+        f.write(content)
+
+    db_game.scan_filename = safe_name
+    db.commit()
+    logger.info("3D scan uploaded for game %d: %s", game_id, safe_name)
+
+
+@router.get("/{game_id}/scan")
+def get_scan(game_id: int, db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game or not db_game.scan_filename:
+        raise HTTPException(status_code=404, detail="No 3D scan uploaded")
+
+    matches = glob.glob(os.path.join(SCANS_DIR, f"{game_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="3D scan file not found")
+
+    return FileResponse(
+        matches[0],
+        media_type="model/vnd.usdz+zip",
+        headers={"Content-Disposition": f'inline; filename="{db_game.scan_filename}"'},
+    )
+
+
+@router.delete("/{game_id}/scan", status_code=204)
+def delete_scan(game_id: int, db: Session = Depends(get_db)):
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game or not db_game.scan_filename:
+        raise HTTPException(status_code=404, detail="No 3D scan to delete")
+
+    _delete_scan_file(game_id)
+    db_game.scan_filename = None
+    db.commit()
+    logger.info("3D scan deleted for game %d", game_id)

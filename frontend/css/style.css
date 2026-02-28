@@ -1544,6 +1544,114 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   background: #4db8a0;
 }
 
+/* ===== 3D Scan Badge (on cards) ===== */
+.scan-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  background: rgba(20, 20, 30, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.scan-badge svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  stroke: #4db8a0;
+}
+.scan-badge:hover { background: rgba(77,184,160,0.85); transform: scale(1.05); }
+.scan-badge:hover svg { stroke: #fff; }
+
+.scan-badge-list {
+  position: static;
+  padding: 2px 7px 2px 5px;
+  font-size: 0.68rem;
+}
+
+.game-card-image { position: relative; }
+
+/* ===== 3D Scan Viewer Overlay ===== */
+.scan-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.scan-viewer-overlay.open { opacity: 1; }
+
+.scan-viewer-panel {
+  position: relative;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 48px;
+  max-width: 380px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  transform: translateY(16px);
+  transition: transform 0.2s;
+}
+.scan-viewer-overlay.open .scan-viewer-panel { transform: translateY(0); }
+
+.scan-viewer-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-2);
+}
+.scan-viewer-close svg { width: 14px; height: 14px; }
+.scan-viewer-close:hover { color: var(--text-1); background: var(--bg-3); filter: brightness(1.2); }
+
+.scan-viewer-icon svg { width: 56px; height: 56px; stroke: #4db8a0; }
+
+.scan-viewer-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-1);
+  margin: 0;
+}
+
+.scan-viewer-subtitle { font-size: 0.8rem; color: var(--text-3); margin: 0; }
+
+.scan-viewer-open { margin-top: 8px; min-width: 160px; }
+
+.scan-viewer-hint {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* ===== Image Edit Area ===== */
 .image-edit-area {
   display: flex;

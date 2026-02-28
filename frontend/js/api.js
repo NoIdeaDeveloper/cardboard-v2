@@ -65,6 +65,18 @@ const API = {
   },
   deleteInstructions: (gameId) => request('DELETE', `/games/${gameId}/instructions`),
 
+  // 3D scans (uses raw fetch — multipart file upload)
+  uploadScan: async (gameId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(`${API_BASE}/games/${gameId}/scan`, { method: 'POST', body: fd });
+    if (resp.status === 204) return null;
+    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+    return data;
+  },
+  deleteScan: (gameId) => request('DELETE', `/games/${gameId}/scan`),
+
   // Stats
   getStats: () => request('GET', '/stats'),
 };

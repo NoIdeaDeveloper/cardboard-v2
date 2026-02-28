@@ -16,6 +16,7 @@ class GameBase(BaseModel):
     image_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     instructions_filename: Optional[str] = None
+    scan_filename: Optional[str] = None
     categories: Optional[str] = None
     mechanics: Optional[str] = None
     designers: Optional[str] = None

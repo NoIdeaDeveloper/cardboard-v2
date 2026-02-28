@@ -161,7 +161,7 @@
       sessions = await API.getSessions(game.id);
     } catch (_) { /* non-fatal */ }
 
-    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage);
+    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan);
     openModal(contentEl);
   }
 
@@ -269,6 +269,30 @@
       if (onSuccess) onSuccess();
     } catch (err) {
       showToast(`Failed to remove image: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleUploadScan(gameId, file, onSuccess) {
+    try {
+      await API.uploadScan(gameId, file);
+      showToast('3D scan uploaded!', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].scan_filename = file.name;
+      if (onSuccess) onSuccess(file.name);
+    } catch (err) {
+      showToast(`Scan upload failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleDeleteScan(gameId, onSuccess) {
+    try {
+      await API.deleteScan(gameId);
+      showToast('3D scan removed.', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].scan_filename = null;
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      showToast(`Failed to remove 3D scan: ${err.message}`, 'error');
     }
   }
 

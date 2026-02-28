@@ -137,6 +137,10 @@ function buildGameCard(game) {
 
   el.innerHTML = `
     <div class="game-card-image">
+      ${game.scan_filename ? `<button class="scan-badge" type="button" title="View 3D Scan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        3D
+      </button>` : ''}
       ${isSafeUrl(game.image_url)
         ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
         : placeholderSvg()}
@@ -154,6 +158,13 @@ function buildGameCard(game) {
         ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
       </div>
     </div>`;
+
+  if (game.scan_filename) {
+    el.querySelector('.scan-badge').addEventListener('click', e => {
+      e.stopPropagation();
+      openScanViewer(game);
+    });
+  }
 
   return el;
 }
@@ -191,6 +202,10 @@ function buildGameListItem(game) {
       <div class="list-title-row">
         <div class="list-title">${escapeHtml(game.name)}</div>
         ${listStatusBadge}
+        ${game.scan_filename ? `<button class="scan-badge scan-badge-list" type="button" title="View 3D Scan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          3D
+        </button>` : ''}
       </div>
       ${metaParts.length ? `<div class="list-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : ''}
       ${listLabelsHtml}
@@ -199,12 +214,19 @@ function buildGameListItem(game) {
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
 
+  if (game.scan_filename) {
+    el.querySelector('.scan-badge-list').addEventListener('click', e => {
+      e.stopPropagation();
+      openScanViewer(game);
+    });
+  }
+
   return el;
 }
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -285,6 +307,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   }
 
   const hasInstructions = !!game.instructions_filename;
+  const hasScan = !!game.scan_filename;
 
   el.innerHTML = `
     ${heroHtml}
@@ -352,6 +375,25 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <span class="btn btn-secondary btn-sm upload-trigger">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload PDF or TXT
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="section-label">3D Scan</div>
+        <div class="instructions-existing" id="scan-existing" style="${hasScan ? '' : 'display:none'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span class="instructions-link">${escapeHtml(game.scan_filename || '')}</span>
+          <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
+          <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>
+        </div>
+        <div class="instructions-upload" id="scan-upload" style="${hasScan ? 'display:none' : ''}">
+          <label class="upload-label">
+            <input type="file" id="scan-file-input" accept=".usdz" style="display:none">
+            <span class="btn btn-secondary btn-sm upload-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload .usdz
             </span>
           </label>
         </div>
@@ -583,6 +625,41 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   }
   wireDeleteInstructions();
 
+  // 3D scan upload
+  const scanFileInput = el.querySelector('#scan-file-input');
+  if (scanFileInput) {
+    scanFileInput.addEventListener('change', () => {
+      const file = scanFileInput.files[0];
+      if (!file) return;
+      onUploadScan(game.id, file, (filename) => {
+        const existing = el.querySelector('#scan-existing');
+        existing.style.display = 'flex';
+        existing.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span class="instructions-link">${escapeHtml(filename)}</span>
+          <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
+          <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>`;
+        el.querySelector('#scan-upload').style.display = 'none';
+        wireScanButtons({ name: game.name, id: game.id, scan_filename: filename });
+      });
+    });
+  }
+
+  function wireScanButtons(gameRef) {
+    const viewBtn = el.querySelector('#view-scan-btn');
+    if (viewBtn) viewBtn.addEventListener('click', () => openScanViewer(gameRef));
+    const deleteBtn = el.querySelector('#delete-scan-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        onDeleteScan(game.id, () => {
+          el.querySelector('#scan-existing').style.display = 'none';
+          el.querySelector('#scan-upload').style.display = 'block';
+        });
+      });
+    }
+  }
+  wireScanButtons(game);
+
   // Image management
   let currentImageUrl = game.image_url || null;
   const imageUrlInput  = el.querySelector('#edit-image-url');
@@ -777,6 +854,52 @@ function closeModal() {
     document.getElementById('modal-inner').innerHTML = '';
     document.body.style.overflow = '';
   }, 200);
+}
+
+// ===== 3D Scan Viewer =====
+
+function openScanViewer(game) {
+  const overlay = document.createElement('div');
+  overlay.className = 'scan-viewer-overlay';
+  overlay.innerHTML = `
+    <div class="scan-viewer-panel">
+      <button class="scan-viewer-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="scan-viewer-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+      </div>
+      <h2 class="scan-viewer-title">${escapeHtml(game.name)}</h2>
+      <p class="scan-viewer-subtitle">${escapeHtml(game.scan_filename || '3D Scan')}</p>
+      <a href="/api/games/${game.id}/scan"
+         class="btn btn-primary scan-viewer-open"
+         target="_blank"
+         rel="ar">
+        Open 3D Scan
+      </a>
+      <p class="scan-viewer-hint">Tap <strong>View in AR</strong> on iPhone · Opens in QuickLook on Mac</p>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => overlay.classList.add('open'));
+
+  function close() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(() => overlay.remove(), 200);
+    document.removeEventListener('keydown', onKey);
+  }
+
+  function onKey(e) { if (e.key === 'Escape') close(); }
+
+  overlay.querySelector('.scan-viewer-close').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', onKey);
 }
 
 // ===== Stats View =====

@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger("cardboard")
 
 # Ensure data directories exist
-for subdir in ["", "images", "instructions"]:
+for subdir in ["", "images", "instructions", "scans"]:
     path = os.path.join(os.getenv("DATA_DIR", "/app/data"), subdir)
     os.makedirs(path, exist_ok=True)
     if subdir:
@@ -45,6 +45,7 @@ _GAMES_MIGRATIONS = [
     ("purchase_date",         "DATE"),
     ("purchase_price",        "REAL"),
     ("purchase_location",     "VARCHAR(255)"),
+    ("scan_filename",         "TEXT"),
 ]
 
 with engine.connect() as _conn:

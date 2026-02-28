@@ -20,6 +20,7 @@ class Game(Base):
     thumbnail_url = Column(Text, nullable=True)
     image_cached = Column(Boolean, default=False, nullable=False)
     instructions_filename = Column(Text, nullable=True)
+    scan_filename = Column(Text, nullable=True)
     categories = Column(Text, nullable=True)   # JSON array as string
     mechanics = Column(Text, nullable=True)    # JSON array as string
     designers = Column(Text, nullable=True)    # JSON array as string
