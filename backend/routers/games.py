@@ -3,6 +3,7 @@ import logging
 import mimetypes
 import os
 import re
+import urllib.parse
 import urllib.request
 from typing import List, Optional
 
@@ -56,6 +57,11 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
     """Download image_url and store locally; update game record. Runs as a background task."""
     if not image_url or image_url.startswith("/api/"):
         return  # already local or empty
+
+    parsed = urllib.parse.urlparse(image_url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning("Image cache refused for game %d: unsupported scheme %r", game_id, parsed.scheme)
+        return
 
     # Abort early if the URL has already been changed (e.g. user uploaded a file
     # or changed the URL before this background task ran).

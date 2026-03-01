@@ -327,7 +327,10 @@
       await API.deleteScan(gameId);
       showToast('3D scan removed.', 'success');
       const idx = state.games.findIndex(g => g.id === gameId);
-      if (idx !== -1) state.games[idx].scan_filename = null;
+      if (idx !== -1) {
+        state.games[idx].scan_filename = null;
+        if (!state.games[idx].scan_glb_filename) state.games[idx].scan_featured = false;
+      }
       if (onSuccess) onSuccess();
     } catch (err) {
       showToast(`Failed to remove 3D scan: ${err.message}`, 'error');

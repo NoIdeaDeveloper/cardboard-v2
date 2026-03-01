@@ -153,7 +153,7 @@ def delete_gallery_image(game_id: int, img_id: int, db: Session = Depends(get_db
         r.sort_order = i
 
     # Update game.image_url when the deleted image was the primary
-    if was_primary or (game.image_url and f"/images/{img_id}/file" in (game.image_url or "")):
+    if was_primary or (game.image_url and f"/images/{img_id}/file" in game.image_url):
         if remaining:
             game.image_url = _primary_url(game_id, remaining[0])
             game.image_cached = False
