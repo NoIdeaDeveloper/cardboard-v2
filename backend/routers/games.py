@@ -9,7 +9,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, case, desc, func
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
@@ -141,7 +141,13 @@ def get_games(
     if search:
         query = query.filter(models.Game.name.ilike(f"%{search}%"))
 
-    sort_column = getattr(models.Game, sort_by, models.Game.name) if sort_by else models.Game.name
+    if not sort_by or sort_by == 'name':
+        sort_column = case(
+            (func.lower(models.Game.name).like('the %'), func.substr(models.Game.name, 5)),
+            else_=models.Game.name,
+        )
+    else:
+        sort_column = getattr(models.Game, sort_by, models.Game.name)
     if sort_dir == "desc":
         query = query.order_by(desc(sort_column))
     else:

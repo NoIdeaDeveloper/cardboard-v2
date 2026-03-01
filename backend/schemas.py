@@ -1,10 +1,15 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
 
 class GameBase(BaseModel):
     name: str
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def strip_name(cls, v):
+        return v.strip() if isinstance(v, str) else v
     status: str = Field('owned', pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
@@ -38,6 +43,11 @@ class GameCreate(GameBase):
 
 class GameUpdate(BaseModel):
     name: Optional[str] = None
+
+    @field_validator('name', mode='before')
+    @classmethod
+    def strip_name(cls, v):
+        return v.strip() if isinstance(v, str) else v
     status: Optional[str] = Field(None, pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
