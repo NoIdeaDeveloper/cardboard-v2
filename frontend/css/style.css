@@ -1847,6 +1847,41 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   color: #4db8a0;
 }
 
+/* ===== Gallery view strip (view mode) ===== */
+.gallery-view-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+}
+.gallery-view-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ===== Notes display (view mode) ===== */
+.notes-display {
+  font-size: 0.9rem;
+  color: var(--text-2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* ===== Static rating row (view mode) ===== */
+.rating-display-only {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rating-text {
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }

@@ -157,7 +157,7 @@
   }
 
   // ===== Game Modal =====
-  async function openGameModal(game) {
+  async function openGameModal(game, mode = 'view') {
     let sessions = [], images = [];
     try {
       [sessions, images] = await Promise.all([
@@ -166,7 +166,24 @@
       ]);
     } catch (_) { /* non-fatal */ }
 
-    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan, images, handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages, handleUploadScanGlb, handleDeleteScanGlb, handleSetScanFeatured);
+    const onSwitchToEdit = () => openGameModal(game, 'edit');
+    const onSwitchToView = () => {
+      const fresh = state.games.find(g => g.id === game.id) || game;
+      openGameModal(fresh, 'view');
+    };
+
+    const contentEl = buildModalContent(
+      game, sessions,
+      handleSaveGame, handleDeleteGame,
+      handleAddSession, handleDeleteSession,
+      handleUploadInstructions, handleDeleteInstructions,
+      handleUploadImage, handleDeleteImage,
+      handleUploadScan, handleDeleteScan,
+      images,
+      handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages,
+      handleUploadScanGlb, handleDeleteScanGlb, handleSetScanFeatured,
+      mode, onSwitchToEdit, onSwitchToView,
+    );
     openModal(contentEl);
   }
 

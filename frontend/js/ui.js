@@ -266,7 +266,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, mode = 'view', onSwitchToEdit, onSwitchToView) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -352,60 +352,76 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const hasScanAny   = hasScan || hasGlb;
   const scanFeatured = !!game.scan_featured;
 
-  el.innerHTML = `
-    ${heroHtml}
-    <div class="modal-body">
-      <div class="modal-title-row">
-        <h2 class="modal-title" id="modal-title">${escapeHtml(game.name)}</h2>
-        ${game.year_published ? `<span class="modal-year">${game.year_published}</span>` : ''}
-        ${modalStatusBadge}
-      </div>
+  const isEdit = mode === 'edit';
+  let selectedRating = game.user_rating || null;
 
-      ${chipsHtml ? `<div class="modal-chips">${chipsHtml}</div>` : ''}
-      ${game.difficulty ? `<div class="modal-difficulty">${renderDifficultyBar(game.difficulty)}</div>` : ''}
+  // ===== Mode-specific HTML blocks =====
 
-      ${tagsBlock('Categories', categories)}
-      ${tagsBlock('Mechanics', mechanics)}
-      ${tagsBlock('Designers', designers)}
-      ${tagsBlock('Publishers', publishers)}
-      ${labelsDisplayHtml}
-      ${purchaseDisplayHtml}
+  const starButtonsHtml = Array.from({length: 10}, (_, i) => i + 1).map(n =>
+    `<button class="star-btn${(game.user_rating || 0) >= n ? ' active' : ''}" data-value="${n}" aria-label="${n} stars"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></button>`
+  ).join('');
 
-      <div class="modal-section">
+  const ratingWidgetHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label">My Rating</div>
         <div class="rating-widget">
-          <div class="rating-stars-interactive" id="rating-stars">
-            ${Array.from({length: 10}, (_, i) => i + 1).map(n =>
-              `<button class="star-btn${(game.user_rating || 0) >= n ? ' active' : ''}" data-value="${n}" aria-label="${n} stars">
-                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              </button>`).join('')}
-          </div>
+          <div class="rating-stars-interactive" id="rating-stars">${starButtonsHtml}</div>
           <span class="rating-display" id="rating-display">${game.user_rating || '—'}</span>
           <button class="btn btn-ghost btn-sm" id="rating-clear">Clear</button>
         </div>
-      </div>
+      </div>`
+    : game.user_rating
+      ? `<div class="modal-section">
+          <div class="section-label">My Rating</div>
+          <div class="rating-display-only">
+            ${renderStars(game.user_rating)}
+            <span class="rating-text">${game.user_rating}/10</span>
+          </div>
+        </div>`
+      : '';
 
-      <div class="modal-section">
+  const lastPlayedWidgetHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label">Last Played</div>
         <div class="last-played-row">
           <input type="date" id="last-played-input" class="date-input" value="${game.last_played || ''}">
           <button class="btn btn-ghost btn-sm" id="today-btn">Today</button>
         </div>
-      </div>
+      </div>`
+    : game.last_played
+      ? `<div class="modal-section">
+          <div class="section-label">Last Played</div>
+          <span class="chip">${escapeHtml(formatDate(game.last_played))}</span>
+        </div>`
+      : '';
 
-      ${game.description ? `
-      <div class="modal-section">
+  const descriptionSectionHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label">Description</div>
-        <div class="description-text" id="desc-text">${escapeHtml(game.description)}</div>
-        <button class="btn btn-ghost btn-sm" id="desc-toggle" style="margin-top:6px">Show more</button>
-      </div>` : ''}
+        <textarea id="edit-description" class="form-input" rows="3">${escapeHtml(game.description || '')}</textarea>
+      </div>`
+    : game.description
+      ? `<div class="modal-section">
+          <div class="section-label">Description</div>
+          <div class="description-text" id="desc-text">${escapeHtml(game.description)}</div>
+          <button class="btn btn-ghost btn-sm" id="desc-toggle" style="margin-top:6px">Show more</button>
+        </div>`
+      : '';
 
-      <div class="modal-section">
+  const notesSectionHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label">My Notes</div>
         <textarea id="user-notes" class="notes-input" rows="3" placeholder="Personal notes, house rules, favourite moments…">${escapeHtml(game.user_notes || '')}</textarea>
-      </div>
+      </div>`
+    : game.user_notes
+      ? `<div class="modal-section">
+          <div class="section-label">My Notes</div>
+          <p class="notes-display">${escapeHtml(game.user_notes)}</p>
+        </div>`
+      : '';
 
-      <div class="modal-section" id="gallery-section">
+  const gallerySectionHtml = isEdit
+    ? `<div class="modal-section" id="gallery-section">
         <div class="section-label-row">
           <div class="section-label">Photo Gallery</div>
           <label class="btn btn-ghost btn-sm gallery-add-label" title="Add photo">
@@ -414,9 +430,18 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           </label>
         </div>
         <div class="gallery-list" id="gallery-list"></div>
-      </div>
+      </div>`
+    : images.length > 0
+      ? `<div class="modal-section">
+          <div class="section-label">Photo Gallery</div>
+          <div class="gallery-view-strip">${images.map(img =>
+            `<img class="gallery-view-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">`
+          ).join('')}</div>
+        </div>`
+      : '';
 
-      <div class="modal-section">
+  const instructionsSectionHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label">Rulebook</div>
         <div class="instructions-existing" id="instructions-existing" style="${hasInstructions ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -432,9 +457,16 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             </span>
           </label>
         </div>
-      </div>
+      </div>`
+    : hasInstructions
+      ? `<div class="modal-section">
+          <div class="section-label">Rulebook</div>
+          <a href="/api/games/${game.id}/instructions" target="_blank" class="btn btn-ghost btn-sm">View Rulebook</a>
+        </div>`
+      : '';
 
-      <div class="modal-section">
+  const scanSectionHtml = isEdit
+    ? `<div class="modal-section">
         <div class="section-label-row">
           <div class="section-label">3D Scan</div>
           <div id="scan-featured-toggle" style="${hasScanAny ? '' : 'display:none'}">
@@ -443,7 +475,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             </button>
           </div>
         </div>
-        <!-- USDZ -->
         <div class="instructions-existing" id="scan-existing" style="${hasScan ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
           <span class="instructions-link">${escapeHtml(game.scan_filename || '')}</span>
@@ -459,7 +490,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             </span>
           </label>
         </div>
-        <!-- GLB -->
         <div class="instructions-existing" id="scan-glb-existing" style="${hasGlb ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
           <span class="instructions-link">${escapeHtml(game.scan_glb_filename || '')} <span style="color:var(--text-3);font-size:11px">(GLB)</span></span>
@@ -474,42 +504,16 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             </span>
           </label>
         </div>
-      </div>
+      </div>`
+    : hasScanAny
+      ? `<div class="modal-section">
+          <div class="section-label">3D Scan</div>
+          <button id="view-scan-view-btn" class="btn btn-ghost btn-sm">View 3D Scan</button>
+        </div>`
+      : '';
 
-      <div class="modal-section">
-        <div class="section-label-row">
-          <div class="section-label">Play History</div>
-          <button class="btn btn-ghost btn-sm" id="log-session-toggle">+ Log Session</button>
-        </div>
-        <div class="log-session-form" id="log-session-form" style="display:none">
-          <div class="session-form-grid">
-            <div class="form-group">
-              <label>Date</label>
-              <input type="date" id="session-date" class="form-input" value="${new Date().toISOString().split('T')[0]}">
-            </div>
-            <div class="form-group">
-              <label>Players</label>
-              <input type="number" id="session-players" class="form-input" placeholder="4" min="1" max="20">
-            </div>
-            <div class="form-group">
-              <label>Duration (min)</label>
-              <input type="number" id="session-duration" class="form-input" placeholder="90" min="1">
-            </div>
-            <div class="form-group full-width">
-              <label>Notes</label>
-              <input type="text" id="session-notes" class="form-input" placeholder="Who won? Any highlights?">
-            </div>
-          </div>
-          <div class="session-form-actions">
-            <button class="btn btn-primary btn-sm" id="session-submit">Save Session</button>
-            <button class="btn btn-ghost btn-sm" id="session-cancel">Cancel</button>
-          </div>
-        </div>
-        <div class="sessions-list" id="sessions-list">${buildSessionsHtml(sessions)}</div>
-      </div>
-
-      <details class="edit-details">
-        <summary class="edit-details-summary">Edit Game Details</summary>
+  const editFieldsSectionHtml = isEdit
+    ? `<div class="modal-section">
         <div class="edit-form-grid">
           <div class="form-group full-width">
             <label>Name</label>
@@ -565,10 +569,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Description</label>
-            <textarea id="edit-description" class="form-input" rows="3">${escapeHtml(game.description || '')}</textarea>
-          </div>
-          <div class="form-group full-width">
             <label>Categories <span class="hint">(comma-separated)</span></label>
             <input type="text" id="edit-categories" class="form-input" value="${escapeHtml(categories.join(', '))}">
           </div>
@@ -601,7 +601,84 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <input type="text" id="edit-purchase-location" class="form-input" value="${escapeHtml(game.purchase_location || '')}">
           </div>
         </div>
-      </details>
+      </div>`
+    : '';
+
+  const actionsSectionHtml = isEdit
+    ? `<div class="modal-actions">
+        <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
+        <div class="modal-actions-right">
+          <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+          <button class="btn btn-primary" id="save-btn">Save Changes</button>
+        </div>
+      </div>`
+    : `<div class="modal-actions">
+        <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
+        <div class="modal-actions-right">
+          <button class="btn btn-primary" id="edit-game-btn">Edit Game</button>
+        </div>
+      </div>`;
+
+  el.innerHTML = `
+    ${heroHtml}
+    <div class="modal-body">
+      <div class="modal-title-row">
+        <h2 class="modal-title" id="modal-title">${escapeHtml(game.name)}</h2>
+        ${game.year_published ? `<span class="modal-year">${game.year_published}</span>` : ''}
+        ${modalStatusBadge}
+      </div>
+
+      ${chipsHtml ? `<div class="modal-chips">${chipsHtml}</div>` : ''}
+      ${game.difficulty ? `<div class="modal-difficulty">${renderDifficultyBar(game.difficulty)}</div>` : ''}
+
+      ${tagsBlock('Categories', categories)}
+      ${tagsBlock('Mechanics', mechanics)}
+      ${tagsBlock('Designers', designers)}
+      ${tagsBlock('Publishers', publishers)}
+      ${labelsDisplayHtml}
+      ${purchaseDisplayHtml}
+
+      ${ratingWidgetHtml}
+      ${lastPlayedWidgetHtml}
+      ${descriptionSectionHtml}
+      ${notesSectionHtml}
+      ${gallerySectionHtml}
+      ${instructionsSectionHtml}
+      ${scanSectionHtml}
+
+      <div class="modal-section">
+        <div class="section-label-row">
+          <div class="section-label">Play History</div>
+          <button class="btn btn-ghost btn-sm" id="log-session-toggle">+ Log Session</button>
+        </div>
+        <div class="log-session-form" id="log-session-form" style="display:none">
+          <div class="session-form-grid">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="session-date" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="form-group">
+              <label>Players</label>
+              <input type="number" id="session-players" class="form-input" placeholder="4" min="1" max="20">
+            </div>
+            <div class="form-group">
+              <label>Duration (min)</label>
+              <input type="number" id="session-duration" class="form-input" placeholder="90" min="1">
+            </div>
+            <div class="form-group full-width">
+              <label>Notes</label>
+              <input type="text" id="session-notes" class="form-input" placeholder="Who won? Any highlights?">
+            </div>
+          </div>
+          <div class="session-form-actions">
+            <button class="btn btn-primary btn-sm" id="session-submit">Save Session</button>
+            <button class="btn btn-ghost btn-sm" id="session-cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="sessions-list" id="sessions-list">${buildSessionsHtml(sessions)}</div>
+      </div>
+
+      ${editFieldsSectionHtml}
 
       ${(game.date_added || game.date_modified) ? `
       <div class="game-dates-row">
@@ -609,363 +686,15 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         ${game.date_modified ? `<span><span class="game-dates-label">Modified</span> ${escapeHtml(formatDatetime(game.date_modified))}</span>` : ''}
       </div>` : ''}
 
-      <div class="modal-actions">
-        <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
-        <div class="modal-actions-right">
-          <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
-          <button class="btn btn-primary" id="save-btn">Save Changes</button>
-        </div>
-      </div>
+      ${actionsSectionHtml}
     </div>`;
 
   // ===== Wire events =====
 
   el.querySelector('#modal-close-btn').addEventListener('click', closeModal);
-  el.querySelector('#cancel-btn').addEventListener('click', closeModal);
+  el.querySelector('#delete-game-btn').addEventListener('click', () => onDelete(game.id, game.name));
 
-  // Rating
-  let selectedRating = game.user_rating || null;
-  const starsContainer = el.querySelector('#rating-stars');
-  const ratingDisplay  = el.querySelector('#rating-display');
-
-  function updateStarDisplay(value) {
-    starsContainer.querySelectorAll('.star-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.dataset.value) <= (value || 0));
-    });
-    ratingDisplay.textContent = value || '—';
-  }
-
-  starsContainer.addEventListener('mouseover', e => {
-    const btn = e.target.closest('.star-btn');
-    if (btn) updateStarDisplay(parseInt(btn.dataset.value));
-  });
-  starsContainer.addEventListener('mouseleave', () => updateStarDisplay(selectedRating));
-  starsContainer.addEventListener('click', e => {
-    const btn = e.target.closest('.star-btn');
-    if (btn) { selectedRating = parseInt(btn.dataset.value); updateStarDisplay(selectedRating); }
-  });
-  el.querySelector('#rating-clear').addEventListener('click', () => { selectedRating = null; updateStarDisplay(null); });
-
-  // Today button
-  el.querySelector('#today-btn').addEventListener('click', () => {
-    el.querySelector('#last-played-input').value = new Date().toISOString().split('T')[0];
-  });
-
-  // Description toggle
-  const descText = el.querySelector('#desc-text');
-  const descToggle = el.querySelector('#desc-toggle');
-  if (descText && descToggle) {
-    descText.style.webkitLineClamp = '4';
-    descText.style.overflow = 'hidden';
-    descText.style.display = '-webkit-box';
-    descText.style.webkitBoxOrient = 'vertical';
-    descToggle.addEventListener('click', () => {
-      const expanded = descText.style.webkitLineClamp === 'unset';
-      descText.style.webkitLineClamp = expanded ? '4' : 'unset';
-      descToggle.textContent = expanded ? 'Show more' : 'Show less';
-    });
-  }
-
-  // Instructions upload
-  const fileInput = el.querySelector('#instructions-file-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      onUploadInstructions(game.id, file, (filename) => {
-        const existing = el.querySelector('#instructions-existing');
-        existing.style.display = 'flex';
-        existing.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <a href="/api/games/${game.id}/instructions" target="_blank" class="instructions-link">${escapeHtml(filename)}</a>
-          <button class="btn btn-ghost btn-sm" id="delete-instructions-btn">Remove</button>`;
-        el.querySelector('#instructions-upload').style.display = 'none';
-        wireDeleteInstructions();
-      });
-    });
-  }
-
-  function wireDeleteInstructions() {
-    const deleteBtn = el.querySelector('#delete-instructions-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', () => {
-        onDeleteInstructions(game.id, () => {
-          el.querySelector('#instructions-existing').style.display = 'none';
-          el.querySelector('#instructions-upload').style.display = 'block';
-        });
-      });
-    }
-  }
-  wireDeleteInstructions();
-
-  // 3D scan upload
-  const scanFileInput = el.querySelector('#scan-file-input');
-  if (scanFileInput) {
-    scanFileInput.addEventListener('change', () => {
-      const file = scanFileInput.files[0];
-      if (!file) return;
-      onUploadScan(game.id, file, (filename) => {
-        const existing = el.querySelector('#scan-existing');
-        existing.style.display = 'flex';
-        existing.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          <span class="instructions-link">${escapeHtml(filename)}</span>
-          <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
-          <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>`;
-        el.querySelector('#scan-upload').style.display = 'none';
-        el.querySelector('#scan-featured-toggle').style.display = '';
-        wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: game.scan_glb_filename });
-      });
-    });
-  }
-
-  function wireScanButtons(gameRef) {
-    const viewBtn = el.querySelector('#view-scan-btn');
-    if (viewBtn) viewBtn.addEventListener('click', () => openScanViewer(gameRef));
-    const deleteBtn = el.querySelector('#delete-scan-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', () => {
-        onDeleteScan(game.id, () => {
-          el.querySelector('#scan-existing').style.display = 'none';
-          el.querySelector('#scan-upload').style.display = '';
-          const glbGone = el.querySelector('#scan-glb-existing').style.display === 'none';
-          if (glbGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
-        });
-      });
-    }
-  }
-  wireScanButtons(game);
-
-  // GLB file upload
-  const scanGlbFileInput = el.querySelector('#scan-glb-file-input');
-  if (scanGlbFileInput) {
-    scanGlbFileInput.addEventListener('change', () => {
-      const file = scanGlbFileInput.files[0];
-      if (!file) return;
-      onUploadScanGlb(game.id, file, (filename) => {
-        const existing = el.querySelector('#scan-glb-existing');
-        existing.style.display = 'flex';
-        existing.querySelector('.instructions-link').innerHTML =
-          `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(GLB)</span>`;
-        el.querySelector('#scan-glb-upload').style.display = 'none';
-        el.querySelector('#scan-featured-toggle').style.display = '';
-        wireGlbDeleteBtn();
-      });
-      scanGlbFileInput.value = '';
-    });
-  }
-
-  function wireGlbDeleteBtn() {
-    const btn = el.querySelector('#delete-scan-glb-btn');
-    if (!btn) return;
-    const fresh = btn.cloneNode(true);
-    btn.parentNode.replaceChild(fresh, btn);
-    fresh.addEventListener('click', () => {
-      onDeleteScanGlb(game.id, () => {
-        el.querySelector('#scan-glb-existing').style.display = 'none';
-        el.querySelector('#scan-glb-upload').style.display = '';
-        const usdzGone = el.querySelector('#scan-existing').style.display === 'none';
-        if (usdzGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
-      });
-    });
-  }
-  wireGlbDeleteBtn();
-
-  // Scan featured toggle
-  let currentScanFeatured = !!game.scan_featured;
-
-  function updateFeaturedBtn(featured) {
-    const btn = el.querySelector('#set-scan-featured-btn');
-    if (!btn) return;
-    currentScanFeatured = featured;
-    btn.textContent = featured ? '★ Featured on card' : '☆ Set as featured';
-    btn.classList.toggle('btn-active', featured);
-  }
-
-  const featuredBtn = el.querySelector('#set-scan-featured-btn');
-  if (featuredBtn) {
-    featuredBtn.addEventListener('click', () => {
-      onSetScanFeatured(game.id, !currentScanFeatured, (updated) => updateFeaturedBtn(updated));
-    });
-  }
-
-  // Image URL tracking (used by both gallery and cover image management)
-  let currentImageUrl = game.image_url || null;
-
-  // ===== Gallery =====
-  let galleryImages = Array.isArray(images) ? [...images] : [];
-
-  function buildGalleryItemEl(img, index, total) {
-    const item = document.createElement('div');
-    item.className = 'gallery-list-item';
-    item.dataset.imgId = img.id;
-    item.innerHTML = `
-      <img class="gallery-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
-      <div class="gallery-item-info">
-        ${index === 0 ? '<span class="gallery-featured-badge">★ Featured</span>' : '<span class="gallery-item-num">#' + (index + 1) + '</span>'}
-      </div>
-      <div class="gallery-item-controls">
-        <button class="btn btn-ghost btn-sm gallery-move-up"${index === 0 ? ' disabled' : ''} title="Move up">↑</button>
-        <button class="btn btn-ghost btn-sm gallery-move-down"${index === total - 1 ? ' disabled' : ''} title="Move down">↓</button>
-        <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo">Remove</button>
-      </div>`;
-    return item;
-  }
-
-  function renderGallery() {
-    const list = el.querySelector('#gallery-list');
-    list.innerHTML = '';
-    if (galleryImages.length === 0) {
-      list.innerHTML = '<p class="no-gallery">No photos yet. Use "+ Add Photo" to upload images.</p>';
-      return;
-    }
-    galleryImages.forEach((img, i) => {
-      const item = buildGalleryItemEl(img, i, galleryImages.length);
-      list.appendChild(item);
-
-      item.querySelector('.gallery-move-up').addEventListener('click', () => {
-        const newOrder = [...galleryImages];
-        [newOrder[i - 1], newOrder[i]] = [newOrder[i], newOrder[i - 1]];
-        const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
-        onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
-          galleryImages.splice(0, galleryImages.length, ...newOrder);
-          renderGallery();
-          onGalleryPrimaryChanged(newPrimaryUrl);
-        });
-      });
-
-      item.querySelector('.gallery-move-down').addEventListener('click', () => {
-        const newOrder = [...galleryImages];
-        [newOrder[i], newOrder[i + 1]] = [newOrder[i + 1], newOrder[i]];
-        const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
-        onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
-          galleryImages.splice(0, galleryImages.length, ...newOrder);
-          renderGallery();
-          onGalleryPrimaryChanged(newPrimaryUrl);
-        });
-      });
-
-      // Capture img.id (not index i) so concurrent deletes don't corrupt the reference
-      const imgId = img.id;
-      item.querySelector('.gallery-delete').addEventListener('click', () => {
-        const afterDelete = galleryImages.filter(g => g.id !== imgId);
-        const wasFirst = galleryImages.findIndex(g => g.id === imgId) === 0;
-        const newPrimaryUrl = afterDelete.length > 0
-          ? `/api/games/${game.id}/images/${afterDelete[0].id}/file`
-          : null;
-        onDeleteGalleryImage(game.id, imgId, newPrimaryUrl, () => {
-          galleryImages.splice(0, galleryImages.length, ...afterDelete);
-          renderGallery();
-          if (wasFirst) onGalleryPrimaryChanged(newPrimaryUrl);
-        });
-      });
-    });
-  }
-
-  function onGalleryPrimaryChanged(newUrl) {
-    currentImageUrl = newUrl;
-    updateHeroImage(newUrl);
-    updateImagePreview(newUrl);
-    const urlInput = el.querySelector('#edit-image-url');
-    if (urlInput) urlInput.value = '';
-    // Show/hide gallery managed note
-    const note = el.querySelector('#gallery-managed-note');
-    const controls = el.querySelector('#image-edit-controls');
-    if (note && controls) {
-      const isGalleryManaged = newUrl && newUrl.includes('/images/') && newUrl.includes('/file');
-      note.style.display = isGalleryManaged ? 'block' : 'none';
-      controls.style.display = isGalleryManaged ? 'none' : 'block';
-    }
-  }
-
-  // Wire gallery file input
-  const galleryFileInput = el.querySelector('#gallery-file-input');
-  if (galleryFileInput) {
-    galleryFileInput.addEventListener('change', async () => {
-      const files = Array.from(galleryFileInput.files);
-      for (const file of files) {
-        await onUploadGalleryImage(game.id, file, (newImg) => {
-          galleryImages.push(newImg);
-          renderGallery();
-          if (galleryImages.length === 1) {
-            onGalleryPrimaryChanged(`/api/games/${game.id}/images/${newImg.id}/file`);
-          }
-        });
-      }
-      galleryFileInput.value = '';
-    });
-  }
-
-  renderGallery();
-  // Init gallery-managed note (only update the note/controls visibility, not preview/hero)
-  (function initGalleryNote(url) {
-    const note = el.querySelector('#gallery-managed-note');
-    const controls = el.querySelector('#image-edit-controls');
-    if (note && controls) {
-      const isGalleryManaged = url && url.includes('/images/') && url.includes('/file');
-      note.style.display = isGalleryManaged ? 'block' : 'none';
-      controls.style.display = isGalleryManaged ? 'none' : 'block';
-    }
-  }(currentImageUrl));
-
-  // Image management (cover image)
-  const imageUrlInput  = el.querySelector('#edit-image-url');
-  const removeImageBtn = el.querySelector('#remove-image-btn');
-
-  function updateImagePreview(url) {
-    const preview = el.querySelector('#image-edit-preview');
-    if (isSafeUrl(url)) {
-      preview.innerHTML = `<img src="${escapeHtml(url)}" alt="Cover">`;
-    } else {
-      preview.innerHTML = '<span class="image-edit-empty">No image</span>';
-    }
-    removeImageBtn.style.display = url ? '' : 'none';
-  }
-
-  function updateHeroImage(url) {
-    const hero = el.querySelector('.modal-hero');
-    if (!hero) return;
-    if (isSafeUrl(url)) {
-      hero.style.backgroundImage = `url('${escapeHtml(url)}')`;
-      hero.classList.remove('modal-hero-placeholder');
-      if (!hero.querySelector('.modal-hero-overlay')) {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-hero-overlay';
-        hero.insertBefore(overlay, hero.firstChild);
-      }
-      const placeholderEl = hero.querySelector('.placeholder-icon');
-      if (placeholderEl) placeholderEl.remove();
-    } else {
-      hero.style.backgroundImage = '';
-      hero.classList.add('modal-hero-placeholder');
-      const overlay = hero.querySelector('.modal-hero-overlay');
-      if (overlay) overlay.remove();
-      if (!hero.querySelector('.placeholder-icon')) {
-        hero.insertAdjacentHTML('afterbegin', placeholderSvg());
-      }
-    }
-  }
-
-  imageUrlInput.addEventListener('input', () => {
-    const val = imageUrlInput.value.trim();
-    // Only commit to currentImageUrl when the value is empty (clearing) or a valid URL.
-    // Typing a partial URL mid-edit should not clobber the existing image reference.
-    if (!val || isSafeUrl(val)) {
-      currentImageUrl = val || null;
-    }
-    updateImagePreview(currentImageUrl);
-  });
-
-  removeImageBtn.addEventListener('click', () => {
-    onDeleteImage(game.id, () => {
-      currentImageUrl = null;
-      imageUrlInput.value = '';
-      updateImagePreview(null);
-      updateHeroImage(null);
-    });
-  });
-
-  // Session toggle
+  // Sessions (always wired)
   const sessionToggle = el.querySelector('#log-session-toggle');
   const sessionForm   = el.querySelector('#log-session-form');
   sessionToggle.addEventListener('click', () => {
@@ -1030,40 +759,387 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     });
   });
 
-  // Save
-  function csvToJson(val) {
-    const items = (val || '').split(',').map(s => s.trim()).filter(Boolean);
-    return items.length ? JSON.stringify(items) : null;
+  if (!isEdit) {
+    // ===== View mode wiring =====
+    el.querySelector('#edit-game-btn').addEventListener('click', () => onSwitchToEdit());
+
+    if (hasScanAny) {
+      el.querySelector('#view-scan-view-btn').addEventListener('click', () => openScanViewer(game));
+    }
+
+    const descText   = el.querySelector('#desc-text');
+    const descToggle = el.querySelector('#desc-toggle');
+    if (descText && descToggle) {
+      descText.style.webkitLineClamp = '4';
+      descText.style.overflow = 'hidden';
+      descText.style.display = '-webkit-box';
+      descText.style.webkitBoxOrient = 'vertical';
+      descToggle.addEventListener('click', () => {
+        const expanded = descText.style.webkitLineClamp === 'unset';
+        descText.style.webkitLineClamp = expanded ? '4' : 'unset';
+        descToggle.textContent = expanded ? 'Show more' : 'Show less';
+      });
+    }
+  } else {
+    // ===== Edit mode wiring =====
+    el.querySelector('#cancel-btn').addEventListener('click', () => onSwitchToView());
+
+    // Rating
+    const starsContainer = el.querySelector('#rating-stars');
+    const ratingDisplay  = el.querySelector('#rating-display');
+
+    function updateStarDisplay(value) {
+      starsContainer.querySelectorAll('.star-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.value) <= (value || 0));
+      });
+      ratingDisplay.textContent = value || '—';
+    }
+
+    starsContainer.addEventListener('mouseover', e => {
+      const btn = e.target.closest('.star-btn');
+      if (btn) updateStarDisplay(parseInt(btn.dataset.value));
+    });
+    starsContainer.addEventListener('mouseleave', () => updateStarDisplay(selectedRating));
+    starsContainer.addEventListener('click', e => {
+      const btn = e.target.closest('.star-btn');
+      if (btn) { selectedRating = parseInt(btn.dataset.value); updateStarDisplay(selectedRating); }
+    });
+    el.querySelector('#rating-clear').addEventListener('click', () => { selectedRating = null; updateStarDisplay(null); });
+
+    // Today button
+    el.querySelector('#today-btn').addEventListener('click', () => {
+      el.querySelector('#last-played-input').value = new Date().toISOString().split('T')[0];
+    });
+
+    // Instructions upload
+    const fileInput = el.querySelector('#instructions-file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        onUploadInstructions(game.id, file, (filename) => {
+          const existing = el.querySelector('#instructions-existing');
+          existing.style.display = 'flex';
+          existing.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <a href="/api/games/${game.id}/instructions" target="_blank" class="instructions-link">${escapeHtml(filename)}</a>
+            <button class="btn btn-ghost btn-sm" id="delete-instructions-btn">Remove</button>`;
+          el.querySelector('#instructions-upload').style.display = 'none';
+          wireDeleteInstructions();
+        });
+      });
+    }
+
+    function wireDeleteInstructions() {
+      const deleteBtn = el.querySelector('#delete-instructions-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          onDeleteInstructions(game.id, () => {
+            el.querySelector('#instructions-existing').style.display = 'none';
+            el.querySelector('#instructions-upload').style.display = 'block';
+          });
+        });
+      }
+    }
+    wireDeleteInstructions();
+
+    // 3D scan upload
+    const scanFileInput = el.querySelector('#scan-file-input');
+    if (scanFileInput) {
+      scanFileInput.addEventListener('change', () => {
+        const file = scanFileInput.files[0];
+        if (!file) return;
+        onUploadScan(game.id, file, (filename) => {
+          const existing = el.querySelector('#scan-existing');
+          existing.style.display = 'flex';
+          existing.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span class="instructions-link">${escapeHtml(filename)}</span>
+            <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
+            <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>`;
+          el.querySelector('#scan-upload').style.display = 'none';
+          el.querySelector('#scan-featured-toggle').style.display = '';
+          wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: game.scan_glb_filename });
+        });
+      });
+    }
+
+    function wireScanButtons(gameRef) {
+      const viewBtn = el.querySelector('#view-scan-btn');
+      if (viewBtn) viewBtn.addEventListener('click', () => openScanViewer(gameRef));
+      const deleteBtn = el.querySelector('#delete-scan-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          onDeleteScan(game.id, () => {
+            el.querySelector('#scan-existing').style.display = 'none';
+            el.querySelector('#scan-upload').style.display = '';
+            const glbGone = el.querySelector('#scan-glb-existing').style.display === 'none';
+            if (glbGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
+          });
+        });
+      }
+    }
+    wireScanButtons(game);
+
+    // GLB file upload
+    const scanGlbFileInput = el.querySelector('#scan-glb-file-input');
+    if (scanGlbFileInput) {
+      scanGlbFileInput.addEventListener('change', () => {
+        const file = scanGlbFileInput.files[0];
+        if (!file) return;
+        onUploadScanGlb(game.id, file, (filename) => {
+          const existing = el.querySelector('#scan-glb-existing');
+          existing.style.display = 'flex';
+          existing.querySelector('.instructions-link').innerHTML =
+            `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(GLB)</span>`;
+          el.querySelector('#scan-glb-upload').style.display = 'none';
+          el.querySelector('#scan-featured-toggle').style.display = '';
+          wireGlbDeleteBtn();
+        });
+        scanGlbFileInput.value = '';
+      });
+    }
+
+    function wireGlbDeleteBtn() {
+      const btn = el.querySelector('#delete-scan-glb-btn');
+      if (!btn) return;
+      const fresh = btn.cloneNode(true);
+      btn.parentNode.replaceChild(fresh, btn);
+      fresh.addEventListener('click', () => {
+        onDeleteScanGlb(game.id, () => {
+          el.querySelector('#scan-glb-existing').style.display = 'none';
+          el.querySelector('#scan-glb-upload').style.display = '';
+          const usdzGone = el.querySelector('#scan-existing').style.display === 'none';
+          if (usdzGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
+        });
+      });
+    }
+    wireGlbDeleteBtn();
+
+    // Scan featured toggle
+    let currentScanFeatured = !!game.scan_featured;
+
+    function updateFeaturedBtn(featured) {
+      const btn = el.querySelector('#set-scan-featured-btn');
+      if (!btn) return;
+      currentScanFeatured = featured;
+      btn.textContent = featured ? '★ Featured on card' : '☆ Set as featured';
+      btn.classList.toggle('btn-active', featured);
+    }
+
+    const featuredBtn = el.querySelector('#set-scan-featured-btn');
+    if (featuredBtn) {
+      featuredBtn.addEventListener('click', () => {
+        onSetScanFeatured(game.id, !currentScanFeatured, (updated) => updateFeaturedBtn(updated));
+      });
+    }
+
+    // Image URL tracking
+    let currentImageUrl = game.image_url || null;
+
+    // Gallery
+    let galleryImages = Array.isArray(images) ? [...images] : [];
+
+    function buildGalleryItemEl(img, index, total) {
+      const item = document.createElement('div');
+      item.className = 'gallery-list-item';
+      item.dataset.imgId = img.id;
+      item.innerHTML = `
+        <img class="gallery-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
+        <div class="gallery-item-info">
+          ${index === 0 ? '<span class="gallery-featured-badge">★ Featured</span>' : '<span class="gallery-item-num">#' + (index + 1) + '</span>'}
+        </div>
+        <div class="gallery-item-controls">
+          <button class="btn btn-ghost btn-sm gallery-move-up"${index === 0 ? ' disabled' : ''} title="Move up">↑</button>
+          <button class="btn btn-ghost btn-sm gallery-move-down"${index === total - 1 ? ' disabled' : ''} title="Move down">↓</button>
+          <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo">Remove</button>
+        </div>`;
+      return item;
+    }
+
+    function renderGallery() {
+      const list = el.querySelector('#gallery-list');
+      list.innerHTML = '';
+      if (galleryImages.length === 0) {
+        list.innerHTML = '<p class="no-gallery">No photos yet. Use "+ Add Photo" to upload images.</p>';
+        return;
+      }
+      galleryImages.forEach((img, i) => {
+        const item = buildGalleryItemEl(img, i, galleryImages.length);
+        list.appendChild(item);
+
+        item.querySelector('.gallery-move-up').addEventListener('click', () => {
+          const newOrder = [...galleryImages];
+          [newOrder[i - 1], newOrder[i]] = [newOrder[i], newOrder[i - 1]];
+          const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
+          onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
+            galleryImages.splice(0, galleryImages.length, ...newOrder);
+            renderGallery();
+            onGalleryPrimaryChanged(newPrimaryUrl);
+          });
+        });
+
+        item.querySelector('.gallery-move-down').addEventListener('click', () => {
+          const newOrder = [...galleryImages];
+          [newOrder[i], newOrder[i + 1]] = [newOrder[i + 1], newOrder[i]];
+          const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
+          onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
+            galleryImages.splice(0, galleryImages.length, ...newOrder);
+            renderGallery();
+            onGalleryPrimaryChanged(newPrimaryUrl);
+          });
+        });
+
+        // Capture img.id (not index i) so concurrent deletes don't corrupt the reference
+        const imgId = img.id;
+        item.querySelector('.gallery-delete').addEventListener('click', () => {
+          const afterDelete = galleryImages.filter(g => g.id !== imgId);
+          const wasFirst = galleryImages.findIndex(g => g.id === imgId) === 0;
+          const newPrimaryUrl = afterDelete.length > 0
+            ? `/api/games/${game.id}/images/${afterDelete[0].id}/file`
+            : null;
+          onDeleteGalleryImage(game.id, imgId, newPrimaryUrl, () => {
+            galleryImages.splice(0, galleryImages.length, ...afterDelete);
+            renderGallery();
+            if (wasFirst) onGalleryPrimaryChanged(newPrimaryUrl);
+          });
+        });
+      });
+    }
+
+    function onGalleryPrimaryChanged(newUrl) {
+      currentImageUrl = newUrl;
+      updateHeroImage(newUrl);
+      updateImagePreview(newUrl);
+      const urlInput = el.querySelector('#edit-image-url');
+      if (urlInput) urlInput.value = '';
+      const note = el.querySelector('#gallery-managed-note');
+      const controls = el.querySelector('#image-edit-controls');
+      if (note && controls) {
+        const isGalleryManaged = newUrl && newUrl.includes('/images/') && newUrl.includes('/file');
+        note.style.display = isGalleryManaged ? 'block' : 'none';
+        controls.style.display = isGalleryManaged ? 'none' : 'block';
+      }
+    }
+
+    const galleryFileInput = el.querySelector('#gallery-file-input');
+    if (galleryFileInput) {
+      galleryFileInput.addEventListener('change', async () => {
+        const files = Array.from(galleryFileInput.files);
+        for (const file of files) {
+          await onUploadGalleryImage(game.id, file, (newImg) => {
+            galleryImages.push(newImg);
+            renderGallery();
+            if (galleryImages.length === 1) {
+              onGalleryPrimaryChanged(`/api/games/${game.id}/images/${newImg.id}/file`);
+            }
+          });
+        }
+        galleryFileInput.value = '';
+      });
+    }
+
+    renderGallery();
+    // Init gallery-managed note
+    (function initGalleryNote(url) {
+      const note = el.querySelector('#gallery-managed-note');
+      const controls = el.querySelector('#image-edit-controls');
+      if (note && controls) {
+        const isGalleryManaged = url && url.includes('/images/') && url.includes('/file');
+        note.style.display = isGalleryManaged ? 'block' : 'none';
+        controls.style.display = isGalleryManaged ? 'none' : 'block';
+      }
+    }(currentImageUrl));
+
+    // Image management (cover image)
+    const imageUrlInput  = el.querySelector('#edit-image-url');
+    const removeImageBtn = el.querySelector('#remove-image-btn');
+
+    function updateImagePreview(url) {
+      const preview = el.querySelector('#image-edit-preview');
+      if (isSafeUrl(url)) {
+        preview.innerHTML = `<img src="${escapeHtml(url)}" alt="Cover">`;
+      } else {
+        preview.innerHTML = '<span class="image-edit-empty">No image</span>';
+      }
+      removeImageBtn.style.display = url ? '' : 'none';
+    }
+
+    function updateHeroImage(url) {
+      const hero = el.querySelector('.modal-hero');
+      if (!hero) return;
+      if (isSafeUrl(url)) {
+        hero.style.backgroundImage = `url('${escapeHtml(url)}')`;
+        hero.classList.remove('modal-hero-placeholder');
+        if (!hero.querySelector('.modal-hero-overlay')) {
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-hero-overlay';
+          hero.insertBefore(overlay, hero.firstChild);
+        }
+        const placeholderEl = hero.querySelector('.placeholder-icon');
+        if (placeholderEl) placeholderEl.remove();
+      } else {
+        hero.style.backgroundImage = '';
+        hero.classList.add('modal-hero-placeholder');
+        const overlay = hero.querySelector('.modal-hero-overlay');
+        if (overlay) overlay.remove();
+        if (!hero.querySelector('.placeholder-icon')) {
+          hero.insertAdjacentHTML('afterbegin', placeholderSvg());
+        }
+      }
+    }
+
+    imageUrlInput.addEventListener('input', () => {
+      const val = imageUrlInput.value.trim();
+      // Only commit to currentImageUrl when the value is empty (clearing) or a valid URL.
+      if (!val || isSafeUrl(val)) {
+        currentImageUrl = val || null;
+      }
+      updateImagePreview(currentImageUrl);
+    });
+
+    removeImageBtn.addEventListener('click', () => {
+      onDeleteImage(game.id, () => {
+        currentImageUrl = null;
+        imageUrlInput.value = '';
+        updateImagePreview(null);
+        updateHeroImage(null);
+      });
+    });
+
+    // Save
+    function csvToJson(val) {
+      const items = (val || '').split(',').map(s => s.trim()).filter(Boolean);
+      return items.length ? JSON.stringify(items) : null;
+    }
+
+    el.querySelector('#save-btn').addEventListener('click', () => {
+      const payload = {
+        user_rating:      selectedRating || null,
+        user_notes:       el.querySelector('#user-notes').value.trim() || null,
+        last_played:      el.querySelector('#last-played-input').value || null,
+        name:             el.querySelector('#edit-name').value.trim(),
+        status:           el.querySelector('#edit-status').value || 'owned',
+        year_published:   parseInt(el.querySelector('#edit-year').value) || null,
+        min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
+        max_players:      parseInt(el.querySelector('#edit-max-players').value) || null,
+        min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value) || null,
+        max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value) || null,
+        difficulty:       parseFloat(el.querySelector('#edit-difficulty').value) || null,
+        image_url:        currentImageUrl,
+        description:      el.querySelector('#edit-description').value.trim() || null,
+        categories:       csvToJson(el.querySelector('#edit-categories').value),
+        mechanics:        csvToJson(el.querySelector('#edit-mechanics').value),
+        designers:        csvToJson(el.querySelector('#edit-designers').value),
+        publishers:       csvToJson(el.querySelector('#edit-publishers').value),
+        labels:           csvToJson(el.querySelector('#edit-labels').value),
+        purchase_date:    el.querySelector('#edit-purchase-date').value || null,
+        purchase_price:   el.querySelector('#edit-purchase-price').value !== '' ? parseFloat(el.querySelector('#edit-purchase-price').value) : null,
+        purchase_location: el.querySelector('#edit-purchase-location').value.trim() || null,
+      };
+      onSave(game.id, payload);
+    });
   }
-
-  el.querySelector('#save-btn').addEventListener('click', () => {
-    const payload = {
-      user_rating:      selectedRating || null,
-      user_notes:       el.querySelector('#user-notes').value.trim() || null,
-      last_played:      el.querySelector('#last-played-input').value || null,
-      name:             el.querySelector('#edit-name').value.trim(),
-      status:           el.querySelector('#edit-status').value || 'owned',
-      year_published:   parseInt(el.querySelector('#edit-year').value) || null,
-      min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
-      max_players:      parseInt(el.querySelector('#edit-max-players').value) || null,
-      min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value) || null,
-      max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value) || null,
-      difficulty:       parseFloat(el.querySelector('#edit-difficulty').value) || null,
-      image_url:        currentImageUrl,
-      description:      el.querySelector('#edit-description').value.trim() || null,
-      categories:       csvToJson(el.querySelector('#edit-categories').value),
-      mechanics:        csvToJson(el.querySelector('#edit-mechanics').value),
-      designers:        csvToJson(el.querySelector('#edit-designers').value),
-      publishers:       csvToJson(el.querySelector('#edit-publishers').value),
-      labels:           csvToJson(el.querySelector('#edit-labels').value),
-      purchase_date:    el.querySelector('#edit-purchase-date').value || null,
-      purchase_price:   el.querySelector('#edit-purchase-price').value !== '' ? parseFloat(el.querySelector('#edit-purchase-price').value) : null,
-      purchase_location: el.querySelector('#edit-purchase-location').value.trim() || null,
-    };
-    onSave(game.id, payload);
-  });
-
-  el.querySelector('#delete-game-btn').addEventListener('click', () => onDelete(game.id, game.name));
 
   return el;
 }
