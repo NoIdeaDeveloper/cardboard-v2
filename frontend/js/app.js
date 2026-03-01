@@ -148,7 +148,10 @@
 
     filtered.forEach(game => {
       const el = state.viewMode === 'grid' ? buildGameCard(game) : buildGameListItem(game);
-      el.addEventListener('click', () => openGameModal(game));
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('model-viewer, .scan-ar-placeholder')) return;
+        openGameModal(game);
+      });
       container.appendChild(el);
     });
   }
@@ -163,7 +166,7 @@
       ]);
     } catch (_) { /* non-fatal */ }
 
-    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan, images, handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages);
+    const contentEl = buildModalContent(game, sessions, handleSaveGame, handleDeleteGame, handleAddSession, handleDeleteSession, handleUploadInstructions, handleDeleteInstructions, handleUploadImage, handleDeleteImage, handleUploadScan, handleDeleteScan, images, handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages, handleUploadScanGlb, handleDeleteScanGlb, handleSetScanFeatured);
     openModal(contentEl);
   }
 
@@ -272,6 +275,39 @@
     } catch (err) {
       showToast(`Failed to remove image: ${err.message}`, 'error');
     }
+  }
+
+  async function handleUploadScanGlb(gameId, file, onSuccess) {
+    try {
+      await API.uploadScanGlb(gameId, file);
+      showToast('GLB scan uploaded!', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].scan_glb_filename = file.name;
+      if (onSuccess) onSuccess(file.name);
+    } catch (err) { showToast(`GLB upload failed: ${err.message}`, 'error'); }
+  }
+
+  async function handleDeleteScanGlb(gameId, onSuccess) {
+    try {
+      await API.deleteScanGlb(gameId);
+      showToast('GLB scan removed.', 'success');
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) {
+        state.games[idx].scan_glb_filename = null;
+        if (!state.games[idx].scan_filename) state.games[idx].scan_featured = false;
+      }
+      if (onSuccess) onSuccess();
+    } catch (err) { showToast(`Failed to remove GLB scan: ${err.message}`, 'error'); }
+  }
+
+  async function handleSetScanFeatured(gameId, featured, onSuccess) {
+    try {
+      const updated = await API.updateGame(gameId, { scan_featured: featured });
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx].scan_featured = updated.scan_featured;
+      renderCollection();
+      if (onSuccess) onSuccess(updated.scan_featured);
+    } catch (err) { showToast(`Failed to update featured state: ${err.message}`, 'error'); }
   }
 
   async function handleUploadScan(gameId, file, onSuccess) {
@@ -424,7 +460,7 @@
         const created = await API.createGame(payload);
         if (file) {
           try {
-            await API.uploadImage(created.id, file);
+            await API.uploadGalleryImage(created.id, file);
           } catch (imgErr) {
             showToast(`Game added but image upload failed: ${imgErr.message}`, 'error');
           }

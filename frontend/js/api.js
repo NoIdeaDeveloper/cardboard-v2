@@ -77,6 +77,18 @@ const API = {
   },
   deleteScan: (gameId) => request('DELETE', `/games/${gameId}/scan`),
 
+  // GLB scans
+  uploadScanGlb: async (gameId, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(`${API_BASE}/games/${gameId}/scan/glb`, { method: 'POST', body: fd });
+    if (resp.status === 204) return null;
+    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+    return data;
+  },
+  deleteScanGlb: (gameId) => request('DELETE', `/games/${gameId}/scan/glb`),
+
   // Photo gallery (multi-image)
   getImages: (gameId) => request('GET', `/games/${gameId}/images`),
   uploadGalleryImage: async (gameId, file) => {

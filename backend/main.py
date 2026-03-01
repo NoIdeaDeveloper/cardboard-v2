@@ -46,6 +46,8 @@ _GAMES_MIGRATIONS = [
     ("purchase_price",        "REAL"),
     ("purchase_location",     "VARCHAR(255)"),
     ("scan_filename",         "TEXT"),
+    ("scan_glb_filename",     "VARCHAR(255)"),
+    ("scan_featured",         "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 with engine.connect() as _conn:

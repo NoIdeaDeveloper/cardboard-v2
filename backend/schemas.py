@@ -17,6 +17,8 @@ class GameBase(BaseModel):
     thumbnail_url: Optional[str] = None
     instructions_filename: Optional[str] = None
     scan_filename: Optional[str] = None
+    scan_glb_filename: Optional[str] = None
+    scan_featured: bool = False
     categories: Optional[str] = None
     mechanics: Optional[str] = None
     designers: Optional[str] = None
@@ -57,6 +59,8 @@ class GameUpdate(BaseModel):
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = None
     last_played: Optional[date] = None
+    scan_glb_filename: Optional[str] = None
+    scan_featured: Optional[bool] = None
 
 
 class GameResponse(GameBase):

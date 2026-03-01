@@ -104,6 +104,58 @@ function placeholderSvg() {
   </svg>`;
 }
 
+// ===== Card / List Media Helpers =====
+
+function cardMediaHtml(game) {
+  if (game.scan_featured) {
+    if (game.scan_glb_filename) {
+      const iosSrc = game.scan_filename ? `ios-src="/api/games/${game.id}/scan"` : '';
+      return `<model-viewer src="/api/games/${game.id}/scan/glb" ${iosSrc}
+        camera-controls auto-rotate shadow-intensity="1"
+        class="card-model-viewer" alt="${escapeHtml(game.name)}"></model-viewer>`;
+    }
+    if (game.scan_filename) {
+      return `<a class="scan-ar-placeholder" href="/api/games/${game.id}/scan" rel="ar" aria-label="View in AR">
+        <svg class="scan-ar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+        <span class="scan-ar-label">AR</span>
+      </a>`;
+    }
+  }
+  const scanBadge = (game.scan_filename || game.scan_glb_filename)
+    ? `<button class="scan-badge" type="button" title="View 3D Scan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        3D
+      </button>`
+    : '';
+  return scanBadge + (isSafeUrl(game.image_url)
+    ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+       ${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
+    : placeholderSvg());
+}
+
+function listThumbHtml(game) {
+  if (game.scan_featured && (game.scan_glb_filename || game.scan_filename)) {
+    return `<div class="scan-featured-thumb" title="3D Scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      <span>3D</span>
+    </div>`;
+  }
+  return isSafeUrl(game.image_url)
+    ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+       ${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
+    : placeholderSvg();
+}
+
 // ===== Game Card (Grid) =====
 
 function buildGameCard(game) {
@@ -137,13 +189,7 @@ function buildGameCard(game) {
 
   el.innerHTML = `
     <div class="game-card-image">
-      ${game.scan_filename ? `<button class="scan-badge" type="button" title="View 3D Scan">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        3D
-      </button>` : ''}
-      ${isSafeUrl(game.image_url)
-        ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
-        : placeholderSvg()}
+      ${cardMediaHtml(game)}
     </div>
     <div class="game-card-body">
       <div class="game-card-title-row">
@@ -159,11 +205,9 @@ function buildGameCard(game) {
       </div>
     </div>`;
 
-  if (game.scan_filename) {
-    el.querySelector('.scan-badge').addEventListener('click', e => {
-      e.stopPropagation();
-      openScanViewer(game);
-    });
+  if (game.scan_filename || game.scan_glb_filename) {
+    const badge = el.querySelector('.scan-badge');
+    if (badge) badge.addEventListener('click', e => { e.stopPropagation(); openScanViewer(game); });
   }
 
   return el;
@@ -194,15 +238,13 @@ function buildGameListItem(game) {
 
   el.innerHTML = `
     <div class="list-thumb">
-      ${isSafeUrl(game.image_url)
-        ? `<img src="${escapeHtml(game.image_url)}" alt="${escapeHtml(game.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${placeholderSvg().replace('class="placeholder-icon"', 'class="placeholder-icon" style="display:none"')}`
-        : placeholderSvg()}
+      ${listThumbHtml(game)}
     </div>
     <div class="list-info">
       <div class="list-title-row">
         <div class="list-title">${escapeHtml(game.name)}</div>
         ${listStatusBadge}
-        ${game.scan_filename ? `<button class="scan-badge scan-badge-list" type="button" title="View 3D Scan">
+        ${(game.scan_filename || game.scan_glb_filename) ? `<button class="scan-badge scan-badge-list" type="button" title="View 3D Scan">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
           3D
         </button>` : ''}
@@ -214,11 +256,9 @@ function buildGameListItem(game) {
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
 
-  if (game.scan_filename) {
-    el.querySelector('.scan-badge-list').addEventListener('click', e => {
-      e.stopPropagation();
-      openScanViewer(game);
-    });
+  if (game.scan_filename || game.scan_glb_filename) {
+    const badge = el.querySelector('.scan-badge-list');
+    if (badge) badge.addEventListener('click', e => { e.stopPropagation(); openScanViewer(game); });
   }
 
   return el;
@@ -226,7 +266,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -307,7 +347,10 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   }
 
   const hasInstructions = !!game.instructions_filename;
-  const hasScan = !!game.scan_filename;
+  const hasScan      = !!game.scan_filename;
+  const hasGlb       = !!game.scan_glb_filename;
+  const hasScanAny   = hasScan || hasGlb;
+  const scanFeatured = !!game.scan_featured;
 
   el.innerHTML = `
     ${heroHtml}
@@ -392,7 +435,15 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       </div>
 
       <div class="modal-section">
-        <div class="section-label">3D Scan</div>
+        <div class="section-label-row">
+          <div class="section-label">3D Scan</div>
+          <div id="scan-featured-toggle" style="${hasScanAny ? '' : 'display:none'}">
+            <button class="btn btn-ghost btn-sm${scanFeatured ? ' btn-active' : ''}" id="set-scan-featured-btn">
+              ${scanFeatured ? '★ Featured on card' : '☆ Set as featured'}
+            </button>
+          </div>
+        </div>
+        <!-- USDZ -->
         <div class="instructions-existing" id="scan-existing" style="${hasScan ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
           <span class="instructions-link">${escapeHtml(game.scan_filename || '')}</span>
@@ -405,6 +456,21 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <span class="btn btn-secondary btn-sm upload-trigger">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload .usdz
+            </span>
+          </label>
+        </div>
+        <!-- GLB -->
+        <div class="instructions-existing" id="scan-glb-existing" style="${hasGlb ? '' : 'display:none'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span class="instructions-link">${escapeHtml(game.scan_glb_filename || '')} <span style="color:var(--text-3);font-size:11px">(GLB)</span></span>
+          <button class="btn btn-ghost btn-sm" id="delete-scan-glb-btn">Remove</button>
+        </div>
+        <div class="instructions-upload" id="scan-glb-upload" style="${hasGlb ? 'display:none' : ''}">
+          <label class="upload-label">
+            <input type="file" id="scan-glb-file-input" accept=".glb" style="display:none">
+            <span class="btn btn-secondary btn-sm upload-trigger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload .glb
             </span>
           </label>
         </div>
@@ -492,11 +558,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
               <div class="image-edit-controls" id="image-edit-controls">
                 <input type="url" id="edit-image-url" class="form-input" placeholder="Paste image URL…" value="${escapeHtml(game.image_url && !game.image_url.startsWith('/api/') ? game.image_url : '')}">
                 <div class="image-edit-row">
-                  <label class="btn btn-secondary btn-sm image-upload-label">
-                    <input type="file" id="image-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Upload file
-                  </label>
                   <button class="btn btn-ghost btn-sm" id="remove-image-btn"${!game.image_url ? ' style="display:none"' : ''}>Remove</button>
                 </div>
               </div>
@@ -652,7 +713,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
           <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>`;
         el.querySelector('#scan-upload').style.display = 'none';
-        wireScanButtons({ name: game.name, id: game.id, scan_filename: filename });
+        el.querySelector('#scan-featured-toggle').style.display = '';
+        wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: game.scan_glb_filename });
       });
     });
   }
@@ -665,12 +727,67 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       deleteBtn.addEventListener('click', () => {
         onDeleteScan(game.id, () => {
           el.querySelector('#scan-existing').style.display = 'none';
-          el.querySelector('#scan-upload').style.display = 'block';
+          el.querySelector('#scan-upload').style.display = '';
+          const glbGone = el.querySelector('#scan-glb-existing').style.display === 'none';
+          if (glbGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
         });
       });
     }
   }
   wireScanButtons(game);
+
+  // GLB file upload
+  const scanGlbFileInput = el.querySelector('#scan-glb-file-input');
+  if (scanGlbFileInput) {
+    scanGlbFileInput.addEventListener('change', () => {
+      const file = scanGlbFileInput.files[0];
+      if (!file) return;
+      onUploadScanGlb(game.id, file, (filename) => {
+        const existing = el.querySelector('#scan-glb-existing');
+        existing.style.display = 'flex';
+        existing.querySelector('.instructions-link').innerHTML =
+          `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(GLB)</span>`;
+        el.querySelector('#scan-glb-upload').style.display = 'none';
+        el.querySelector('#scan-featured-toggle').style.display = '';
+        wireGlbDeleteBtn();
+      });
+      scanGlbFileInput.value = '';
+    });
+  }
+
+  function wireGlbDeleteBtn() {
+    const btn = el.querySelector('#delete-scan-glb-btn');
+    if (!btn) return;
+    const fresh = btn.cloneNode(true);
+    btn.parentNode.replaceChild(fresh, btn);
+    fresh.addEventListener('click', () => {
+      onDeleteScanGlb(game.id, () => {
+        el.querySelector('#scan-glb-existing').style.display = 'none';
+        el.querySelector('#scan-glb-upload').style.display = '';
+        const usdzGone = el.querySelector('#scan-existing').style.display === 'none';
+        if (usdzGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
+      });
+    });
+  }
+  wireGlbDeleteBtn();
+
+  // Scan featured toggle
+  let currentScanFeatured = !!game.scan_featured;
+
+  function updateFeaturedBtn(featured) {
+    const btn = el.querySelector('#set-scan-featured-btn');
+    if (!btn) return;
+    currentScanFeatured = featured;
+    btn.textContent = featured ? '★ Featured on card' : '☆ Set as featured';
+    btn.classList.toggle('btn-active', featured);
+  }
+
+  const featuredBtn = el.querySelector('#set-scan-featured-btn');
+  if (featuredBtn) {
+    featuredBtn.addEventListener('click', () => {
+      onSetScanFeatured(game.id, !currentScanFeatured, (updated) => updateFeaturedBtn(updated));
+    });
+  }
 
   // Image URL tracking (used by both gallery and cover image management)
   let currentImageUrl = game.image_url || null;
@@ -793,7 +910,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
   // Image management (cover image)
   const imageUrlInput  = el.querySelector('#edit-image-url');
-  const imageFileInput = el.querySelector('#image-file-input');
   const removeImageBtn = el.querySelector('#remove-image-btn');
 
   function updateImagePreview(url) {
@@ -838,18 +954,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       currentImageUrl = val || null;
     }
     updateImagePreview(currentImageUrl);
-  });
-
-  imageFileInput.addEventListener('change', () => {
-    const file = imageFileInput.files[0];
-    if (!file) return;
-    onUploadImage(game.id, file, () => {
-      currentImageUrl = `/api/games/${game.id}/image`;
-      imageUrlInput.value = '';
-      const displayUrl = currentImageUrl + '?t=' + Date.now();
-      updateImagePreview(displayUrl);
-      updateHeroImage(displayUrl);
-    });
   });
 
   removeImageBtn.addEventListener('click', () => {
@@ -989,6 +1093,28 @@ function closeModal() {
 // ===== 3D Scan Viewer =====
 
 function openScanViewer(game) {
+  const hasUsdz = !!game.scan_filename;
+  const hasGlb  = !!game.scan_glb_filename;
+
+  const linksHtml = [
+    hasGlb  ? `<a href="/api/games/${game.id}/scan/glb" class="btn btn-primary scan-viewer-open"
+                  download="${escapeHtml(game.scan_glb_filename || 'scan.glb')}">Download GLB</a>` : '',
+    hasUsdz ? `<a href="/api/games/${game.id}/scan"
+                  class="btn ${hasGlb ? 'btn-secondary' : 'btn-primary'} scan-viewer-open"
+                  target="_blank" rel="ar">${hasGlb ? 'Open AR (iOS)' : 'Open 3D Scan'}</a>` : '',
+  ].join('');
+
+  const subtitle = [
+    hasGlb  ? `GLB: ${escapeHtml(game.scan_glb_filename || '')}` : '',
+    hasUsdz ? `USDZ: ${escapeHtml(game.scan_filename || '')}` : '',
+  ].filter(Boolean).join(' · ');
+
+  const hint = hasGlb && hasUsdz
+    ? 'GLB works in all browsers · USDZ for AR on iPhone/Mac'
+    : hasUsdz
+      ? 'Tap <strong>View in AR</strong> on iPhone · Opens in QuickLook on Mac'
+      : 'GLB format — open in any 3D viewer';
+
   const overlay = document.createElement('div');
   overlay.className = 'scan-viewer-overlay';
   overlay.innerHTML = `
@@ -1004,14 +1130,9 @@ function openScanViewer(game) {
         </svg>
       </div>
       <h2 class="scan-viewer-title">${escapeHtml(game.name)}</h2>
-      <p class="scan-viewer-subtitle">${escapeHtml(game.scan_filename || '3D Scan')}</p>
-      <a href="/api/games/${game.id}/scan"
-         class="btn btn-primary scan-viewer-open"
-         target="_blank"
-         rel="ar">
-        Open 3D Scan
-      </a>
-      <p class="scan-viewer-hint">Tap <strong>View in AR</strong> on iPhone · Opens in QuickLook on Mac</p>
+      <p class="scan-viewer-subtitle">${subtitle}</p>
+      ${linksHtml}
+      <p class="scan-viewer-hint">${hint}</p>
     </div>`;
 
   document.body.appendChild(overlay);
