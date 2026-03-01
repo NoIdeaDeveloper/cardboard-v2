@@ -477,30 +477,21 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         </div>
         <div class="instructions-existing" id="scan-existing" style="${hasScan ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          <span class="instructions-link">${escapeHtml(game.scan_filename || '')}</span>
+          <span class="instructions-link">${escapeHtml(game.scan_filename || '')} <span style="color:var(--text-3);font-size:11px">(USDZ)</span></span>
           <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
           <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>
-        </div>
-        <div class="instructions-upload" id="scan-upload" style="${hasScan ? 'display:none' : ''}">
-          <label class="upload-label">
-            <input type="file" id="scan-file-input" accept=".usdz" style="display:none">
-            <span class="btn btn-secondary btn-sm upload-trigger">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload .usdz
-            </span>
-          </label>
         </div>
         <div class="instructions-existing" id="scan-glb-existing" style="${hasGlb ? '' : 'display:none'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
           <span class="instructions-link">${escapeHtml(game.scan_glb_filename || '')} <span style="color:var(--text-3);font-size:11px">(GLB)</span></span>
           <button class="btn btn-ghost btn-sm" id="delete-scan-glb-btn">Remove</button>
         </div>
-        <div class="instructions-upload" id="scan-glb-upload" style="${hasGlb ? 'display:none' : ''}">
+        <div class="instructions-upload" id="scan-upload" style="${hasScan && hasGlb ? 'display:none' : ''}">
           <label class="upload-label">
-            <input type="file" id="scan-glb-file-input" accept=".glb" style="display:none">
+            <input type="file" id="scan-file-input" accept=".usdz,.glb" style="display:none">
             <span class="btn btn-secondary btn-sm upload-trigger">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload .glb
+              Upload 3D Scan (.usdz or .glb)
             </span>
           </label>
         </div>
@@ -843,24 +834,41 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     }
     wireDeleteInstructions();
 
-    // 3D scan upload
+    // 3D scan upload — single input accepts .usdz or .glb
+    function updateScanUploadVisibility() {
+      const usdzVisible = el.querySelector('#scan-existing').style.display !== 'none';
+      const glbVisible  = el.querySelector('#scan-glb-existing').style.display !== 'none';
+      el.querySelector('#scan-upload').style.display = (usdzVisible && glbVisible) ? 'none' : '';
+      el.querySelector('#scan-featured-toggle').style.display = (usdzVisible || glbVisible) ? '' : 'none';
+    }
+
     const scanFileInput = el.querySelector('#scan-file-input');
     if (scanFileInput) {
       scanFileInput.addEventListener('change', () => {
         const file = scanFileInput.files[0];
         if (!file) return;
-        onUploadScan(game.id, file, (filename) => {
-          const existing = el.querySelector('#scan-existing');
-          existing.style.display = 'flex';
-          existing.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-            <span class="instructions-link">${escapeHtml(filename)}</span>
-            <button class="btn btn-ghost btn-sm" id="view-scan-btn">View</button>
-            <button class="btn btn-ghost btn-sm" id="delete-scan-btn">Remove</button>`;
-          el.querySelector('#scan-upload').style.display = 'none';
-          el.querySelector('#scan-featured-toggle').style.display = '';
-          wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: game.scan_glb_filename });
-        });
+        const ext = file.name.split('.').pop().toLowerCase();
+        scanFileInput.value = '';
+
+        if (ext === 'usdz') {
+          onUploadScan(game.id, file, (filename) => {
+            const existing = el.querySelector('#scan-existing');
+            existing.style.display = 'flex';
+            existing.querySelector('.instructions-link').innerHTML =
+              `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(USDZ)</span>`;
+            updateScanUploadVisibility();
+            wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: null });
+          });
+        } else if (ext === 'glb') {
+          onUploadScanGlb(game.id, file, (filename) => {
+            const existing = el.querySelector('#scan-glb-existing');
+            existing.style.display = 'flex';
+            existing.querySelector('.instructions-link').innerHTML =
+              `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(GLB)</span>`;
+            updateScanUploadVisibility();
+            wireGlbDeleteBtn();
+          });
+        }
       });
     }
 
@@ -872,33 +880,12 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         deleteBtn.addEventListener('click', () => {
           onDeleteScan(game.id, () => {
             el.querySelector('#scan-existing').style.display = 'none';
-            el.querySelector('#scan-upload').style.display = '';
-            const glbGone = el.querySelector('#scan-glb-existing').style.display === 'none';
-            if (glbGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
+            updateScanUploadVisibility();
           });
         });
       }
     }
     wireScanButtons(game);
-
-    // GLB file upload
-    const scanGlbFileInput = el.querySelector('#scan-glb-file-input');
-    if (scanGlbFileInput) {
-      scanGlbFileInput.addEventListener('change', () => {
-        const file = scanGlbFileInput.files[0];
-        if (!file) return;
-        onUploadScanGlb(game.id, file, (filename) => {
-          const existing = el.querySelector('#scan-glb-existing');
-          existing.style.display = 'flex';
-          existing.querySelector('.instructions-link').innerHTML =
-            `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(GLB)</span>`;
-          el.querySelector('#scan-glb-upload').style.display = 'none';
-          el.querySelector('#scan-featured-toggle').style.display = '';
-          wireGlbDeleteBtn();
-        });
-        scanGlbFileInput.value = '';
-      });
-    }
 
     function wireGlbDeleteBtn() {
       const btn = el.querySelector('#delete-scan-glb-btn');
@@ -908,9 +895,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       fresh.addEventListener('click', () => {
         onDeleteScanGlb(game.id, () => {
           el.querySelector('#scan-glb-existing').style.display = 'none';
-          el.querySelector('#scan-glb-upload').style.display = '';
-          const usdzGone = el.querySelector('#scan-existing').style.display === 'none';
-          if (usdzGone) el.querySelector('#scan-featured-toggle').style.display = 'none';
+          updateScanUploadVisibility();
         });
       });
     }
