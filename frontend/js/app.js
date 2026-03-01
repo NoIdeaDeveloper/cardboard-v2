@@ -407,6 +407,7 @@
     const urlInput     = document.getElementById('m-image-url');
     const preview      = document.getElementById('add-image-preview');
     const removeBtn    = document.getElementById('add-image-remove');
+    let previewBlobUrl = null;
 
     function setPreview(src) {
       const safe = src && (isSafeUrl(src) || src.startsWith('blob:'));
@@ -422,7 +423,9 @@
     fileInput.addEventListener('change', () => {
       if (!fileInput.files[0]) return;
       urlInput.value = '';
-      setPreview(URL.createObjectURL(fileInput.files[0]));
+      if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
+      previewBlobUrl = URL.createObjectURL(fileInput.files[0]);
+      setPreview(previewBlobUrl);
     });
 
     urlInput.addEventListener('input', () => {
@@ -438,6 +441,7 @@
     removeBtn.addEventListener('click', () => {
       fileInput.value = '';
       urlInput.value  = '';
+      if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
       setPreview(null);
     });
 
@@ -487,6 +491,7 @@
         }
         showToast(`"${payload.name}" added to collection!`, 'success');
         form.reset();
+        if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
         setPreview(null);
         switchView('collection');
         refreshStatsBackground();
@@ -522,6 +527,7 @@
   }
 
   async function refreshStatsBackground() {
+    if (!document.getElementById('view-stats')?.classList.contains('active')) return;
     try {
       const stats = await API.getStats();
       const el = document.getElementById('stats-content');

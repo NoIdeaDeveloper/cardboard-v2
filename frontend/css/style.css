@@ -31,7 +31,7 @@
 html { font-size: 16px; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
@@ -82,7 +82,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .logo-text {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.35rem;
   font-weight: 700;
   color: var(--accent);
@@ -315,7 +315,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .game-card-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
@@ -506,7 +506,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .page-header h1 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text);
@@ -739,7 +739,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .modal-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
@@ -1143,7 +1143,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .confirm-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.15rem;
   margin-bottom: 10px;
 }
@@ -1316,7 +1316,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .stats-header { margin-bottom: 24px; }
 
 .stats-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text);
@@ -1338,7 +1338,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .stat-card-value {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--accent);
@@ -1367,7 +1367,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .stats-section-title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Georgia, serif;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);

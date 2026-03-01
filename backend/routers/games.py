@@ -82,8 +82,16 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
             content_type = resp.headers.get("Content-Type", "image/jpeg")
             ext = _safe_ext(image_url, content_type)
             dest = os.path.join(IMAGES_DIR, f"{game_id}{ext}")
+            downloaded = 0
             with open(dest, "wb") as f:
-                f.write(resp.read())
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    downloaded += len(chunk)
+                    if downloaded > MAX_IMAGE_SIZE:
+                        raise ValueError("Remote image exceeds size limit")
+                    f.write(chunk)
     except Exception as exc:
         logger.warning("Image cache failed for game %d: %s", game_id, exc)
         return
@@ -103,6 +111,10 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
             logger.info("Image cache discarded for game %d: URL changed during download", game_id)
     finally:
         db.close()
+
+
+def _instructions_path(game_id: int, filename: str) -> str:
+    return os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{os.path.basename(filename)}")
 
 
 def _delete_cached_image(game_id: int) -> None:
@@ -212,7 +224,7 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
     _delete_scan_file(game_id)
     _delete_glb_file(game_id)
     if db_game.instructions_filename:
-        instr_path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+        instr_path = _instructions_path(game_id, db_game.instructions_filename)
         try:
             os.remove(instr_path)
         except OSError:
@@ -232,7 +244,7 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{game_id}/image")
 def get_game_image(game_id: int):
-    matches = glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*"))
+    matches = sorted(glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*")))
     if not matches:
         raise HTTPException(status_code=404, detail="Image not cached")
     return FileResponse(matches[0])
@@ -306,13 +318,13 @@ async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Se
 
     # Remove old file if present
     if db_game.instructions_filename:
-        old_path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+        old_path = _instructions_path(game_id, db_game.instructions_filename)
         try:
             os.remove(old_path)
         except OSError:
             pass
 
-    dest = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{safe_name}")
+    dest = _instructions_path(game_id, safe_name)
     with open(dest, "wb") as f:
         f.write(content)
 
@@ -327,7 +339,7 @@ def get_instructions(game_id: int, db: Session = Depends(get_db)):
     if not db_game or not db_game.instructions_filename:
         raise HTTPException(status_code=404, detail="No instructions uploaded")
 
-    path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+    path = _instructions_path(game_id, db_game.instructions_filename)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="Instructions file not found")
 
@@ -348,7 +360,7 @@ def delete_instructions(game_id: int, db: Session = Depends(get_db)):
     if not db_game or not db_game.instructions_filename:
         raise HTTPException(status_code=404, detail="No instructions to delete")
 
-    path = os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{db_game.instructions_filename}")
+    path = _instructions_path(game_id, db_game.instructions_filename)
     try:
         os.remove(path)
     except OSError:

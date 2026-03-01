@@ -25,6 +25,16 @@ async function request(method, path, body = null) {
   return data;
 }
 
+async function uploadFile(path, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const resp = await fetch(`${API_BASE}${path}`, { method: 'POST', body: fd });
+  if (resp.status === 204) return null;
+  const data = await resp.json().catch(() => ({ detail: resp.statusText }));
+  if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+  return data;
+}
+
 const API = {
   // Games
   getGames: (params = {}) => {
@@ -41,67 +51,27 @@ const API = {
   addSession:    (gameId, data) => request('POST',   `/games/${gameId}/sessions`, data),
   deleteSession: (id)           => request('DELETE', `/sessions/${id}`),
 
-  // Images (uses raw fetch — multipart file upload)
-  uploadImage: async (gameId, file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const resp = await fetch(`${API_BASE}/games/${gameId}/image`, { method: 'POST', body: fd });
-    if (resp.status === 204) return null;
-    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
-    return data;
-  },
-  deleteImage: (gameId) => request('DELETE', `/games/${gameId}/image`),
+  // Images
+  uploadImage:        (gameId, file) => uploadFile(`/games/${gameId}/image`, file),
+  deleteImage:        (gameId)       => request('DELETE', `/games/${gameId}/image`),
 
-  // Instructions (uses raw fetch — multipart file upload)
-  uploadInstructions: async (gameId, file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const resp = await fetch(`${API_BASE}/games/${gameId}/instructions`, { method: 'POST', body: fd });
-    if (resp.status === 204) return null;
-    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
-    return data;
-  },
-  deleteInstructions: (gameId) => request('DELETE', `/games/${gameId}/instructions`),
+  // Instructions
+  uploadInstructions: (gameId, file) => uploadFile(`/games/${gameId}/instructions`, file),
+  deleteInstructions: (gameId)       => request('DELETE', `/games/${gameId}/instructions`),
 
-  // 3D scans (uses raw fetch — multipart file upload)
-  uploadScan: async (gameId, file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const resp = await fetch(`${API_BASE}/games/${gameId}/scan`, { method: 'POST', body: fd });
-    if (resp.status === 204) return null;
-    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
-    return data;
-  },
-  deleteScan: (gameId) => request('DELETE', `/games/${gameId}/scan`),
+  // 3D scans
+  uploadScan:         (gameId, file) => uploadFile(`/games/${gameId}/scan`, file),
+  deleteScan:         (gameId)       => request('DELETE', `/games/${gameId}/scan`),
 
   // GLB scans
-  uploadScanGlb: async (gameId, file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const resp = await fetch(`${API_BASE}/games/${gameId}/scan/glb`, { method: 'POST', body: fd });
-    if (resp.status === 204) return null;
-    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
-    return data;
-  },
-  deleteScanGlb: (gameId) => request('DELETE', `/games/${gameId}/scan/glb`),
+  uploadScanGlb:      (gameId, file) => uploadFile(`/games/${gameId}/scan/glb`, file),
+  deleteScanGlb:      (gameId)       => request('DELETE', `/games/${gameId}/scan/glb`),
 
   // Photo gallery (multi-image)
-  getImages: (gameId) => request('GET', `/games/${gameId}/images`),
-  uploadGalleryImage: async (gameId, file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const resp = await fetch(`${API_BASE}/games/${gameId}/images`, { method: 'POST', body: fd });
-    if (resp.status === 204) return null;
-    const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
-    return data;
-  },
-  deleteGalleryImage: (gameId, imgId) => request('DELETE', `/games/${gameId}/images/${imgId}`),
-  reorderGalleryImages: (gameId, order) => request('PATCH', `/games/${gameId}/images/reorder`, { order }),
+  getImages:          (gameId)           => request('GET', `/games/${gameId}/images`),
+  uploadGalleryImage: (gameId, file)     => uploadFile(`/games/${gameId}/images`, file),
+  deleteGalleryImage: (gameId, imgId)    => request('DELETE', `/games/${gameId}/images/${imgId}`),
+  reorderGalleryImages: (gameId, order)  => request('PATCH', `/games/${gameId}/images/reorder`, { order }),
 
   // Stats
   getStats: () => request('GET', '/stats'),
