@@ -152,6 +152,20 @@
         if (e.target.closest('model-viewer, .scan-ar-placeholder')) return;
         openGameModal(game);
       });
+
+      // Card image area → gallery lightbox (only when gallery images exist)
+      if (state.viewMode === 'grid') {
+        const cardMedia = el.querySelector('.card-media');
+        if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
+          cardMedia.classList.add('gallery-clickable');
+          cardMedia.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const imgs = await API.getImages(game.id).catch(() => []);
+            if (imgs.length) openGalleryLightbox(imgs, 0);
+          });
+        }
+      }
+
       container.appendChild(el);
     });
   }
@@ -182,6 +196,7 @@
       images,
       handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages,
       handleUploadScanGlb, handleDeleteScanGlb, handleSetScanFeatured,
+      handleAddGalleryImageFromUrl,
       mode, onSwitchToEdit, onSwitchToView,
     );
     openModal(contentEl);
@@ -389,6 +404,20 @@
       if (onSuccess) onSuccess();
     } catch (err) {
       showToast(`Failed to reorder photos: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleAddGalleryImageFromUrl(gameId, url, onSuccess) {
+    try {
+      const newImg = await API.addGalleryImageFromUrl(gameId, url);
+      if (newImg.sort_order === 0) {
+        const idx = state.games.findIndex(g => g.id === gameId);
+        if (idx !== -1) state.games[idx].image_url = `/api/games/${gameId}/images/${newImg.id}/file`;
+      }
+      showToast('Image added!', 'success');
+      if (onSuccess) onSuccess(newImg);
+    } catch (err) {
+      showToast(`Failed to add image: ${err.message}`, 'error');
     }
   }
 

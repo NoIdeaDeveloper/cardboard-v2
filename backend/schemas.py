@@ -98,6 +98,10 @@ class ReorderImagesBody(BaseModel):
     order: List[int]
 
 
+class GalleryImageFromUrl(BaseModel):
+    url: str
+
+
 class PlaySessionCreate(BaseModel):
     played_at: date
     player_count: Optional[int] = None

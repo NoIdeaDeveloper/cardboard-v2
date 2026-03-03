@@ -266,7 +266,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, mode = 'view', onSwitchToEdit, onSwitchToView) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, onAddGalleryImageFromUrl, mode = 'view', onSwitchToEdit, onSwitchToView) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -429,13 +429,19 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             + Add Photo
           </label>
         </div>
+        <div class="gallery-url-row">
+          <input type="url" id="gallery-url-input" class="form-input form-input-sm" placeholder="Add image from URL…">
+          <button class="btn btn-secondary btn-sm" id="gallery-url-add-btn">Add</button>
+        </div>
         <div class="gallery-list" id="gallery-list"></div>
       </div>`
     : images.length > 0
       ? `<div class="modal-section">
           <div class="section-label">Photo Gallery</div>
-          <div class="gallery-view-strip">${images.map(img =>
-            `<img class="gallery-view-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">`
+          <div class="gallery-view-strip">${images.map((img, i) =>
+            `<button class="gallery-view-thumb-btn" data-idx="${i}" aria-label="View image ${i + 1}">
+              <img class="gallery-view-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
+            </button>`
           ).join('')}</div>
         </div>`
       : '';
@@ -541,23 +547,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <div class="form-group">
             <label>Difficulty (1–5)</label>
             <input type="number" id="edit-difficulty" class="form-input" min="1" max="5" step="0.1" value="${game.difficulty || ''}">
-          </div>
-          <div class="form-group full-width">
-            <label>Cover Image</label>
-            <div class="image-edit-area">
-              <div class="image-edit-preview" id="image-edit-preview">
-                ${isSafeUrl(game.image_url)
-                  ? `<img src="${escapeHtml(game.image_url)}" alt="Cover">`
-                  : '<span class="image-edit-empty">No image</span>'}
-              </div>
-              <div class="image-edit-controls" id="image-edit-controls">
-                <input type="url" id="edit-image-url" class="form-input" placeholder="Paste image URL…" value="${escapeHtml(game.image_url && !game.image_url.startsWith('/api/') ? game.image_url : '')}">
-                <div class="image-edit-row">
-                  <button class="btn btn-ghost btn-sm" id="remove-image-btn"${!game.image_url ? ' style="display:none"' : ''}>Remove</button>
-                </div>
-              </div>
-              <p class="gallery-managed-note" id="gallery-managed-note" style="display:none">Cover set by gallery. Reorder photos above to change it.</p>
-            </div>
           </div>
           <div class="form-group full-width">
             <label>Categories <span class="hint">(comma-separated)</span></label>
@@ -756,6 +745,20 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     if (hasScanAny) {
       el.querySelector('#view-scan-view-btn').addEventListener('click', () => openScanViewer(game));
+    }
+
+    // Gallery strip thumbnails → lightbox
+    el.querySelectorAll('.gallery-view-thumb-btn').forEach(btn => {
+      btn.addEventListener('click', () => openGalleryLightbox(images, parseInt(btn.dataset.idx)));
+    });
+
+    // Hero image → lightbox (when gallery images exist)
+    if (images.length > 0 && game.image_url && game.image_url.includes('/images/')) {
+      const hero = el.querySelector('.modal-hero');
+      if (hero) {
+        hero.style.cursor = 'zoom-in';
+        hero.addEventListener('click', () => openGalleryLightbox(images, 0));
+      }
     }
 
     const descText   = el.querySelector('#desc-text');
@@ -994,17 +997,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     function onGalleryPrimaryChanged(newUrl) {
       currentImageUrl = newUrl;
-      updateHeroImage(newUrl);
-      updateImagePreview(newUrl);
-      const urlInput = el.querySelector('#edit-image-url');
-      if (urlInput) urlInput.value = '';
-      const note = el.querySelector('#gallery-managed-note');
-      const controls = el.querySelector('#image-edit-controls');
-      if (note && controls) {
-        const isGalleryManaged = newUrl && newUrl.includes('/images/') && newUrl.includes('/file');
-        note.style.display = isGalleryManaged ? 'block' : 'none';
-        controls.style.display = isGalleryManaged ? 'none' : 'block';
-      }
     }
 
     const galleryFileInput = el.querySelector('#gallery-file-input');
@@ -1025,72 +1017,28 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     }
 
     renderGallery();
-    // Init gallery-managed note
-    (function initGalleryNote(url) {
-      const note = el.querySelector('#gallery-managed-note');
-      const controls = el.querySelector('#image-edit-controls');
-      if (note && controls) {
-        const isGalleryManaged = url && url.includes('/images/') && url.includes('/file');
-        note.style.display = isGalleryManaged ? 'block' : 'none';
-        controls.style.display = isGalleryManaged ? 'none' : 'block';
-      }
-    }(currentImageUrl));
 
-    // Image management (cover image)
-    const imageUrlInput  = el.querySelector('#edit-image-url');
-    const removeImageBtn = el.querySelector('#remove-image-btn');
-
-    function updateImagePreview(url) {
-      const preview = el.querySelector('#image-edit-preview');
-      if (isSafeUrl(url)) {
-        preview.innerHTML = `<img src="${escapeHtml(url)}" alt="Cover">`;
-      } else {
-        preview.innerHTML = '<span class="image-edit-empty">No image</span>';
-      }
-      removeImageBtn.style.display = url ? '' : 'none';
-    }
-
-    function updateHeroImage(url) {
-      const hero = el.querySelector('.modal-hero');
-      if (!hero) return;
-      if (isSafeUrl(url)) {
-        hero.style.backgroundImage = `url('${escapeHtml(url)}')`;
-        hero.classList.remove('modal-hero-placeholder');
-        if (!hero.querySelector('.modal-hero-overlay')) {
-          const overlay = document.createElement('div');
-          overlay.className = 'modal-hero-overlay';
-          hero.insertBefore(overlay, hero.firstChild);
-        }
-        const placeholderEl = hero.querySelector('.placeholder-icon');
-        if (placeholderEl) placeholderEl.remove();
-      } else {
-        hero.style.backgroundImage = '';
-        hero.classList.add('modal-hero-placeholder');
-        const overlay = hero.querySelector('.modal-hero-overlay');
-        if (overlay) overlay.remove();
-        if (!hero.querySelector('.placeholder-icon')) {
-          hero.insertAdjacentHTML('afterbegin', placeholderSvg());
-        }
-      }
-    }
-
-    imageUrlInput.addEventListener('input', () => {
-      const val = imageUrlInput.value.trim();
-      // Only commit to currentImageUrl when the value is empty (clearing) or a valid URL.
-      if (!val || isSafeUrl(val)) {
-        currentImageUrl = val || null;
-      }
-      updateImagePreview(currentImageUrl);
-    });
-
-    removeImageBtn.addEventListener('click', () => {
-      onDeleteImage(game.id, () => {
-        currentImageUrl = null;
-        imageUrlInput.value = '';
-        updateImagePreview(null);
-        updateHeroImage(null);
+    // Gallery URL add
+    const galleryUrlInput = el.querySelector('#gallery-url-input');
+    const galleryUrlAddBtn = el.querySelector('#gallery-url-add-btn');
+    if (galleryUrlAddBtn) {
+      galleryUrlAddBtn.addEventListener('click', () => {
+        const url = galleryUrlInput.value.trim();
+        if (!url) return;
+        galleryUrlAddBtn.disabled = true;
+        galleryUrlAddBtn.textContent = 'Adding…';
+        onAddGalleryImageFromUrl(game.id, url, (newImg) => {
+          galleryUrlInput.value = '';
+          galleryUrlAddBtn.disabled = false;
+          galleryUrlAddBtn.textContent = 'Add';
+          galleryImages.push(newImg);
+          renderGallery();
+          if (galleryImages.length === 1) {
+            onGalleryPrimaryChanged(`/api/games/${game.id}/images/${newImg.id}/file`);
+          }
+        });
       });
-    });
+    }
 
     // Save
     function csvToJson(val) {
@@ -1149,6 +1097,69 @@ function closeModal() {
     document.getElementById('modal-inner').innerHTML = '';
     document.body.style.overflow = '';
   }, 200);
+}
+
+// ===== Gallery Lightbox =====
+
+function openGalleryLightbox(images, startIndex = 0) {
+  if (!images.length) return;
+  let current = startIndex;
+  const multi = images.length > 1;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'gallery-lightbox-overlay';
+  overlay.innerHTML = `
+    <div class="gallery-lightbox-panel">
+      <button class="gallery-lightbox-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      ${multi ? '<button class="gallery-lightbox-nav gallery-lightbox-prev" aria-label="Previous">&#8249;</button>' : ''}
+      <div class="gallery-lightbox-img-wrap">
+        <img class="gallery-lightbox-img" src="" alt="Gallery image">
+      </div>
+      ${multi ? '<button class="gallery-lightbox-nav gallery-lightbox-next" aria-label="Next">&#8250;</button>' : ''}
+      ${multi ? '<div class="gallery-lightbox-counter"></div>' : ''}
+    </div>`;
+
+  const img     = overlay.querySelector('.gallery-lightbox-img');
+  const counter = overlay.querySelector('.gallery-lightbox-counter');
+
+  function show(idx) {
+    current = ((idx % images.length) + images.length) % images.length;
+    img.src = `/api/games/${images[current].game_id}/images/${images[current].id}/file`;
+    if (counter) counter.textContent = `${current + 1} / ${images.length}`;
+  }
+
+  if (multi) {
+    overlay.querySelector('.gallery-lightbox-prev').addEventListener('click', () => show(current - 1));
+    overlay.querySelector('.gallery-lightbox-next').addEventListener('click', () => show(current + 1));
+  }
+  overlay.querySelector('.gallery-lightbox-close').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  let touchStartX = 0;
+  overlay.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  overlay.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (multi && Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+  });
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft'  && multi) show(current - 1);
+    else if (e.key === 'ArrowRight' && multi) show(current + 1);
+    else if (e.key === 'Escape') close();
+  }
+  document.addEventListener('keydown', onKey);
+
+  function close() {
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+  }
+
+  show(startIndex);
+  document.body.appendChild(overlay);
 }
 
 // ===== 3D Scan Viewer =====

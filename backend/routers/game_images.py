@@ -1,6 +1,9 @@
 import logging
+import mimetypes
 import os
 import shutil
+import urllib.parse
+import urllib.request
 import uuid
 from typing import List
 
@@ -40,6 +43,16 @@ def delete_all_gallery_images(game_id: int, db: Session) -> None:
 
 def _primary_url(game_id: int, first_img: models.GameImage) -> str:
     return f"/api/games/{game_id}/images/{first_img.id}/file"
+
+
+def _safe_gallery_ext(url: str, content_type: str) -> str:
+    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
+    if ext in (".jpe", ""):
+        url_ext = os.path.splitext(url.split("?")[0])[1].lower()
+        ext = url_ext if url_ext in ALLOWED_IMAGE_EXTENSIONS else ".jpg"
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        ext = ".jpg"
+    return ext
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +183,61 @@ def delete_gallery_image(game_id: int, img_id: int, db: Session = Depends(get_db
         logger.warning("Could not delete gallery file %s (game %d)", file_path, game_id)
 
     logger.info("Gallery image %d deleted for game %d", img_id, game_id)
+
+
+@router.post("/{game_id}/images/from-url", response_model=schemas.GameImageResponse, status_code=201)
+def add_gallery_image_from_url(
+    game_id: int, body: schemas.GalleryImageFromUrl, db: Session = Depends(get_db)
+):
+    game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    parsed = urllib.parse.urlparse(body.url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are supported")
+
+    try:
+        req = urllib.request.Request(body.url, headers={"User-Agent": "Cardboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "image/jpeg")
+            ext = _safe_gallery_ext(body.url, content_type)
+            downloaded, chunks = 0, []
+            while chunk := resp.read(65536):
+                downloaded += len(chunk)
+                if downloaded > MAX_IMAGE_SIZE:
+                    raise HTTPException(status_code=413, detail="Remote image exceeds 10 MB limit")
+                chunks.append(chunk)
+            content = b"".join(chunks)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not download image: {exc}")
+
+    last = (
+        db.query(models.GameImage)
+        .filter(models.GameImage.game_id == game_id)
+        .order_by(models.GameImage.sort_order.desc())
+        .first()
+    )
+    next_order = (last.sort_order + 1) if last else 0
+
+    filename = f"{uuid.uuid4()}{ext}"
+    with open(_image_file_path(game_id, filename), "wb") as f:
+        f.write(content)
+
+    db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
+    db.add(db_img)
+    db.flush()
+
+    if next_order == 0:
+        game.image_url = _primary_url(game_id, db_img)
+        game.image_cached = False
+
+    db.commit()
+    db.refresh(db_img)
+    logger.info("Gallery image added from URL for game %d (order=%d)", game_id, next_order)
+    return db_img
 
 
 @router.patch("/{game_id}/images/reorder", status_code=204)
