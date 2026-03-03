@@ -860,7 +860,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             existing.querySelector('.instructions-link').innerHTML =
               `${escapeHtml(filename)} <span style="color:var(--text-3);font-size:11px">(USDZ)</span>`;
             updateScanUploadVisibility();
-            wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: null });
+            wireScanButtons({ name: game.name, id: game.id, scan_filename: filename, scan_glb_filename: game.scan_glb_filename });
           });
         } else if (ext === 'glb') {
           onUploadScanGlb(game.id, file, (filename) => {
@@ -877,10 +877,16 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     function wireScanButtons(gameRef) {
       const viewBtn = el.querySelector('#view-scan-btn');
-      if (viewBtn) viewBtn.addEventListener('click', () => openScanViewer(gameRef));
+      if (viewBtn) {
+        const freshView = viewBtn.cloneNode(true);
+        viewBtn.parentNode.replaceChild(freshView, viewBtn);
+        freshView.addEventListener('click', () => openScanViewer(gameRef));
+      }
       const deleteBtn = el.querySelector('#delete-scan-btn');
       if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
+        const freshDel = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(freshDel, deleteBtn);
+        freshDel.addEventListener('click', () => {
           onDeleteScan(game.id, () => {
             el.querySelector('#scan-existing').style.display = 'none';
             updateScanUploadVisibility();
@@ -1027,16 +1033,16 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         if (!url) return;
         galleryUrlAddBtn.disabled = true;
         galleryUrlAddBtn.textContent = 'Adding…';
+        const resetBtn = () => { galleryUrlAddBtn.disabled = false; galleryUrlAddBtn.textContent = 'Add'; };
         onAddGalleryImageFromUrl(game.id, url, (newImg) => {
           galleryUrlInput.value = '';
-          galleryUrlAddBtn.disabled = false;
-          galleryUrlAddBtn.textContent = 'Add';
+          resetBtn();
           galleryImages.push(newImg);
           renderGallery();
           if (galleryImages.length === 1) {
             onGalleryPrimaryChanged(`/api/games/${game.id}/images/${newImg.id}/file`);
           }
-        });
+        }, resetBtn);
       });
     }
 

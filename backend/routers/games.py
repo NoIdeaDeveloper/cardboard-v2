@@ -94,6 +94,7 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
                     f.write(chunk)
     except Exception as exc:
         logger.warning("Image cache failed for game %d: %s", game_id, exc)
+        _delete_cached_image(game_id)  # remove any partial file
         return
 
     # Verify the URL is still current before updating the DB — the user may have

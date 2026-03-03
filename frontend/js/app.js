@@ -407,7 +407,7 @@
     }
   }
 
-  async function handleAddGalleryImageFromUrl(gameId, url, onSuccess) {
+  async function handleAddGalleryImageFromUrl(gameId, url, onSuccess, onError) {
     try {
       const newImg = await API.addGalleryImageFromUrl(gameId, url);
       if (newImg.sort_order === 0) {
@@ -418,6 +418,7 @@
       if (onSuccess) onSuccess(newImg);
     } catch (err) {
       showToast(`Failed to add image: ${err.message}`, 'error');
+      if (onError) onError();
     }
   }
 
