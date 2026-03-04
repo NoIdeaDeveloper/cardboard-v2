@@ -13,6 +13,9 @@
     sortDir: 'asc',
     search: '',
     statusFilter: 'owned',
+    filterNeverPlayed: false,
+    filterPlayers: null,
+    filterTime: null,
   };
 
   // ===== Init =====
@@ -20,6 +23,7 @@
     bindNav();
     bindCollectionControls();
     bindStatusPills();
+    bindFilters();
     bindAddGame();
     bindModalBackdrop();
     loadCollection();
@@ -133,6 +137,19 @@
     const filtered = state.games.filter(g => {
       if (state.statusFilter !== 'all' && g.status !== state.statusFilter) return false;
       if (search && !g.name.toLowerCase().includes(search)) return false;
+      if (state.filterNeverPlayed && g.last_played) return false;
+      if (state.filterPlayers !== null) {
+        const p = state.filterPlayers;
+        const lo = g.min_players ?? 1;
+        const hi = g.max_players ?? Infinity;
+        if (p < lo || p > hi) return false;
+      }
+      if (state.filterTime !== null) {
+        const t = state.filterTime;
+        const lo = g.min_playtime ?? 0;
+        const hi = g.max_playtime ?? Infinity;
+        if (t < lo || t > hi) return false;
+      }
       return true;
     });
 
@@ -574,6 +591,65 @@
         btn.classList.add('active');
         renderCollection();
       });
+    });
+  }
+
+  // ===== Advanced Filters =====
+  function bindFilters() {
+    const panel      = document.getElementById('filter-panel');
+    const searchEl   = document.getElementById('collection-search');
+    const searchWrap = searchEl.closest('.search-wrapper');
+    const neverBtn   = document.getElementById('filter-never-played');
+    const playersEl  = document.getElementById('filter-players');
+    const timeEl     = document.getElementById('filter-time');
+    const clearBtn   = document.getElementById('filter-clear-all');
+
+    function hasActiveFilters() {
+      return state.filterNeverPlayed || state.filterPlayers !== null || state.filterTime !== null;
+    }
+
+    function openPanel()  { panel.classList.add('open'); }
+    function closePanel() { if (!hasActiveFilters()) panel.classList.remove('open'); }
+
+    searchEl.addEventListener('click', openPanel);
+
+    document.addEventListener('mousedown', e => {
+      if (!panel.contains(e.target) && !searchWrap.contains(e.target)) closePanel();
+    });
+
+    neverBtn.addEventListener('click', () => {
+      state.filterNeverPlayed = !state.filterNeverPlayed;
+      neverBtn.classList.toggle('active', state.filterNeverPlayed);
+      renderCollection();
+    });
+
+    let playerDebounce, timeDebounce;
+
+    playersEl.addEventListener('input', () => {
+      clearTimeout(playerDebounce);
+      playerDebounce = setTimeout(() => {
+        state.filterPlayers = playersEl.value ? parseInt(playersEl.value, 10) : null;
+        renderCollection();
+      }, 300);
+    });
+
+    timeEl.addEventListener('input', () => {
+      clearTimeout(timeDebounce);
+      timeDebounce = setTimeout(() => {
+        state.filterTime = timeEl.value ? parseInt(timeEl.value, 10) : null;
+        renderCollection();
+      }, 300);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      state.filterNeverPlayed = false;
+      state.filterPlayers = null;
+      state.filterTime = null;
+      neverBtn.classList.remove('active');
+      playersEl.value = '';
+      timeEl.value = '';
+      panel.classList.remove('open');
+      renderCollection();
     });
   }
 

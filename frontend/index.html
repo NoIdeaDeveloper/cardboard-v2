@@ -72,6 +72,23 @@
         </div>
       </div>
 
+      <!-- Advanced filter panel -->
+      <div class="filter-panel" id="filter-panel">
+        <div class="filter-panel-inner">
+          <button class="filter-pill" id="filter-never-played">Never Played</button>
+          <div class="filter-field">
+            <label class="filter-label" for="filter-players">Players</label>
+            <input type="number" id="filter-players" class="filter-input" min="1" max="99" placeholder="any">
+          </div>
+          <div class="filter-field">
+            <label class="filter-label" for="filter-time">Time</label>
+            <input type="number" id="filter-time" class="filter-input" min="1" placeholder="any">
+            <span class="filter-unit">min</span>
+          </div>
+          <button class="filter-clear-all" id="filter-clear-all">Clear filters</button>
+        </div>
+      </div>
+
       <!-- Status filter pills -->
       <div class="status-pills" id="status-pills">
         <button class="pill" data-status="all">All</button>
