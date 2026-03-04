@@ -2082,6 +2082,34 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   margin-top: 2px;
 }
 
+/* ===== Gallery captions ===== */
+.gallery-caption-input {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+
+.gallery-view-caption {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-2);
+  text-align: center;
+  padding: 3px 4px 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gallery-lightbox-caption {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  padding: 8px 16px 0;
+  min-height: 1.4em;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }

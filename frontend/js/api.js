@@ -73,6 +73,7 @@ const API = {
   deleteGalleryImage: (gameId, imgId)    => request('DELETE', `/games/${gameId}/images/${imgId}`),
   reorderGalleryImages: (gameId, order)  => request('PATCH', `/games/${gameId}/images/reorder`, { order }),
   addGalleryImageFromUrl: (gameId, url)  => request('POST',  `/games/${gameId}/images/from-url`, { url }),
+  updateGalleryImage:     (gameId, imgId, data) => request('PATCH', `/games/${gameId}/images/${imgId}`, data),
 
   // Stats
   getStats: () => request('GET', '/stats'),

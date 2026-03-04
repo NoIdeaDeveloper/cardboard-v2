@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import date, datetime
 
 
@@ -10,6 +10,7 @@ class GameBase(BaseModel):
     @classmethod
     def strip_name(cls, v):
         return v.strip() if isinstance(v, str) else v
+
     status: str = Field('owned', pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
@@ -50,6 +51,7 @@ class GameUpdate(BaseModel):
     @classmethod
     def strip_name(cls, v):
         return v.strip() if isinstance(v, str) else v
+
     status: Optional[str] = Field(None, pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
     min_players: Optional[int] = None
@@ -92,10 +94,15 @@ class GameImageResponse(BaseModel):
     game_id: int
     filename: str
     sort_order: int
+    caption: Optional[str] = None
     date_added: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class GameImageUpdate(BaseModel):
+    caption: Optional[str] = None
 
 
 class ReorderImagesBody(BaseModel):

@@ -272,7 +272,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, onAddGalleryImageFromUrl, mode = 'view', onSwitchToEdit, onSwitchToView) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, onAddGalleryImageFromUrl, onUpdateGalleryImageCaption, mode = 'view', onSwitchToEdit, onSwitchToView) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -454,6 +454,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <div class="gallery-view-strip">${images.map((img, i) =>
             `<button class="gallery-view-thumb-btn" data-idx="${i}" aria-label="View image ${i + 1}">
               <img class="gallery-view-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
+              ${img.caption ? `<span class="gallery-view-caption">${escapeHtml(img.caption)}</span>` : ''}
             </button>`
           ).join('')}</div>
         </div>`
@@ -717,8 +718,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     const sessionData = {
       played_at:        dateVal,
-      player_count:     parseInt(el.querySelector('#session-players').value) || null,
-      duration_minutes: parseInt(el.querySelector('#session-duration').value) || null,
+      player_count:     parseInt(el.querySelector('#session-players').value, 10) || null,
+      duration_minutes: parseInt(el.querySelector('#session-duration').value, 10) || null,
       notes:            el.querySelector('#session-notes').value.trim() || null,
     };
 
@@ -753,7 +754,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   el.querySelector('#sessions-list').addEventListener('click', e => {
     const btn = e.target.closest('.session-delete');
     if (!btn) return;
-    const sessionId = parseInt(btn.dataset.sessionId);
+    const sessionId = parseInt(btn.dataset.sessionId, 10);
     onDeleteSession(sessionId, game.id, () => {
       const item = el.querySelector(`.session-item[data-session-id="${sessionId}"]`);
       if (item) item.remove();
@@ -773,7 +774,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     // Gallery strip thumbnails → lightbox
     el.querySelectorAll('.gallery-view-thumb-btn').forEach(btn => {
-      btn.addEventListener('click', () => openGalleryLightbox(images, parseInt(btn.dataset.idx)));
+      btn.addEventListener('click', () => openGalleryLightbox(images, parseInt(btn.dataset.idx, 10)));
     });
 
     // Hero image → lightbox (when gallery images exist)
@@ -808,19 +809,19 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
     function updateStarDisplay(value) {
       starsContainer.querySelectorAll('.star-btn').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.dataset.value) <= (value || 0));
+        btn.classList.toggle('active', parseInt(btn.dataset.value, 10) <= (value || 0));
       });
       ratingDisplay.textContent = value || '—';
     }
 
     starsContainer.addEventListener('mouseover', e => {
       const btn = e.target.closest('.star-btn');
-      if (btn) updateStarDisplay(parseInt(btn.dataset.value));
+      if (btn) updateStarDisplay(parseInt(btn.dataset.value, 10));
     });
     starsContainer.addEventListener('mouseleave', () => updateStarDisplay(selectedRating));
     starsContainer.addEventListener('click', e => {
       const btn = e.target.closest('.star-btn');
-      if (btn) { selectedRating = parseInt(btn.dataset.value); updateStarDisplay(selectedRating); }
+      if (btn) { selectedRating = parseInt(btn.dataset.value, 10); updateStarDisplay(selectedRating); }
     });
     el.querySelector('#rating-clear').addEventListener('click', () => { selectedRating = null; updateStarDisplay(null); });
 
@@ -971,7 +972,9 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <button class="btn btn-ghost btn-sm gallery-move-up"${index === 0 ? ' disabled' : ''} title="Move up">↑</button>
           <button class="btn btn-ghost btn-sm gallery-move-down"${index === total - 1 ? ' disabled' : ''} title="Move down">↓</button>
           <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo">Remove</button>
-        </div>`;
+        </div>
+        <input type="text" class="gallery-caption-input form-input form-input-sm"
+               placeholder="Add caption…" value="${escapeHtml(img.caption || '')}">`;
       return item;
     }
 
@@ -1005,6 +1008,15 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             galleryImages.splice(0, galleryImages.length, ...newOrder);
             renderGallery();
             onGalleryPrimaryChanged(newPrimaryUrl);
+          });
+        });
+
+        const captionInput = item.querySelector('.gallery-caption-input');
+        captionInput.addEventListener('blur', () => {
+          const newCaption = captionInput.value.trim() || null;
+          if (newCaption === (img.caption || null)) return;
+          onUpdateGalleryImageCaption(game.id, img.id, newCaption, (updated) => {
+            img.caption = updated.caption;
           });
         });
 
@@ -1086,11 +1098,11 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         last_played:      el.querySelector('#last-played-input').value || null,
         name:             name,
         status:           el.querySelector('#edit-status').value || 'owned',
-        year_published:   parseInt(el.querySelector('#edit-year').value) || null,
-        min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
-        max_players:      parseInt(el.querySelector('#edit-max-players').value) || null,
-        min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value) || null,
-        max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value) || null,
+        year_published:   parseInt(el.querySelector('#edit-year').value, 10) || null,
+        min_players:      parseInt(el.querySelector('#edit-min-players').value, 10) || null,
+        max_players:      parseInt(el.querySelector('#edit-max-players').value, 10) || null,
+        min_playtime:     parseInt(el.querySelector('#edit-min-playtime').value, 10) || null,
+        max_playtime:     parseInt(el.querySelector('#edit-max-playtime').value, 10) || null,
         difficulty:       parseFloat(el.querySelector('#edit-difficulty').value) || null,
         image_url:        currentImageUrl,
         description:      el.querySelector('#edit-description').value.trim() || null,
@@ -1155,16 +1167,19 @@ function openGalleryLightbox(images, startIndex = 0) {
         <img class="gallery-lightbox-img" src="" alt="Gallery image">
       </div>
       ${multi ? '<button class="gallery-lightbox-nav gallery-lightbox-next" aria-label="Next">&#8250;</button>' : ''}
+      <div class="gallery-lightbox-caption"></div>
       ${multi ? '<div class="gallery-lightbox-counter"></div>' : ''}
     </div>`;
 
-  const img     = overlay.querySelector('.gallery-lightbox-img');
-  const counter = overlay.querySelector('.gallery-lightbox-counter');
+  const img        = overlay.querySelector('.gallery-lightbox-img');
+  const counter    = overlay.querySelector('.gallery-lightbox-counter');
+  const captionEl  = overlay.querySelector('.gallery-lightbox-caption');
 
   function show(idx) {
     current = ((idx % images.length) + images.length) % images.length;
     img.src = `/api/games/${images[current].game_id}/images/${images[current].id}/file`;
     if (counter) counter.textContent = `${current + 1} / ${images.length}`;
+    if (captionEl) captionEl.textContent = images[current].caption || '';
   }
 
   if (multi) {

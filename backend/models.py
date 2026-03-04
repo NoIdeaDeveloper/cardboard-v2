@@ -48,6 +48,7 @@ class GameImage(Base):
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
+    caption = Column(String(500), nullable=True)
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 

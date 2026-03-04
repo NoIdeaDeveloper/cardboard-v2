@@ -281,3 +281,21 @@ def reorder_gallery_images(
 
     db.commit()
     logger.info("Gallery images reordered for game %d", game_id)
+
+
+@router.patch("/{game_id}/images/{img_id}", response_model=schemas.GameImageResponse)
+def update_gallery_image(
+    game_id: int, img_id: int, body: schemas.GameImageUpdate, db: Session = Depends(get_db)
+):
+    img = (
+        db.query(models.GameImage)
+        .filter(models.GameImage.id == img_id, models.GameImage.game_id == game_id)
+        .first()
+    )
+    if not img:
+        raise HTTPException(status_code=404, detail="Image not found")
+    img.caption = body.caption.strip() if body.caption else None
+    db.commit()
+    db.refresh(img)
+    logger.info("Gallery image %d updated for game %d", img_id, game_id)
+    return img

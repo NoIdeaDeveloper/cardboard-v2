@@ -204,6 +204,7 @@
       handleUploadGalleryImage, handleDeleteGalleryImage, handleReorderGalleryImages,
       handleUploadScanGlb, handleDeleteScanGlb, handleSetScanFeatured,
       handleAddGalleryImageFromUrl,
+      handleUpdateGalleryImageCaption,
       mode, onSwitchToEdit, onSwitchToView,
     );
     openModal(contentEl);
@@ -420,6 +421,15 @@
     }
   }
 
+  async function handleUpdateGalleryImageCaption(gameId, imgId, caption, onSuccess) {
+    try {
+      const updated = await API.updateGalleryImage(gameId, imgId, { caption });
+      if (onSuccess) onSuccess(updated);
+    } catch (err) {
+      showToast(`Failed to save caption: ${err.message}`, 'error');
+    }
+  }
+
   async function handleAddGalleryImageFromUrl(gameId, url, onSuccess, onError) {
     try {
       const newImg = await API.addGalleryImageFromUrl(gameId, url);
@@ -504,11 +514,11 @@
       const payload = {
         name:              fd.get('name'),
         status:            fd.get('status') || 'owned',
-        year_published:    parseInt(fd.get('year_published')) || null,
-        min_players:       parseInt(fd.get('min_players')) || null,
-        max_players:       parseInt(fd.get('max_players')) || null,
-        min_playtime:      parseInt(fd.get('min_playtime')) || null,
-        max_playtime:      parseInt(fd.get('max_playtime')) || null,
+        year_published:    parseInt(fd.get('year_published'), 10) || null,
+        min_players:       parseInt(fd.get('min_players'), 10) || null,
+        max_players:       parseInt(fd.get('max_players'), 10) || null,
+        min_playtime:      parseInt(fd.get('min_playtime'), 10) || null,
+        max_playtime:      parseInt(fd.get('max_playtime'), 10) || null,
         difficulty:        parseFloat(fd.get('difficulty')) || null,
         // If a file is selected, skip the URL — image will be uploaded after creation
         image_url:         file ? null : (fd.get('image_url') || null),

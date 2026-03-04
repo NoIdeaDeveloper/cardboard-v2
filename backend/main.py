@@ -60,6 +60,18 @@ with engine.connect() as _conn:
             _conn.commit()
             logger.info("Migration applied: games.%s added", _col)
 
+_GAME_IMAGES_MIGRATIONS = [
+    ("caption", "VARCHAR(500)"),
+]
+
+with engine.connect() as _conn:
+    _existing_img = {row[1] for row in _conn.execute(text("PRAGMA table_info(game_images)"))}
+    for _col, _typedef in _GAME_IMAGES_MIGRATIONS:
+        if _col not in _existing_img:
+            _conn.execute(text(f"ALTER TABLE game_images ADD COLUMN {_col} {_typedef}"))
+            _conn.commit()
+            logger.info("Migration applied: game_images.%s added", _col)
+
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
 
 app.add_middleware(
