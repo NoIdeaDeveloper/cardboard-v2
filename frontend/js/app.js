@@ -32,7 +32,17 @@
   // ===== Navigation =====
   function bindNav() {
     document.querySelectorAll('[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => switchView(btn.dataset.view));
+      btn.addEventListener('click', () => {
+        const targetView = btn.dataset.view;
+        const targetViewEl = document.getElementById(`view-${targetView}`);
+        
+        // If already on the target view, smooth scroll to top
+        if (targetViewEl && targetViewEl.classList.contains('active')) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          switchView(targetView);
+        }
+      });
     });
 
     // Add click handlers for logo to return to home
