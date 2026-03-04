@@ -1233,7 +1233,32 @@ function openScanViewer(game) {
 
 // ===== Stats View =====
 
-function buildStatsView(stats, games) {
+function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
+  const SECTION_DEFAULTS = {
+    show_summary: true, show_most_played: true, show_recently_played: true,
+    show_ratings: true, show_labels: true, show_added_by_month: true,
+    show_sessions_by_month: true, show_never_played: true,
+  };
+  let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
+
+  const SECTION_TOGGLES = [
+    ['show_summary',          'Summary Cards'],
+    ['show_most_played',      'Most Played'],
+    ['show_recently_played',  'Recently Played'],
+    ['show_ratings',          'Rating Distribution'],
+    ['show_labels',           'Labels'],
+    ['show_added_by_month',   'Added by Month'],
+    ['show_sessions_by_month','Sessions by Month'],
+    ['show_never_played',     'Never Played'],
+  ];
+
+  const settingsTogglesHtml = SECTION_TOGGLES.map(([key, label]) =>
+    `<label class="stats-settings-toggle">
+      <input type="checkbox" data-pref="${key}"${currentPrefs[key] !== false ? ' checked' : ''}>
+      ${escapeHtml(label)}
+    </label>`
+  ).join('');
+
   const el = document.createElement('div');
   el.className = 'stats-view';
 
@@ -1249,7 +1274,7 @@ function buildStatsView(stats, games) {
     { label: 'Never Played',  value: stats.never_played_count },
   ];
 
-  const cardsHtml = `<div class="stat-cards">
+  const cardsHtml = `<div class="stat-cards" data-section="summary"${!currentPrefs.show_summary ? ' style="display:none"' : ''}>
     ${statDefs.map(c => `
       <div class="stat-card">
         <div class="stat-card-value">${c.value}</div>
@@ -1259,7 +1284,7 @@ function buildStatsView(stats, games) {
 
   // Most played
   const mostPlayedHtml = stats.most_played.length ? `
-    <div class="stats-section">
+    <div class="stats-section" data-section="most_played"${!currentPrefs.show_most_played ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Most Played</h3>
       <div class="most-played-list">
         ${stats.most_played.map((entry, i) => {
@@ -1281,7 +1306,7 @@ function buildStatsView(stats, games) {
   const ratingEntries = Object.entries(stats.ratings_distribution);
   const maxRating = Math.max(...ratingEntries.map(([, v]) => v), 1);
   const ratingsHtml = `
-    <div class="stats-section">
+    <div class="stats-section" data-section="ratings"${!currentPrefs.show_ratings ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Rating Distribution</h3>
       <div class="stat-bar-chart">
         ${ratingEntries.map(([bucket, count]) => `<div class="stat-bar-row">
@@ -1296,7 +1321,7 @@ function buildStatsView(stats, games) {
   const labelEntries = Object.entries(stats.label_counts).slice(0, 10);
   const maxLabel = Math.max(...labelEntries.map(([, v]) => v), 1);
   const labelsHtml = labelEntries.length ? `
-    <div class="stats-section">
+    <div class="stats-section" data-section="labels"${!currentPrefs.show_labels ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Labels</h3>
       <div class="stat-bar-chart">
         ${labelEntries.map(([label, count]) => `<div class="stat-bar-row">
@@ -1310,7 +1335,7 @@ function buildStatsView(stats, games) {
   // Added by month
   const addedMax = Math.max(...stats.added_by_month.map(e => e.count), 1);
   const addedHtml = `
-    <div class="stats-section">
+    <div class="stats-section" data-section="added_by_month"${!currentPrefs.show_added_by_month ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Added by Month</h3>
       <div class="stat-bar-chart">
         ${stats.added_by_month.map(entry => `<div class="stat-bar-row">
@@ -1324,7 +1349,7 @@ function buildStatsView(stats, games) {
   // Sessions by month
   const sessionsMax = Math.max(...stats.sessions_by_month.map(e => e.count), 1);
   const sessionsByMonthHtml = `
-    <div class="stats-section">
+    <div class="stats-section" data-section="sessions_by_month"${!currentPrefs.show_sessions_by_month ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Sessions by Month</h3>
       <div class="stat-bar-chart">
         ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row">
@@ -1337,7 +1362,7 @@ function buildStatsView(stats, games) {
 
   // Recently played (last 10 sessions)
   const recentSessionsHtml = stats.recent_sessions.length ? `
-    <div class="stats-section">
+    <div class="stats-section" data-section="recently_played"${!currentPrefs.show_recently_played ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Recently Played</h3>
       <div class="recent-sessions-list">
         ${stats.recent_sessions.map(s => `
@@ -1355,7 +1380,7 @@ function buildStatsView(stats, games) {
   // Never played — use last_played as the criterion (matches what's listed)
   const neverPlayed = games.filter(g => !g.last_played);
   const neverPlayedHtml = `
-    <div class="stats-section">
+    <div class="stats-section" data-section="never_played"${!currentPrefs.show_never_played ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Never Played (${neverPlayed.length})</h3>
       ${neverPlayed.length
         ? `<div class="never-played-list">
@@ -1368,6 +1393,17 @@ function buildStatsView(stats, games) {
   el.innerHTML = `
     <div class="stats-header">
       <h1 class="stats-title">Collection Stats</h1>
+      <button class="stats-settings-btn" id="stats-settings-btn" title="Configure sections" aria-label="Configure sections">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="stats-settings-panel" id="stats-settings-panel" style="display:none">
+      <div class="stats-settings-grid">
+        ${settingsTogglesHtml}
+      </div>
     </div>
     ${cardsHtml}
     <div class="stats-grid">
@@ -1379,6 +1415,26 @@ function buildStatsView(stats, games) {
       ${sessionsByMonthHtml}
       ${neverPlayedHtml}
     </div>`;
+
+  const settingsBtn   = el.querySelector('#stats-settings-btn');
+  const settingsPanel = el.querySelector('#stats-settings-panel');
+
+  settingsBtn.addEventListener('click', () => {
+    const open = settingsPanel.style.display !== 'none';
+    settingsPanel.style.display = open ? 'none' : 'block';
+    settingsBtn.classList.toggle('active', !open);
+  });
+
+  el.querySelectorAll('.stats-settings-toggle input').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const prefKey = checkbox.dataset.pref;
+      currentPrefs = { ...currentPrefs, [prefKey]: checkbox.checked };
+      const sectionAttr = prefKey.replace('show_', '');
+      const section = el.querySelector(`[data-section="${sectionAttr}"]`);
+      if (section) section.style.display = checkbox.checked ? '' : 'none';
+      if (onPrefsChange) onPrefsChange(currentPrefs);
+    });
+  });
 
   return el;
 }

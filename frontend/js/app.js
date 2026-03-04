@@ -550,7 +550,67 @@
     });
   }
 
+  async function loadStats() {
+    const el = document.getElementById('stats-content');
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
+    try {
+      const stats = await API.getStats();
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games));
+    } catch (err) {
+      el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
+    }
+  }
+
+  async function refreshStatsBackground() {
+    if (!document.getElementById('view-stats')?.classList.contains('active')) return;
+    try {
+      const stats = await API.getStats();
+      const el = document.getElementById('stats-content');
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games));
+    } catch (_) { /* non-fatal */ }
+  }
+=======
   // ===== Stats =====
+  const STATS_PREFS_KEY = 'cardboard_stats_prefs';
+  const STATS_PREFS_DEFAULTS = {
+    show_summary: true, show_most_played: true, show_recently_played: true,
+    show_ratings: true, show_labels: true, show_added_by_month: true,
+    show_sessions_by_month: true, show_never_played: true,
+  };
+
+  function loadStatsPrefs() {
+    try {
+      return { ...STATS_PREFS_DEFAULTS, ...JSON.parse(localStorage.getItem(STATS_PREFS_KEY) || '{}') };
+    } catch { return { ...STATS_PREFS_DEFAULTS }; }
+  }
+
+  function saveStatsPrefs(newPrefs) {
+    localStorage.setItem(STATS_PREFS_KEY, JSON.stringify(newPrefs));
+  }
+
+  async function loadStats() {
+    const el = document.getElementById('stats-content');
+    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
+    try {
+      const stats = await API.getStats();
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs));
+    } catch (err) {
+      el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
+    }
+  }
+
+  async function refreshStatsBackground() {
+    if (!document.getElementById('view-stats')?.classList.contains('active')) return;
+    try {
+      const stats = await API.getStats();
+      const el = document.getElementById('stats-content');
+      el.innerHTML = '';
+      el.appendChild(buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs));
+    } catch (_) { /* non-fatal */ }
+  }=====
   async function loadStats() {
     const el = document.getElementById('stats-content');
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';

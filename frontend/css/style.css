@@ -1991,6 +1991,60 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 .gallery-view-thumb-btn:hover { opacity: 0.8; }
 
+/* ===== Stats settings panel ===== */
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.stats-settings-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.stats-settings-btn:hover,
+.stats-settings-btn.active {
+  color: var(--text-1);
+  border-color: var(--text-2);
+}
+.stats-settings-btn svg { width: 18px; height: 18px; }
+
+.stats-settings-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.stats-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 10px;
+}
+.stats-settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  user-select: none;
+}
+.stats-settings-toggle:hover { color: var(--text-1); }
+.stats-settings-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }
