@@ -35,8 +35,17 @@
     const logoIcon = document.querySelector('.logo-icon');
     const logoText = document.querySelector('.logo-text');
     
-    if (logoIcon) logoIcon.addEventListener('click', () => switchView('collection'));
-    if (logoText) logoText.addEventListener('click', () => switchView('collection'));
+    function handleLogoClick() {
+      const collectionView = document.getElementById('view-collection');
+      if (collectionView && collectionView.classList.contains('active')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        switchView('collection');
+      }
+    }
+
+    if (logoIcon) logoIcon.addEventListener('click', handleLogoClick);
+    if (logoText) logoText.addEventListener('click', handleLogoClick);
   }
 
   function switchView(view) {
