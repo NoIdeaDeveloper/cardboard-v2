@@ -30,6 +30,13 @@
     document.querySelectorAll('[data-view]').forEach(btn => {
       btn.addEventListener('click', () => switchView(btn.dataset.view));
     });
+
+    // Add click handlers for logo to return to home
+    const logoIcon = document.querySelector('.logo-icon');
+    const logoText = document.querySelector('.logo-text');
+    
+    if (logoIcon) logoIcon.addEventListener('click', () => switchView('collection'));
+    if (logoText) logoText.addEventListener('click', () => switchView('collection'));
   }
 
   function switchView(view) {

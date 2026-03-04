@@ -79,6 +79,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   width: 32px;
   height: 32px;
   color: var(--accent);
+  cursor: pointer;
 }
 
 .logo-text {
@@ -87,6 +88,11 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.logo-icon:hover, .logo-text:hover {
+  opacity: 0.8;
 }
 
 .nav {
