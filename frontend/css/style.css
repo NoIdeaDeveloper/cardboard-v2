@@ -2045,6 +2045,43 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   flex-shrink: 0;
 }
 
+/* ===== Inline toggle (storage location field) ===== */
+.input-with-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.input-with-toggle .form-input,
+.input-with-toggle input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.inline-toggle:hover { color: var(--text-1); }
+.inline-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+}
+
+.location-line {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .collection-toolbar { gap: 8px; }

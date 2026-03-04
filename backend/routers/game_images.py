@@ -23,14 +23,15 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
-def _game_gallery_dir(game_id: int) -> str:
+def _game_gallery_dir(game_id: int, create: bool = False) -> str:
     path = os.path.join(GALLERY_DIR, str(game_id))
-    os.makedirs(path, exist_ok=True)
+    if create:
+        os.makedirs(path, exist_ok=True)
     return path
 
 
-def _image_file_path(game_id: int, filename: str) -> str:
-    return os.path.join(_game_gallery_dir(game_id), filename)
+def _image_file_path(game_id: int, filename: str, create_dir: bool = False) -> str:
+    return os.path.join(_game_gallery_dir(game_id, create=create_dir), filename)
 
 
 def delete_all_gallery_images(game_id: int, db: Session) -> None:
@@ -100,7 +101,7 @@ async def upload_gallery_image(
     next_order = (last.sort_order + 1) if last else 0
 
     filename = f"{uuid.uuid4()}{ext}"
-    dest = _image_file_path(game_id, filename)
+    dest = _image_file_path(game_id, filename, create_dir=True)
     with open(dest, "wb") as f:
         f.write(content)
 
@@ -223,18 +224,27 @@ def add_gallery_image_from_url(
     next_order = (last.sort_order + 1) if last else 0
 
     filename = f"{uuid.uuid4()}{ext}"
-    with open(_image_file_path(game_id, filename), "wb") as f:
+    file_path = _image_file_path(game_id, filename, create_dir=True)
+    with open(file_path, "wb") as f:
         f.write(content)
 
-    db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
-    db.add(db_img)
-    db.flush()
+    try:
+        db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
+        db.add(db_img)
+        db.flush()
 
-    if next_order == 0:
-        game.image_url = _primary_url(game_id, db_img)
-        game.image_cached = False
+        if next_order == 0:
+            game.image_url = _primary_url(game_id, db_img)
+            game.image_cached = False
 
-    db.commit()
+        db.commit()
+    except Exception:
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        raise
+
     db.refresh(db_img)
     logger.info("Gallery image added from URL for game %d (order=%d)", game_id, next_order)
     return db_img

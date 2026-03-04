@@ -187,6 +187,10 @@ function buildGameCard(game) {
     ? `<div class="label-chips">${cardLabels.slice(0, 3).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>`
     : '';
 
+  const cardLocationHtml = (game.show_location && game.location)
+    ? `<span class="location-line">${escapeHtml(game.location)}</span>`
+    : '';
+
   el.innerHTML = `
     <div class="game-card-image">
       ${cardMediaHtml(game)}
@@ -201,6 +205,7 @@ function buildGameCard(game) {
         <div class="rating-row">${ratingHtml}</div>
         ${lastPlayedHtml}
         ${cardLabelsHtml}
+        ${cardLocationHtml}
         ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
       </div>
     </div>`;
@@ -253,6 +258,7 @@ function buildGameListItem(game) {
       ${listLabelsHtml}
       ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
       ${game.date_added ? `<div class="last-played-line">Added ${escapeHtml(formatDatetime(game.date_added))}</div>` : ''}
+      ${(game.show_location && game.location) ? `<div class="location-line">${escapeHtml(game.location)}</div>` : ''}
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
 
@@ -283,6 +289,13 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     ? `<div class="modal-tags-group">
         <span class="modal-tags-label">My Labels</span>
         <div class="modal-tags">${modalLabels.map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>
+      </div>`
+    : '';
+
+  const locationDisplayHtml = game.location
+    ? `<div class="modal-section">
+        <div class="section-label">Storage Location</div>
+        <div>${escapeHtml(game.location)}</div>
       </div>`
     : '';
 
@@ -580,6 +593,16 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <label>Purchase Location</label>
             <input type="text" id="edit-purchase-location" class="form-input" value="${escapeHtml(game.purchase_location || '')}">
           </div>
+          <div class="form-group full-width">
+            <label>Storage Location</label>
+            <div class="input-with-toggle">
+              <input type="text" id="edit-location" class="form-input" placeholder="Shelf 2, Box A…" value="${escapeHtml(game.location || '')}">
+              <label class="inline-toggle">
+                <input type="checkbox" id="edit-show-location"${game.show_location ? ' checked' : ''}>
+                Show on card
+              </label>
+            </div>
+          </div>
         </div>
       </div>`
     : '';
@@ -617,6 +640,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       ${tagsBlock('Publishers', publishers)}
       ${labelsDisplayHtml}
       ${purchaseDisplayHtml}
+      ${locationDisplayHtml}
 
       ${ratingWidgetHtml}
       ${lastPlayedWidgetHtml}
@@ -730,7 +754,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     const btn = e.target.closest('.session-delete');
     if (!btn) return;
     const sessionId = parseInt(btn.dataset.sessionId);
-    onDeleteSession(sessionId, () => {
+    onDeleteSession(sessionId, game.id, () => {
       const item = el.querySelector(`.session-item[data-session-id="${sessionId}"]`);
       if (item) item.remove();
       if (!el.querySelector('#sessions-list .session-item')) {
@@ -1053,11 +1077,14 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     }
 
     el.querySelector('#save-btn').addEventListener('click', () => {
+      const name = el.querySelector('#edit-name').value.trim();
+      if (!name) { showToast('Game name cannot be empty.', 'error'); return; }
+
       const payload = {
         user_rating:      selectedRating || null,
         user_notes:       el.querySelector('#user-notes').value.trim() || null,
         last_played:      el.querySelector('#last-played-input').value || null,
-        name:             el.querySelector('#edit-name').value.trim(),
+        name:             name,
         status:           el.querySelector('#edit-status').value || 'owned',
         year_published:   parseInt(el.querySelector('#edit-year').value) || null,
         min_players:      parseInt(el.querySelector('#edit-min-players').value) || null,
@@ -1075,6 +1102,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         purchase_date:    el.querySelector('#edit-purchase-date').value || null,
         purchase_price:   el.querySelector('#edit-purchase-price').value !== '' ? parseFloat(el.querySelector('#edit-purchase-price').value) : null,
         purchase_location: el.querySelector('#edit-purchase-location').value.trim() || null,
+        location:           el.querySelector('#edit-location').value.trim() || null,
+        show_location:      el.querySelector('#edit-show-location').checked,
       };
       onSave(game.id, payload);
     });

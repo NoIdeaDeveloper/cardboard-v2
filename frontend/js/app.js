@@ -259,9 +259,15 @@
     }
   }
 
-  async function handleDeleteSession(sessionId, onSuccess) {
+  async function handleDeleteSession(sessionId, gameId, onSuccess) {
     try {
       await API.deleteSession(sessionId);
+      // Refresh last_played in local state — the backend recalculates it on delete
+      try {
+        const updated = await API.getGame(gameId);
+        const idx = state.games.findIndex(g => g.id === gameId);
+        if (idx !== -1) state.games[idx].last_played = updated.last_played;
+      } catch (_) { /* non-fatal */ }
       if (onSuccess) onSuccess(sessionId);
     } catch (err) {
       showToast(`Failed to delete session: ${err.message}`, 'error');
@@ -515,6 +521,8 @@
         purchase_date:     fd.get('purchase_date') || null,
         purchase_price:    Number.isFinite(purchasePriceParsed) ? purchasePriceParsed : null,
         purchase_location: fd.get('purchase_location') || null,
+        location:           fd.get('location') || null,
+        show_location:      fd.get('show_location') === 'on',
       };
 
       try {
@@ -550,28 +558,6 @@
     });
   }
 
-  async function loadStats() {
-    const el = document.getElementById('stats-content');
-    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
-    try {
-      const stats = await API.getStats();
-      el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games));
-    } catch (err) {
-      el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
-    }
-  }
-
-  async function refreshStatsBackground() {
-    if (!document.getElementById('view-stats')?.classList.contains('active')) return;
-    try {
-      const stats = await API.getStats();
-      const el = document.getElementById('stats-content');
-      el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games));
-    } catch (_) { /* non-fatal */ }
-  }
-=======
   // ===== Stats =====
   const STATS_PREFS_KEY = 'cardboard_stats_prefs';
   const STATS_PREFS_DEFAULTS = {
@@ -609,27 +595,6 @@
       const el = document.getElementById('stats-content');
       el.innerHTML = '';
       el.appendChild(buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs));
-    } catch (_) { /* non-fatal */ }
-  }=====
-  async function loadStats() {
-    const el = document.getElementById('stats-content');
-    el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
-    try {
-      const stats = await API.getStats();
-      el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games));
-    } catch (err) {
-      el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
-    }
-  }
-
-  async function refreshStatsBackground() {
-    if (!document.getElementById('view-stats')?.classList.contains('active')) return;
-    try {
-      const stats = await API.getStats();
-      const el = document.getElementById('stats-content');
-      el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games));
     } catch (_) { /* non-fatal */ }
   }
 

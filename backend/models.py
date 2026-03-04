@@ -33,6 +33,8 @@ class Game(Base):
     purchase_location = Column(String(255), nullable=True)
     user_rating = Column(Float, nullable=True)  # 1-10
     user_notes = Column(Text, nullable=True)
+    location = Column(String(255), nullable=True)
+    show_location = Column(Boolean, default=False, nullable=False)
     last_played = Column(Date, nullable=True)
     # Python-side defaults so they work reliably with SQLite
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)

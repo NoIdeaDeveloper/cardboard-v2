@@ -48,6 +48,8 @@ _GAMES_MIGRATIONS = [
     ("scan_filename",         "TEXT"),
     ("scan_glb_filename",     "VARCHAR(255)"),
     ("scan_featured",         "INTEGER NOT NULL DEFAULT 0"),
+    ("location",              "VARCHAR(255)"),
+    ("show_location",         "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 with engine.connect() as _conn:

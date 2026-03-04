@@ -32,6 +32,8 @@ class GameBase(BaseModel):
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
     purchase_location: Optional[str] = None
+    location: Optional[str] = None
+    show_location: bool = False
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = None
     last_played: Optional[date] = None
@@ -66,6 +68,8 @@ class GameUpdate(BaseModel):
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
     purchase_location: Optional[str] = None
+    location: Optional[str] = None
+    show_location: Optional[bool] = None
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = None
     last_played: Optional[date] = None
