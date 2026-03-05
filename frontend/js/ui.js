@@ -1361,7 +1361,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
         ${stats.most_played.map((entry, i) => {
           const maxCount = stats.most_played[0].count;
           const pct = Math.round((entry.count / maxCount) * 100);
-          return `<div class="most-played-item">
+          return `<div class="most-played-item" data-game-id="${entry.id}">
             <div class="most-played-rank">${i + 1}</div>
             <div class="most-played-info">
               <div class="most-played-name">${escapeHtml(entry.name)}</div>
@@ -1437,7 +1437,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <h3 class="stats-section-title">Recently Played</h3>
       <div class="recent-sessions-list">
         ${stats.recent_sessions.map(s => `
-          <div class="recent-session-item">
+          <div class="recent-session-item" data-game-id="${s.game_id}">
             <div class="recent-session-name">${escapeHtml(s.game_name)}</div>
             <div class="recent-session-meta">
               <span class="recent-session-date">${escapeHtml(formatDate(s.played_at))}</span>

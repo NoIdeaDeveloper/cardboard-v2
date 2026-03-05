@@ -1673,6 +1673,13 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   align-items: center;
   gap: 12px;
 }
+.most-played-item[data-game-id] {
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+.most-played-item[data-game-id]:hover {
+  opacity: 0.75;
+}
 
 .most-played-rank {
   width: 18px;
@@ -1795,7 +1802,14 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   padding: 8px 12px;
   background: var(--bg-3);
   border-radius: 8px;
+  transition: background var(--transition);
   border: 1px solid var(--border);
+}
+.recent-session-item[data-game-id] {
+  cursor: pointer;
+}
+.recent-session-item[data-game-id]:hover {
+  background: var(--bg-4);
 }
 
 .recent-session-name {

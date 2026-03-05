@@ -937,7 +937,7 @@
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
       statsView.addEventListener('click', e => {
-        const row = e.target.closest('.insight-game-row[data-game-id]');
+        const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
         if (!row) return;
         const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
         if (game) openGameModal(game);
@@ -958,7 +958,7 @@
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
       statsView.addEventListener('click', e => {
-        const row = e.target.closest('.insight-game-row[data-game-id]');
+        const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
         if (!row) return;
         const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
         if (game) openGameModal(game);
