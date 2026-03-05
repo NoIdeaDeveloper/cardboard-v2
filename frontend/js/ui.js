@@ -1282,26 +1282,41 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     show_summary: true, show_most_played: true, show_recently_played: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
+    section_order: ['summary', 'most_played', 'recently_played', 'ratings',
+                    'labels', 'added_by_month', 'sessions_by_month', 'never_played'],
   };
   let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
 
+  // [prefKey, display label, section id (= data-section attribute value)]
   const SECTION_TOGGLES = [
-    ['show_summary',          'Summary Cards'],
-    ['show_most_played',      'Most Played'],
-    ['show_recently_played',  'Recently Played'],
-    ['show_ratings',          'Rating Distribution'],
-    ['show_labels',           'Labels'],
-    ['show_added_by_month',   'Added by Month'],
-    ['show_sessions_by_month','Sessions by Month'],
-    ['show_never_played',     'Never Played'],
+    ['show_summary',           'Summary Cards',     'summary'],
+    ['show_most_played',       'Most Played',       'most_played'],
+    ['show_recently_played',   'Recently Played',   'recently_played'],
+    ['show_ratings',           'Rating Distribution','ratings'],
+    ['show_labels',            'Labels',            'labels'],
+    ['show_added_by_month',    'Added by Month',    'added_by_month'],
+    ['show_sessions_by_month', 'Sessions by Month', 'sessions_by_month'],
+    ['show_never_played',      'Never Played',      'never_played'],
   ];
 
-  const settingsTogglesHtml = SECTION_TOGGLES.map(([key, label]) =>
-    `<label class="stats-settings-toggle">
-      <input type="checkbox" data-pref="${key}"${currentPrefs[key] !== false ? ' checked' : ''}>
-      ${escapeHtml(label)}
-    </label>`
-  ).join('');
+  const gripSvg = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <circle cx="9"  cy="5"  r="1.5"/><circle cx="15" cy="5"  r="1.5"/>
+    <circle cx="9"  cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    <circle cx="9"  cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+  </svg>`;
+
+  const settingsTogglesHtml = currentPrefs.section_order.map(sectionKey => {
+    const entry = SECTION_TOGGLES.find(([,, k]) => k === sectionKey);
+    if (!entry) return '';
+    const [prefKey, label] = entry;
+    return `<div class="stats-settings-row" draggable="true" data-key="${sectionKey}">
+      <span class="drag-handle" aria-hidden="true">${gripSvg}</span>
+      <label class="stats-settings-toggle">
+        <input type="checkbox" data-pref="${prefKey}"${currentPrefs[prefKey] !== false ? ' checked' : ''}>
+        ${escapeHtml(label)}
+      </label>
+    </div>`;
+  }).join('');
 
   const el = document.createElement('div');
   el.className = 'stats-view';
@@ -1434,6 +1449,19 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
         : '<p class="no-sessions">All your games have been played!</p>'}
     </div>`;
 
+  // Build ordered sections HTML
+  const sectionsMap = {
+    summary:           cardsHtml,
+    most_played:       mostPlayedHtml,
+    recently_played:   recentSessionsHtml,
+    ratings:           ratingsHtml,
+    labels:            labelsHtml,
+    added_by_month:    addedHtml,
+    sessions_by_month: sessionsByMonthHtml,
+    never_played:      neverPlayedHtml,
+  };
+  const orderedSectionsHtml = currentPrefs.section_order.map(k => sectionsMap[k] || '').join('');
+
   el.innerHTML = `
     <div class="stats-header">
       <h1 class="stats-title">Collection Stats</h1>
@@ -1445,23 +1473,18 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </button>
     </div>
     <div class="stats-settings-panel" id="stats-settings-panel" style="display:none">
-      <div class="stats-settings-grid">
+      <div class="stats-settings-list" id="stats-settings-list">
         ${settingsTogglesHtml}
       </div>
     </div>
-    ${cardsHtml}
-    <div class="stats-grid">
-      ${mostPlayedHtml}
-      ${recentSessionsHtml}
-      ${ratingsHtml}
-      ${labelsHtml}
-      ${addedHtml}
-      ${sessionsByMonthHtml}
-      ${neverPlayedHtml}
+    <div class="stats-grid" id="stats-sections">
+      ${orderedSectionsHtml}
     </div>`;
 
   const settingsBtn   = el.querySelector('#stats-settings-btn');
   const settingsPanel = el.querySelector('#stats-settings-panel');
+  const settingsList  = el.querySelector('#stats-settings-list');
+  const sectionsEl    = el.querySelector('#stats-sections');
 
   settingsBtn.addEventListener('click', () => {
     const open = settingsPanel.style.display !== 'none';
@@ -1469,13 +1492,55 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     settingsBtn.classList.toggle('active', !open);
   });
 
-  el.querySelectorAll('.stats-settings-toggle input').forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-      const prefKey = checkbox.dataset.pref;
-      currentPrefs = { ...currentPrefs, [prefKey]: checkbox.checked };
-      const sectionAttr = prefKey.replace('show_', '');
-      const section = el.querySelector(`[data-section="${sectionAttr}"]`);
-      if (section) section.style.display = checkbox.checked ? '' : 'none';
+  let dragSrcKey = null;
+
+  settingsList.querySelectorAll('.stats-settings-row').forEach(row => {
+    // Checkbox visibility toggle
+    row.querySelector('input').addEventListener('change', () => {
+      const prefKey = row.querySelector('input').dataset.pref;
+      currentPrefs = { ...currentPrefs, [prefKey]: row.querySelector('input').checked };
+      const section = sectionsEl.querySelector(`[data-section="${row.dataset.key}"]`);
+      if (section) section.style.display = row.querySelector('input').checked ? '' : 'none';
+      if (onPrefsChange) onPrefsChange(currentPrefs);
+    });
+
+    // Drag-and-drop reordering
+    row.addEventListener('dragstart', e => {
+      dragSrcKey = row.dataset.key;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      settingsList.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (row.dataset.key !== dragSrcKey) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (!dragSrcKey || dragSrcKey === row.dataset.key) return;
+
+      // Reorder settings rows in the panel
+      const srcRow = settingsList.querySelector(`[data-key="${dragSrcKey}"]`);
+      const rows = [...settingsList.children];
+      const srcIdx = rows.indexOf(srcRow);
+      const dstIdx = rows.indexOf(row);
+      settingsList.insertBefore(srcRow, srcIdx < dstIdx ? row.nextSibling : row);
+
+      // Reorder stat sections in the page (appendChild moves existing nodes)
+      const newOrder = [...settingsList.querySelectorAll('[data-key]')].map(r => r.dataset.key);
+      newOrder.forEach(key => {
+        const sec = sectionsEl.querySelector(`[data-section="${key}"]`);
+        if (sec) sectionsEl.appendChild(sec);
+      });
+
+      // Persist new order
+      currentPrefs = { ...currentPrefs, section_order: newOrder };
       if (onPrefsChange) onPrefsChange(currentPrefs);
     });
   });

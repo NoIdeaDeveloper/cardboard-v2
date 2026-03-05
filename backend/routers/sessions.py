@@ -23,7 +23,7 @@ def _sync_last_played(game_id: int, db: Session) -> None:
     )
     game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if game:
-        game.last_played = latest[0] if latest else None
+        game.last_played = latest.played_at if latest else None
         db.commit()
 
 

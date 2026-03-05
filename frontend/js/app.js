@@ -669,11 +669,19 @@
     show_summary: true, show_most_played: true, show_recently_played: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
+    section_order: ['summary', 'most_played', 'recently_played', 'ratings',
+                    'labels', 'added_by_month', 'sessions_by_month', 'never_played'],
   };
 
   function loadStatsPrefs() {
     try {
-      return { ...STATS_PREFS_DEFAULTS, ...JSON.parse(localStorage.getItem(STATS_PREFS_KEY) || '{}') };
+      const saved = JSON.parse(localStorage.getItem(STATS_PREFS_KEY) || '{}');
+      const merged = { ...STATS_PREFS_DEFAULTS, ...saved };
+      // Keep saved order but append any newly added sections at the end
+      const all = STATS_PREFS_DEFAULTS.section_order;
+      const valid = (merged.section_order || []).filter(k => all.includes(k));
+      merged.section_order = [...valid, ...all.filter(k => !valid.includes(k))];
+      return merged;
     } catch { return { ...STATS_PREFS_DEFAULTS }; }
   }
 
