@@ -43,22 +43,21 @@ def get_stats(db: Session = Depends(get_db)):
     # ── Most played (top 5 by session count) ────────────────────────────────
     most_played_rows = (
         db.query(
-            models.PlaySession.game_id,
+            models.Game.id,
+            models.Game.name,
             func.count(models.PlaySession.id).label("count"),
             func.coalesce(func.sum(models.PlaySession.duration_minutes), 0).label("total_minutes"),
         )
-        .group_by(models.PlaySession.game_id)
+        .join(models.Game, models.PlaySession.game_id == models.Game.id)
+        .group_by(models.Game.id, models.Game.name)
         .order_by(func.count(models.PlaySession.id).desc())
         .limit(5)
         .all()
     )
-    most_played = []
-    for game_id, count, tot_min in most_played_rows:
-        game = db.query(models.Game.name).filter(models.Game.id == game_id).first()
-        if game:
-            most_played.append(schemas.MostPlayedEntry(
-                id=game_id, name=game[0], count=count, total_minutes=int(tot_min)
-            ))
+    most_played = [
+        schemas.MostPlayedEntry(id=gid, name=name, count=count, total_minutes=int(tot_min))
+        for gid, name, count, tot_min in most_played_rows
+    ]
 
     # ── Never played ─────────────────────────────────────────────────────────
     played_ids = db.query(models.PlaySession.game_id).distinct().subquery()

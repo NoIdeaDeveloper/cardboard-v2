@@ -182,7 +182,7 @@
     emptyState.style.display = 'none';
 
     if (filtered.length === 0) {
-      const reason = state.search ? 'search' : 'filter';
+      const reason = state.search ? 'search' : 'filters';
       container.innerHTML = `<div class="loading-spinner"><p style="color:var(--text-3)">No games match your ${reason}.</p></div>`;
       return;
     }

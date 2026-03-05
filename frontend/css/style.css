@@ -1653,7 +1653,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .recent-session-name {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text-1);
+  color: var(--text);
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -1772,14 +1772,14 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   color: var(--text-2);
 }
 .scan-viewer-close svg { width: 14px; height: 14px; }
-.scan-viewer-close:hover { color: var(--text-1); background: var(--bg-3); filter: brightness(1.2); }
+.scan-viewer-close:hover { color: var(--text); background: var(--bg-3); filter: brightness(1.2); }
 
 .scan-viewer-icon svg { width: 56px; height: 56px; stroke: #4db8a0; }
 
 .scan-viewer-title {
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--text-1);
+  color: var(--text);
   margin: 0;
 }
 
@@ -1869,7 +1869,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--surface-2);
+  background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 8px 10px;
@@ -1877,7 +1877,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 
 .gallery-list-item:hover {
-  background: var(--surface-3);
+  background: var(--bg-3);
 }
 
 .gallery-thumb {
@@ -1886,7 +1886,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   object-fit: cover;
   border-radius: 4px;
   flex-shrink: 0;
-  background: var(--surface-3);
+  background: var(--bg-3);
 }
 
 .gallery-item-info {
@@ -2141,13 +2141,13 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 .stats-settings-btn:hover,
 .stats-settings-btn.active {
-  color: var(--text-1);
+  color: var(--text);
   border-color: var(--text-2);
 }
 .stats-settings-btn svg { width: 18px; height: 18px; }
 
 .stats-settings-panel {
-  background: var(--surface-2);
+  background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
@@ -2167,10 +2167,10 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   color: var(--text-2);
   user-select: none;
 }
-.stats-settings-toggle:hover { color: var(--text-1); }
+.stats-settings-toggle:hover { color: var(--text); }
 .stats-settings-toggle input[type="checkbox"] {
   cursor: pointer;
-  accent-color: var(--primary);
+  accent-color: var(--accent);
   width: 15px;
   height: 15px;
   flex-shrink: 0;
@@ -2198,10 +2198,10 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   user-select: none;
   flex-shrink: 0;
 }
-.inline-toggle:hover { color: var(--text-1); }
+.inline-toggle:hover { color: var(--text); }
 .inline-toggle input[type="checkbox"] {
   cursor: pointer;
-  accent-color: var(--primary);
+  accent-color: var(--accent);
   width: 15px;
   height: 15px;
 }

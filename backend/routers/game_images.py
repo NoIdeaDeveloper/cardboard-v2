@@ -213,7 +213,8 @@ def add_gallery_image_from_url(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not download image: {exc}")
+        logger.warning("Gallery image download failed for game %d: %s", game_id, exc)
+        raise HTTPException(status_code=422, detail="Could not download image from the provided URL")
 
     last = (
         db.query(models.GameImage)
@@ -294,7 +295,7 @@ def update_gallery_image(
     )
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
-    img.caption = body.caption.strip() if body.caption else None
+    img.caption = (body.caption.strip() or None) if body.caption is not None else None
     db.commit()
     db.refresh(img)
     logger.info("Gallery image %d updated for game %d", img_id, game_id)
