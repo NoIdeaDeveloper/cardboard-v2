@@ -1452,6 +1452,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   gap: 12px;
   margin-bottom: 16px;
 }
+.ql-full { grid-column: 1 / -1; }
 .quick-log-field label {
   display: block;
   font-size: 0.68rem;

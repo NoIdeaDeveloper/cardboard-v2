@@ -322,6 +322,14 @@
             <label for="ql-players">Players</label>
             <input type="number" id="ql-players" class="form-input" min="1" max="20" placeholder="optional">
           </div>
+          <div class="quick-log-field">
+            <label for="ql-duration">Duration (min)</label>
+            <input type="number" id="ql-duration" class="form-input" min="1" placeholder="optional">
+          </div>
+          <div class="quick-log-field ql-full">
+            <label for="ql-notes">Notes</label>
+            <input type="text" id="ql-notes" class="form-input" placeholder="optional">
+          </div>
         </div>
         <div class="quick-log-actions">
           <button class="btn btn-primary btn-sm" id="ql-submit">Log Play</button>
@@ -351,8 +359,10 @@
       const dateVal = overlay.querySelector('#ql-date').value;
       if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
       handleAddSession(game.id, {
-        played_at: dateVal,
-        player_count: parseInt(overlay.querySelector('#ql-players').value, 10) || null,
+        played_at:        dateVal,
+        player_count:     parseInt(overlay.querySelector('#ql-players').value, 10) || null,
+        duration_minutes: parseInt(overlay.querySelector('#ql-duration').value, 10) || null,
+        notes:            overlay.querySelector('#ql-notes').value.trim() || null,
       }, () => {
         renderCollection();
         refreshStatsBackground();
