@@ -119,6 +119,23 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 .nav-btn:hover { background: var(--bg-3); color: var(--text); }
+.nav-btn[href] {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  text-decoration: none;
+}
+.nav-btn[href]:hover { background: var(--bg-3); color: var(--text); text-decoration: none; }
+.nav-btn[href] svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 .nav-btn.active {
   background: rgba(201,168,76,0.12);
