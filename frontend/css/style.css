@@ -1358,6 +1358,25 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   border: 1px solid rgba(224,92,92,0.2);
 }
 
+.quick-owned-btn {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+  line-height: 1.4;
+}
+.quick-owned-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
 /* ===== Label Chips ===== */
 .label-chip {
   display: inline-flex;

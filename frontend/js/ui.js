@@ -178,8 +178,10 @@ function buildGameCard(game) {
     ? `<span class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</span>`
     : '';
 
-  const cardStatusBadge = game.status && game.status !== 'owned'
-    ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+  const cardStatusBadge = game.status === 'wishlist'
+    ? `<span class="status-badge status-wishlist">Wishlist</span><button class="quick-owned-btn" type="button" title="Move to collection">✓ Mark Owned</button>`
+    : game.status === 'sold'
+    ? `<span class="status-badge status-sold">Sold</span>`
     : '';
 
   const cardLabels = parseList(game.labels);
@@ -232,8 +234,10 @@ function buildGameListItem(game) {
     ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
     : `<span class="unrated">Unrated</span>`;
 
-  const listStatusBadge = game.status && game.status !== 'owned'
-    ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+  const listStatusBadge = game.status === 'wishlist'
+    ? `<span class="status-badge status-wishlist">Wishlist</span><button class="quick-owned-btn" type="button" title="Move to collection">✓ Mark Owned</button>`
+    : game.status === 'sold'
+    ? `<span class="status-badge status-sold">Sold</span>`
     : '';
 
   const listLabels = parseList(game.labels);

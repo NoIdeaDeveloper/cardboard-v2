@@ -5,20 +5,61 @@
 (function () {
   'use strict';
 
+  // ===== Collection Prefs =====
+  const COLLECTION_PREFS_KEY = 'cardboard_collection_prefs';
+  const COLLECTION_PREFS_DEFAULTS = { sortBy: 'name', sortDir: 'asc', viewMode: 'grid', statusFilter: 'owned' };
+
+  function loadCollectionPrefs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLLECTION_PREFS_KEY) || '{}');
+      return { ...COLLECTION_PREFS_DEFAULTS, ...saved };
+    } catch { return { ...COLLECTION_PREFS_DEFAULTS }; }
+  }
+
+  function saveCollectionPrefs() {
+    localStorage.setItem(COLLECTION_PREFS_KEY, JSON.stringify({
+      sortBy: state.sortBy, sortDir: state.sortDir,
+      viewMode: state.viewMode, statusFilter: state.statusFilter,
+    }));
+  }
+
   // ===== State =====
+  const _cp = loadCollectionPrefs();
   let state = {
     games: [],
-    viewMode: 'grid',   // 'grid' | 'list'
-    sortBy: 'name',
-    sortDir: 'asc',
+    viewMode: _cp.viewMode,
+    sortBy: _cp.sortBy,
+    sortDir: _cp.sortDir,
     search: '',
-    statusFilter: 'owned',
+    statusFilter: _cp.statusFilter,
     filterNeverPlayed: false,
     filterPlayers: null,
     filterTime: null,
   };
 
   // ===== Init =====
+  function syncCollectionUI() {
+    const sortByEl   = document.getElementById('sort-by');
+    const sortDirBtn = document.getElementById('sort-dir');
+    const gridBtn    = document.getElementById('view-grid');
+    const listBtn    = document.getElementById('view-list');
+
+    if (sortByEl) sortByEl.value = state.sortBy;
+
+    if (sortDirBtn) {
+      sortDirBtn.dataset.dir = state.sortDir;
+      sortDirBtn.setAttribute('title', state.sortDir === 'asc' ? 'Sort ascending' : 'Sort descending');
+      sortDirBtn.querySelector('svg').style.transform = state.sortDir === 'desc' ? 'scaleY(-1)' : '';
+    }
+
+    if (gridBtn) gridBtn.classList.toggle('active', state.viewMode === 'grid');
+    if (listBtn) listBtn.classList.toggle('active', state.viewMode === 'list');
+
+    document.querySelectorAll('#status-pills .pill').forEach(pill => {
+      pill.classList.toggle('active', pill.dataset.status === state.statusFilter);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     bindNav();
     bindCollectionControls();
@@ -26,6 +67,7 @@
     bindFilters();
     bindAddGame();
     bindModalBackdrop();
+    syncCollectionUI();
     loadCollection();
   });
 
@@ -98,6 +140,7 @@
 
     sortBy.addEventListener('change', () => {
       state.sortBy = sortBy.value;
+      saveCollectionPrefs();
       loadCollection();
     });
 
@@ -106,6 +149,7 @@
       sortDirBtn.dataset.dir = state.sortDir;
       sortDirBtn.setAttribute('title', state.sortDir === 'asc' ? 'Sort ascending' : 'Sort descending');
       sortDirBtn.querySelector('svg').style.transform = state.sortDir === 'desc' ? 'scaleY(-1)' : '';
+      saveCollectionPrefs();
       loadCollection();
     });
 
@@ -113,6 +157,7 @@
       state.viewMode = 'grid';
       gridBtn.classList.add('active');
       listBtn.classList.remove('active');
+      saveCollectionPrefs();
       renderCollection();
     });
 
@@ -120,6 +165,7 @@
       state.viewMode = 'list';
       listBtn.classList.add('active');
       gridBtn.classList.remove('active');
+      saveCollectionPrefs();
       renderCollection();
     });
   }
@@ -192,8 +238,13 @@
     filtered.forEach(game => {
       const el = state.viewMode === 'grid' ? buildGameCard(game) : buildGameListItem(game);
       el.addEventListener('click', (e) => {
-        if (e.target.closest('model-viewer, .scan-ar-placeholder')) return;
+        if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn')) return;
         openGameModal(game);
+      });
+
+      el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleQuickStatusChange(game.id, 'owned');
       });
 
       // Card image area → gallery lightbox (only when gallery images exist)
@@ -244,6 +295,19 @@
       mode, onSwitchToEdit, onSwitchToView,
     );
     openModal(contentEl);
+  }
+
+  async function handleQuickStatusChange(gameId, newStatus) {
+    try {
+      const updated = await API.updateGame(gameId, { status: newStatus });
+      const idx = state.games.findIndex(g => g.id === gameId);
+      if (idx !== -1) state.games[idx] = updated;
+      renderCollection();
+      refreshStatsBackground();
+      showToast('Added to collection!', 'success');
+    } catch (err) {
+      showToast(`Update failed: ${err.message}`, 'error');
+    }
   }
 
   async function handleSaveGame(gameId, payload) {
@@ -599,6 +663,7 @@
         state.statusFilter = btn.dataset.status;
         document.querySelectorAll('#status-pills .pill').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
+        saveCollectionPrefs();
         renderCollection();
       });
     });
