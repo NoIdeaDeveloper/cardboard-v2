@@ -831,13 +831,56 @@
     localStorage.setItem(STATS_PREFS_KEY, JSON.stringify(newPrefs));
   }
 
+  function exportCollectionJSON() {
+    const blob = new Blob([JSON.stringify(state.games, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `cardboard-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function exportCollectionCSV() {
+    const LIST_COLS = new Set(['labels', 'categories', 'mechanics', 'designers', 'publishers']);
+    const COLS = ['name', 'status', 'year_published', 'min_players', 'max_players',
+      'min_playtime', 'max_playtime', 'difficulty', 'user_rating', 'user_notes',
+      'labels', 'categories', 'mechanics', 'designers', 'publishers',
+      'purchase_date', 'purchase_price', 'purchase_location', 'location',
+      'last_played', 'date_added'];
+
+    function csvField(val) {
+      if (val == null) return '';
+      const s = String(val);
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+
+    const rows = [COLS.join(',')];
+    for (const g of state.games) {
+      rows.push(COLS.map(col => {
+        const val = LIST_COLS.has(col) ? parseList(g[col]).join('; ') : g[col];
+        return csvField(val);
+      }).join(','));
+    }
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `cardboard-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   async function loadStats() {
     const el = document.getElementById('stats-content');
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
     try {
       const stats = await API.getStats();
       el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs));
+      const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
+      el.appendChild(statsView);
+      statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
+      statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -849,7 +892,10 @@
       const stats = await API.getStats();
       const el = document.getElementById('stats-content');
       el.innerHTML = '';
-      el.appendChild(buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs));
+      const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
+      el.appendChild(statsView);
+      statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
+      statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
     } catch (_) { /* non-fatal */ }
   }
 

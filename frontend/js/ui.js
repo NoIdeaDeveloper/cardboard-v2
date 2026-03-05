@@ -1534,6 +1534,13 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <div class="stats-settings-list" id="stats-settings-list">
         ${settingsTogglesHtml}
       </div>
+      <div class="stats-export-group">
+        <span class="stats-export-label">Export collection</span>
+        <div class="stats-export-btns">
+          <button class="btn btn-ghost btn-sm" id="stats-export-json">JSON</button>
+          <button class="btn btn-ghost btn-sm" id="stats-export-csv">CSV</button>
+        </div>
+      </div>
     </div>
     <div class="stats-grid" id="stats-sections">
       ${orderedSectionsHtml}
