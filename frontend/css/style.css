@@ -1857,8 +1857,6 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   font-size: 0.68rem;
 }
 
-.game-card-image { position: relative; }
-
 /* ===== 3D Scan Viewer Overlay ===== */
 .scan-viewer-overlay {
   position: fixed;

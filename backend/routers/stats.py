@@ -36,7 +36,7 @@ def get_stats(db: Session = Depends(get_db)):
         func.coalesce(func.sum(models.PlaySession.duration_minutes), 0),
     ).first()
     total_sessions = session_agg[0] or 0
-    total_minutes = int(session_agg[1] or 0)
+    total_minutes = int(session_agg[1])
     total_hours = round(total_minutes / 60, 1)
     avg_session_minutes = round(total_minutes / total_sessions, 1) if total_sessions else 0.0
 

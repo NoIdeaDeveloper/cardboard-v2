@@ -343,12 +343,13 @@
     overlay.querySelector('#ql-date').focus();
 
     function close() {
+      document.removeEventListener('keydown', onKeyDown);
       overlay.classList.remove('open');
       setTimeout(() => { overlay.remove(); document.body.style.overflow = ''; }, 200);
     }
 
     function onKeyDown(e) {
-      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKeyDown); }
+      if (e.key === 'Escape') { close(); }
     }
 
     overlay.querySelector('.quick-log-backdrop').addEventListener('click', close);
@@ -367,7 +368,6 @@
         renderCollection();
         refreshStatsBackground();
       });
-      document.removeEventListener('keydown', onKeyDown);
       close();
     });
   }
