@@ -1751,6 +1751,13 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   background: var(--bg-3);
   border-radius: var(--radius-sm);
 }
+.insight-game-row[data-game-id] {
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.insight-game-row[data-game-id]:hover {
+  background: var(--bg-4);
+}
 .insight-game-name {
   font-size: 0.875rem;
   color: var(--text);

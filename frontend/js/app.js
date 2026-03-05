@@ -936,6 +936,12 @@
       el.appendChild(statsView);
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
+      statsView.addEventListener('click', e => {
+        const row = e.target.closest('.insight-game-row[data-game-id]');
+        if (!row) return;
+        const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
+        if (game) openGameModal(game);
+      });
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -951,6 +957,12 @@
       el.appendChild(statsView);
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
+      statsView.addEventListener('click', e => {
+        const row = e.target.closest('.insight-game-row[data-game-id]');
+        if (!row) return;
+        const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
+        if (game) openGameModal(game);
+      });
     } catch (_) { /* non-fatal */ }
   }
 
