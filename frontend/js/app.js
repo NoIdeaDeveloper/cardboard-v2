@@ -238,13 +238,18 @@
     filtered.forEach(game => {
       const el = state.viewMode === 'grid' ? buildGameCard(game) : buildGameListItem(game);
       el.addEventListener('click', (e) => {
-        if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn')) return;
+        if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn, .quick-log-btn')) return;
         openGameModal(game);
       });
 
       el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
         handleQuickStatusChange(game.id, 'owned');
+      });
+
+      el.querySelector('.quick-log-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openQuickLogSession(game);
       });
 
       // Card image area → gallery lightbox (only when gallery images exist)
@@ -295,6 +300,66 @@
       mode, onSwitchToEdit, onSwitchToView,
     );
     openModal(contentEl);
+  }
+
+  function openQuickLogSession(game) {
+    const today = new Date().toISOString().split('T')[0];
+    const overlay = document.createElement('div');
+    overlay.className = 'quick-log-overlay';
+    overlay.innerHTML = `
+      <div class="quick-log-backdrop"></div>
+      <div class="quick-log-popup">
+        <div class="quick-log-header">
+          <span class="quick-log-label">Log Play</span>
+          <span class="quick-log-game">${escapeHtml(game.name)}</span>
+        </div>
+        <div class="quick-log-form">
+          <div class="quick-log-field">
+            <label for="ql-date">Date</label>
+            <input type="date" id="ql-date" class="form-input" value="${today}">
+          </div>
+          <div class="quick-log-field">
+            <label for="ql-players">Players</label>
+            <input type="number" id="ql-players" class="form-input" min="1" max="20" placeholder="optional">
+          </div>
+        </div>
+        <div class="quick-log-actions">
+          <button class="btn btn-primary btn-sm" id="ql-submit">Log Play</button>
+          <button class="btn btn-ghost btn-sm" id="ql-cancel">Cancel</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('open'));
+    document.body.style.overflow = 'hidden';
+    overlay.querySelector('#ql-date').focus();
+
+    function close() {
+      overlay.classList.remove('open');
+      setTimeout(() => { overlay.remove(); document.body.style.overflow = ''; }, 200);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKeyDown); }
+    }
+
+    overlay.querySelector('.quick-log-backdrop').addEventListener('click', close);
+    overlay.querySelector('#ql-cancel').addEventListener('click', close);
+    document.addEventListener('keydown', onKeyDown);
+
+    overlay.querySelector('#ql-submit').addEventListener('click', () => {
+      const dateVal = overlay.querySelector('#ql-date').value;
+      if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
+      handleAddSession(game.id, {
+        played_at: dateVal,
+        player_count: parseInt(overlay.querySelector('#ql-players').value, 10) || null,
+      }, () => {
+        renderCollection();
+        refreshStatsBackground();
+      });
+      document.removeEventListener('keydown', onKeyDown);
+      close();
+    });
   }
 
   async function handleQuickStatusChange(gameId, newStatus) {

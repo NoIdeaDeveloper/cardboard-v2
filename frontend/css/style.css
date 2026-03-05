@@ -1377,6 +1377,92 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   color: var(--bg);
 }
 
+.quick-log-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: 1px solid var(--border-hover);
+  color: var(--text-2);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: border-color var(--transition), color var(--transition);
+}
+.quick-log-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ===== Quick Log Popup ===== */
+.quick-log-overlay {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.quick-log-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+.quick-log-popup {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 320px;
+  background: var(--bg-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-hover);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+  transform: scale(0.96) translateY(8px);
+  opacity: 0;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.quick-log-overlay.open .quick-log-popup {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+.quick-log-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.quick-log-game {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.quick-log-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.quick-log-field label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.quick-log-actions { display: flex; gap: 8px; }
+
 /* ===== Label Chips ===== */
 .label-chip {
   display: inline-flex;

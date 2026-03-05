@@ -209,6 +209,7 @@ function buildGameCard(game) {
         ${cardLabelsHtml}
         ${cardLocationHtml}
         ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
+        ${game.status === 'owned' ? `<button class="quick-log-btn" type="button">+ Log Play</button>` : ''}
       </div>
     </div>`;
 
@@ -263,6 +264,7 @@ function buildGameListItem(game) {
       ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
       ${game.date_added ? `<div class="last-played-line">Added ${escapeHtml(formatDatetime(game.date_added))}</div>` : ''}
       ${(game.show_location && game.location) ? `<div class="location-line">${escapeHtml(game.location)}</div>` : ''}
+      ${game.status === 'owned' ? `<button class="quick-log-btn" type="button">+ Log Play</button>` : ''}
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
 
