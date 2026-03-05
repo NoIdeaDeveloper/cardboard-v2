@@ -281,13 +281,12 @@
 
   // ===== Game Modal =====
   async function openGameModal(game, mode = 'view') {
-    let sessions = [], images = [];
-    try {
-      [sessions, images] = await Promise.all([
-        API.getSessions(game.id).catch(() => []),
-        API.getImages(game.id).catch(() => []),
-      ]);
-    } catch (_) { /* non-fatal */ }
+    const [sessResult, imgResult] = await Promise.allSettled([
+      API.getSessions(game.id),
+      API.getImages(game.id),
+    ]);
+    const sessions = sessResult.status === 'fulfilled' ? sessResult.value : [];
+    const images   = imgResult.status  === 'fulfilled' ? imgResult.value  : [];
 
     const onSwitchToEdit = () => openGameModal(game, 'edit');
     const onSwitchToView = () => {
@@ -886,8 +885,65 @@
     localStorage.setItem(STATS_PREFS_KEY, JSON.stringify(newPrefs));
   }
 
-  function exportCollectionJSON() {
-    const blob = new Blob([JSON.stringify(state.games, null, 2)], { type: 'application/json' });
+  const EXPORT_COLS = [
+    { key: 'name',              label: 'Name',               list: false, on: true  },
+    { key: 'status',            label: 'Status',             list: false, on: true  },
+    { key: 'year_published',    label: 'Year Published',     list: false, on: true  },
+    { key: 'min_players',       label: 'Min Players',        list: false, on: true  },
+    { key: 'max_players',       label: 'Max Players',        list: false, on: true  },
+    { key: 'min_playtime',      label: 'Min Playtime (min)', list: false, on: true  },
+    { key: 'max_playtime',      label: 'Max Playtime (min)', list: false, on: true  },
+    { key: 'difficulty',        label: 'Difficulty',         list: false, on: true  },
+    { key: 'user_rating',       label: 'Rating',             list: false, on: true  },
+    { key: 'user_notes',        label: 'Notes',              list: false, on: true  },
+    { key: 'description',       label: 'Description',        list: false, on: false },
+    { key: 'labels',            label: 'Labels',             list: true,  on: true  },
+    { key: 'categories',        label: 'Categories',         list: true,  on: true  },
+    { key: 'mechanics',         label: 'Mechanics',          list: true,  on: true  },
+    { key: 'designers',         label: 'Designers',          list: true,  on: true  },
+    { key: 'publishers',        label: 'Publishers',         list: true,  on: true  },
+    { key: 'purchase_date',     label: 'Purchase Date',      list: false, on: true  },
+    { key: 'purchase_price',    label: 'Purchase Price',     list: false, on: true  },
+    { key: 'purchase_location', label: 'Purchase Location',  list: false, on: true  },
+    { key: 'location',          label: 'Location',           list: false, on: true  },
+    { key: 'last_played',       label: 'Last Played',        list: false, on: true  },
+    { key: 'date_added',        label: 'Date Added',         list: false, on: true  },
+    { key: 'date_modified',     label: 'Date Modified',      list: false, on: false },
+    { key: 'image_url',         label: 'Image URL',          list: false, on: false },
+  ];
+
+  const EXPORT_PREFS_KEY = 'cardboard_export_prefs';
+
+  function loadExportPrefs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(EXPORT_PREFS_KEY) || '{}');
+      return EXPORT_COLS.map(c => ({ ...c, on: c.key in saved ? saved[c.key] : c.on }));
+    } catch { return EXPORT_COLS.map(c => ({ ...c })); }
+  }
+
+  function saveExportPrefs(cols) {
+    const obj = {};
+    cols.forEach(c => { obj[c.key] = c.on; });
+    localStorage.setItem(EXPORT_PREFS_KEY, JSON.stringify(obj));
+  }
+
+  function _closeExportDropdown(e) {
+    const wrapper = document.getElementById('stats-export-cols-wrapper');
+    if (!wrapper || wrapper.contains(e.target)) return;
+    const dd = document.getElementById('stats-export-cols-dropdown');
+    const btn = document.getElementById('stats-export-cols-btn');
+    if (dd) dd.hidden = true;
+    if (btn) btn.classList.remove('open');
+  }
+
+  function exportCollectionJSON(cols) {
+    const enabled = cols.filter(c => c.on);
+    const data = state.games.map(g => {
+      const out = {};
+      enabled.forEach(c => { out[c.key] = g[c.key] ?? null; });
+      return out;
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `cardboard-export-${new Date().toISOString().split('T')[0]}.json`;
@@ -895,35 +951,74 @@
     URL.revokeObjectURL(link.href);
   }
 
-  function exportCollectionCSV() {
-    const LIST_COLS = new Set(['labels', 'categories', 'mechanics', 'designers', 'publishers']);
-    const COLS = ['name', 'status', 'year_published', 'min_players', 'max_players',
-      'min_playtime', 'max_playtime', 'difficulty', 'user_rating', 'user_notes',
-      'labels', 'categories', 'mechanics', 'designers', 'publishers',
-      'purchase_date', 'purchase_price', 'purchase_location', 'location',
-      'last_played', 'date_added'];
-
+  function exportCollectionCSV(cols) {
+    const enabled = cols.filter(c => c.on);
     function csvField(val) {
       if (val == null) return '';
       const s = String(val);
       return s.includes(',') || s.includes('"') || s.includes('\n')
         ? `"${s.replace(/"/g, '""')}"` : s;
     }
-
-    const rows = [COLS.join(',')];
+    const rows = [enabled.map(c => c.label).join(',')];
     for (const g of state.games) {
-      rows.push(COLS.map(col => {
-        const val = LIST_COLS.has(col) ? parseList(g[col]).join('; ') : g[col];
-        return csvField(val);
-      }).join(','));
+      rows.push(enabled.map(c => csvField(c.list ? parseList(g[c.key]).join('; ') : g[c.key])).join(','));
     }
-
     const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `cardboard-export-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
+  }
+
+  function wireStatsView(statsView) {
+    const exportCols = loadExportPrefs();
+    const colsDropdown = statsView.querySelector('#stats-export-cols-dropdown');
+    colsDropdown.innerHTML = exportCols.map(c => `
+      <label class="export-col-item">
+        <input type="checkbox" value="${c.key}"${c.on ? ' checked' : ''}>
+        <span>${c.label}</span>
+      </label>`).join('');
+    colsDropdown.querySelectorAll('input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const col = exportCols.find(c => c.key === cb.value);
+        if (col) col.on = cb.checked;
+        saveExportPrefs(exportCols);
+      });
+    });
+    const colsBtn = statsView.querySelector('#stats-export-cols-btn');
+    colsBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      colsDropdown.hidden = !colsDropdown.hidden;
+      colsBtn.classList.toggle('open', !colsDropdown.hidden);
+    });
+    document.removeEventListener('click', _closeExportDropdown);
+    document.addEventListener('click', _closeExportDropdown);
+    statsView.querySelector('#stats-export-json').addEventListener('click', () => exportCollectionJSON(exportCols));
+    statsView.querySelector('#stats-export-csv').addEventListener('click', () => exportCollectionCSV(exportCols));
+    statsView.addEventListener('click', e => {
+      const moreBtn = e.target.closest('.insight-more-btn');
+      if (moreBtn) {
+        const overflow = moreBtn.previousElementSibling;
+        const isOpen = overflow.classList.contains('open');
+        if (!isOpen) {
+          overflow.style.maxHeight = overflow.scrollHeight + 'px';
+          overflow.classList.add('open');
+          moreBtn.classList.add('open');
+          moreBtn.textContent = 'Show less';
+        } else {
+          overflow.style.maxHeight = '0';
+          overflow.classList.remove('open');
+          moreBtn.classList.remove('open');
+          moreBtn.textContent = `+${moreBtn.dataset.count} more`;
+        }
+        return;
+      }
+      const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
+      if (!row) return;
+      const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
+      if (game) openGameModal(game);
+    });
   }
 
   async function loadStats() {
@@ -934,31 +1029,7 @@
       el.innerHTML = '';
       const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
       el.appendChild(statsView);
-      statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
-      statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
-      statsView.addEventListener('click', e => {
-        const moreBtn = e.target.closest('.insight-more-btn');
-        if (moreBtn) {
-          const overflow = moreBtn.previousElementSibling;
-          const isOpen = overflow.classList.contains('open');
-          if (!isOpen) {
-            overflow.style.maxHeight = overflow.scrollHeight + 'px';
-            overflow.classList.add('open');
-            moreBtn.classList.add('open');
-            moreBtn.textContent = 'Show less';
-          } else {
-            overflow.style.maxHeight = '0';
-            overflow.classList.remove('open');
-            moreBtn.classList.remove('open');
-            moreBtn.textContent = `+${moreBtn.dataset.count} more`;
-          }
-          return;
-        }
-        const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
-        if (!row) return;
-        const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
-        if (game) openGameModal(game);
-      });
+      wireStatsView(statsView);
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -972,31 +1043,7 @@
       el.innerHTML = '';
       const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
       el.appendChild(statsView);
-      statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
-      statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
-      statsView.addEventListener('click', e => {
-        const moreBtn = e.target.closest('.insight-more-btn');
-        if (moreBtn) {
-          const overflow = moreBtn.previousElementSibling;
-          const isOpen = overflow.classList.contains('open');
-          if (!isOpen) {
-            overflow.style.maxHeight = overflow.scrollHeight + 'px';
-            overflow.classList.add('open');
-            moreBtn.classList.add('open');
-            moreBtn.textContent = 'Show less';
-          } else {
-            overflow.style.maxHeight = '0';
-            overflow.classList.remove('open');
-            moreBtn.classList.remove('open');
-            moreBtn.textContent = `+${moreBtn.dataset.count} more`;
-          }
-          return;
-        }
-        const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
-        if (!row) return;
-        const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
-        if (game) openGameModal(game);
-      });
+      wireStatsView(statsView);
     } catch (_) { /* non-fatal */ }
   }
 

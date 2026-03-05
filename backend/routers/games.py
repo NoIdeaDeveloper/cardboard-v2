@@ -1,5 +1,4 @@
 import glob
-import ipaddress
 import logging
 import mimetypes
 import os
@@ -17,6 +16,7 @@ from database import SessionLocal, get_db
 import models
 import schemas
 from routers.game_images import delete_all_gallery_images
+from utils import _is_safe_url
 
 logger = logging.getLogger("cardboard.games")
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -36,16 +36,6 @@ ALLOWED_GLB_EXTENSIONS = {".glb"}
 # ---------------------------------------------------------------------------
 # Image caching
 # ---------------------------------------------------------------------------
-
-def _is_safe_url(url: str) -> bool:
-    """Return False if the URL resolves to a private or loopback IP (SSRF guard)."""
-    try:
-        hostname = urllib.parse.urlparse(url).hostname or ""
-        ip = ipaddress.ip_address(hostname)
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
-    except ValueError:
-        return True  # hostname, not a raw IP — allow
-
 
 def _safe_filename(name: str) -> str:
     """Strip path components and replace unsafe characters."""

@@ -21,9 +21,9 @@ class GameBase(BaseModel):
     description: Optional[str] = Field(None, max_length=5000)
     image_url: Optional[str] = Field(None, max_length=2000)
     thumbnail_url: Optional[str] = Field(None, max_length=2000)
-    instructions_filename: Optional[str] = None
-    scan_filename: Optional[str] = None
-    scan_glb_filename: Optional[str] = None
+    instructions_filename: Optional[str] = Field(None, max_length=255)
+    scan_filename: Optional[str] = Field(None, max_length=255)
+    scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: bool = False
     categories: Optional[str] = Field(None, max_length=2000)
     mechanics: Optional[str] = Field(None, max_length=2000)
@@ -115,8 +115,8 @@ class GalleryImageFromUrl(BaseModel):
 
 class PlaySessionCreate(BaseModel):
     played_at: date
-    player_count: Optional[int] = None
-    duration_minutes: Optional[int] = None
+    player_count: Optional[int] = Field(None, ge=1)
+    duration_minutes: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = Field(None, max_length=2000)
 
 

@@ -1004,6 +1004,13 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 
 .date-input:focus { border-color: var(--accent); }
 
+/* Prevent iOS Safari viewport zoom when focusing date inputs (font-size < 16px triggers zoom) */
+@media (max-width: 768px) {
+  input[type="date"] { font-size: 16px; }
+}
+/* Ensure dark-theme native picker for all date inputs regardless of CSS class */
+input[type="date"] { color-scheme: dark; }
+
 /* ===== Description ===== */
 .description-text {
   font-size: 0.875rem;
@@ -2394,7 +2401,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .stats-export-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 12px 0 0;
   margin-top: 12px;
   border-top: 1px solid var(--border);
@@ -2403,8 +2410,59 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   font-size: 0.75rem;
   color: var(--text-3);
   font-weight: 500;
+  margin-right: auto;
 }
 .stats-export-btns { display: flex; gap: 6px; }
+.stats-export-cols-wrapper { position: relative; }
+.stats-export-cols-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.stats-export-cols-btn::after { content: "▾"; font-size: 0.65rem; transition: transform var(--transition); }
+.stats-export-cols-btn.open::after { transform: rotate(180deg); }
+.stats-export-cols-btn:hover { background: var(--bg-4); color: var(--accent); border-color: var(--border-hover); }
+.stats-export-cols-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  min-width: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.export-col-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-2);
+  transition: background var(--transition);
+}
+.export-col-item:hover { background: var(--bg-3); }
+.export-col-item input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
 
 /* ===== Inline toggle (storage location field) ===== */
 .input-with-toggle {

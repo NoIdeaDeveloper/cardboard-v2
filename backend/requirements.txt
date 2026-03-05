@@ -3,4 +3,3 @@ uvicorn[standard]==0.41.0
 sqlalchemy==2.0.48
 python-multipart==0.0.22
 pydantic==2.12.5
-aiofiles==25.1.0

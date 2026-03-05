@@ -1,4 +1,3 @@
-import ipaddress
 import logging
 import mimetypes
 import os
@@ -9,12 +8,12 @@ import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
 import models
 import schemas
+from utils import _is_safe_url
 
 logger = logging.getLogger("cardboard.gallery")
 router = APIRouter(prefix="/api/games", tags=["gallery"])
@@ -22,16 +21,6 @@ router = APIRouter(prefix="/api/games", tags=["gallery"])
 GALLERY_DIR = os.getenv("GALLERY_DIR", "/app/data/gallery")
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-
-
-def _is_safe_url(url: str) -> bool:
-    """Return False if the URL resolves to a private or loopback IP (SSRF guard)."""
-    try:
-        hostname = urllib.parse.urlparse(url).hostname or ""
-        ip = ipaddress.ip_address(hostname)
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
-    except ValueError:
-        return True  # hostname, not a raw IP — allow
 
 
 def _game_gallery_dir(game_id: int, create: bool = False) -> str:
@@ -213,6 +202,7 @@ def add_gallery_image_from_url(
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Only http/https URLs are supported")
     if not _is_safe_url(body.url):
+        logger.warning("Gallery image from URL rejected: private/loopback URL: %s", body.url)
         raise HTTPException(status_code=400, detail="Private/loopback URLs are not permitted")
 
     try:

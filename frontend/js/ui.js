@@ -1075,6 +1075,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       galleryUrlAddBtn.addEventListener('click', () => {
         const url = galleryUrlInput.value.trim();
         if (!url) return;
+        if (!isSafeUrl(url)) { showToast('Please enter a valid http/https URL', 'error'); return; }
         galleryUrlAddBtn.disabled = true;
         galleryUrlAddBtn.textContent = 'Adding…';
         const resetBtn = () => { galleryUrlAddBtn.disabled = false; galleryUrlAddBtn.textContent = 'Add'; };
@@ -1288,12 +1289,13 @@ function openScanViewer(game) {
 function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   const SECTION_DEFAULTS = {
     show_summary: true, show_most_played: true, show_recently_played: true,
+    show_recently_added: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
     show_dormant: true, show_top_mechanics: true,
-    section_order: ['summary', 'most_played', 'recently_played', 'ratings',
-                    'labels', 'added_by_month', 'sessions_by_month', 'never_played',
-                    'dormant', 'top_mechanics'],
+    section_order: ['summary', 'most_played', 'recently_played', 'recently_added',
+                    'ratings', 'labels', 'added_by_month', 'sessions_by_month',
+                    'never_played', 'dormant', 'top_mechanics'],
   };
   let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
 
@@ -1302,6 +1304,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     ['show_summary',           'Summary Cards',      'summary'],
     ['show_most_played',       'Most Played',        'most_played'],
     ['show_recently_played',   'Recently Played',    'recently_played'],
+    ['show_recently_added',    'Recently Added',     'recently_added'],
     ['show_ratings',           'Rating Distribution','ratings'],
     ['show_labels',            'Labels',             'labels'],
     ['show_added_by_month',    'Added by Month',     'added_by_month'],
@@ -1448,6 +1451,24 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </div>
     </div>` : '';
 
+  // Recently added — top 5 by date_added descending
+  const recentlyAdded = games
+    .filter(g => g.date_added)
+    .sort((a, b) => new Date(b.date_added) - new Date(a.date_added))
+    .slice(0, 5);
+
+  const recentlyAddedHtml = recentlyAdded.length ? `
+    <div class="stats-section" data-section="recently_added"${!currentPrefs.show_recently_added ? ' style="display:none"' : ''}>
+      <h3 class="stats-section-title">Recently Added</h3>
+      <div class="insight-game-list">
+        ${recentlyAdded.map(g => `
+          <div class="insight-game-row" data-game-id="${g.id}">
+            <span class="insight-game-name">${escapeHtml(g.name)}</span>
+            <span class="insight-game-meta">${escapeHtml(formatDate(g.date_added.slice(0, 10)))}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
   // Never played — owned games only
   const neverPlayed = games.filter(g => g.status === 'owned' && !g.last_played);
   const _npRow = g => {
@@ -1529,6 +1550,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     summary:           cardsHtml,
     most_played:       mostPlayedHtml,
     recently_played:   recentSessionsHtml,
+    recently_added:    recentlyAddedHtml,
     ratings:           ratingsHtml,
     labels:            labelsHtml,
     added_by_month:    addedHtml,
@@ -1555,9 +1577,13 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </div>
       <div class="stats-export-group">
         <span class="stats-export-label">Export collection</span>
+        <div class="stats-export-cols-wrapper" id="stats-export-cols-wrapper">
+          <button type="button" class="stats-export-cols-btn" id="stats-export-cols-btn">Fields</button>
+          <div class="stats-export-cols-dropdown" id="stats-export-cols-dropdown" hidden></div>
+        </div>
         <div class="stats-export-btns">
-          <button class="btn btn-ghost btn-sm" id="stats-export-json">JSON</button>
-          <button class="btn btn-ghost btn-sm" id="stats-export-csv">CSV</button>
+          <button class="btn btn-secondary btn-sm" id="stats-export-json">JSON</button>
+          <button class="btn btn-secondary btn-sm" id="stats-export-csv">CSV</button>
         </div>
       </div>
     </div>
