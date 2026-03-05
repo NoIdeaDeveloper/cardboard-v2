@@ -944,10 +944,12 @@
           if (!isOpen) {
             overflow.style.maxHeight = overflow.scrollHeight + 'px';
             overflow.classList.add('open');
+            moreBtn.classList.add('open');
             moreBtn.textContent = 'Show less';
           } else {
             overflow.style.maxHeight = '0';
             overflow.classList.remove('open');
+            moreBtn.classList.remove('open');
             moreBtn.textContent = `+${moreBtn.dataset.count} more`;
           }
           return;
@@ -980,10 +982,12 @@
           if (!isOpen) {
             overflow.style.maxHeight = overflow.scrollHeight + 'px';
             overflow.classList.add('open');
+            moreBtn.classList.add('open');
             moreBtn.textContent = 'Show less';
           } else {
             overflow.style.maxHeight = '0';
             overflow.classList.remove('open');
+            moreBtn.classList.remove('open');
             moreBtn.textContent = `+${moreBtn.dataset.count} more`;
           }
           return;

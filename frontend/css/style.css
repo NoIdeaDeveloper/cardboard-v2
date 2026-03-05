@@ -1784,21 +1784,41 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .insight-more-btn {
   all: unset;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   width: 100%;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-3);
-  padding: 6px 4px 2px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  padding: 6px 12px;
+  margin-top: 2px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
   cursor: pointer;
-  transition: color var(--transition);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   box-sizing: border-box;
 }
 .insight-more-btn:hover {
+  background: var(--bg-4);
   color: var(--accent);
+  border-color: var(--border-hover);
+}
+.insight-more-btn::after {
+  content: "▾";
+  font-size: 0.7rem;
+  transition: transform var(--transition);
+}
+.insight-more-btn.open::after {
+  transform: rotate(180deg);
 }
 
 /* Recent sessions */
