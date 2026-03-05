@@ -74,11 +74,13 @@ with engine.connect() as _conn:
 
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
 
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+_ALLOWED_ORIGINS = [o.strip() for o in _raw_origins if o.strip()] or ["null"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 

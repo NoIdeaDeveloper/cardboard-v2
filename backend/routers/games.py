@@ -1,4 +1,5 @@
 import glob
+import ipaddress
 import logging
 import mimetypes
 import os
@@ -36,6 +37,16 @@ ALLOWED_GLB_EXTENSIONS = {".glb"}
 # Image caching
 # ---------------------------------------------------------------------------
 
+def _is_safe_url(url: str) -> bool:
+    """Return False if the URL resolves to a private or loopback IP (SSRF guard)."""
+    try:
+        hostname = urllib.parse.urlparse(url).hostname or ""
+        ip = ipaddress.ip_address(hostname)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+    except ValueError:
+        return True  # hostname, not a raw IP — allow
+
+
 def _safe_filename(name: str) -> str:
     """Strip path components and replace unsafe characters."""
     name = os.path.basename(name)
@@ -61,6 +72,9 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
     parsed = urllib.parse.urlparse(image_url)
     if parsed.scheme not in ("http", "https"):
         logger.warning("Image cache refused for game %d: unsupported scheme %r", game_id, parsed.scheme)
+        return
+    if not _is_safe_url(image_url):
+        logger.warning("Image cache refused for game %d: private/loopback URL", game_id)
         return
 
     # Abort early if the URL has already been changed (e.g. user uploaded a file
@@ -280,8 +294,12 @@ async def upload_image(game_id: int, file: UploadFile = File(...), db: Session =
     _delete_cached_image(game_id)
 
     dest = os.path.join(IMAGES_DIR, f"{game_id}{ext}")
-    with open(dest, "wb") as f:
-        f.write(content)
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write image for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     db_game.image_url = f"/api/games/{game_id}/image"
     db_game.image_cached = True
@@ -332,8 +350,12 @@ async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Se
             pass
 
     dest = _instructions_path(game_id, safe_name)
-    with open(dest, "wb") as f:
-        f.write(content)
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write instructions for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save instructions to disk")
 
     db_game.instructions_filename = safe_name
     db.commit()
@@ -417,8 +439,12 @@ async def upload_scan(game_id: int, file: UploadFile = File(...), db: Session = 
     _delete_scan_file(game_id)
 
     dest = os.path.join(SCANS_DIR, f"{game_id}.usdz")
-    with open(dest, "wb") as f:
-        f.write(content)
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write USDZ scan for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save scan to disk")
 
     db_game.scan_filename = safe_name
     db.commit()
@@ -479,8 +505,12 @@ async def upload_scan_glb(game_id: int, file: UploadFile = File(...), db: Sessio
     _delete_glb_file(game_id)
 
     dest = os.path.join(SCANS_DIR, f"{game_id}.glb")
-    with open(dest, "wb") as f:
-        f.write(content)
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write GLB scan for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save scan to disk")
 
     db_game.scan_glb_filename = safe_name
     db.commit()

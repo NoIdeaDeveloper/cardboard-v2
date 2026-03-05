@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import mimetypes
 import os
@@ -21,6 +22,16 @@ router = APIRouter(prefix="/api/games", tags=["gallery"])
 GALLERY_DIR = os.getenv("GALLERY_DIR", "/app/data/gallery")
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return False if the URL resolves to a private or loopback IP (SSRF guard)."""
+    try:
+        hostname = urllib.parse.urlparse(url).hostname or ""
+        ip = ipaddress.ip_address(hostname)
+        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+    except ValueError:
+        return True  # hostname, not a raw IP — allow
 
 
 def _game_gallery_dir(game_id: int, create: bool = False) -> str:
@@ -102,8 +113,12 @@ async def upload_gallery_image(
 
     filename = f"{uuid.uuid4()}{ext}"
     dest = _image_file_path(game_id, filename, create_dir=True)
-    with open(dest, "wb") as f:
-        f.write(content)
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write gallery image for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
     db.add(db_img)
@@ -197,6 +212,8 @@ def add_gallery_image_from_url(
     parsed = urllib.parse.urlparse(body.url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Only http/https URLs are supported")
+    if not _is_safe_url(body.url):
+        raise HTTPException(status_code=400, detail="Private/loopback URLs are not permitted")
 
     try:
         req = urllib.request.Request(body.url, headers={"User-Agent": "Cardboard/1.0"})
@@ -226,8 +243,12 @@ def add_gallery_image_from_url(
 
     filename = f"{uuid.uuid4()}{ext}"
     file_path = _image_file_path(game_id, filename, create_dir=True)
-    with open(file_path, "wb") as f:
-        f.write(content)
+    try:
+        with open(file_path, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        logger.error("Failed to write gallery image (from URL) for game %d: %s", game_id, e)
+        raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     try:
         db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)

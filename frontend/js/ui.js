@@ -69,12 +69,14 @@ function formatPlayers(min, max) {
 function formatDate(isoDate) {
   if (!isoDate) return null;
   const d = new Date(isoDate + 'T00:00:00');
+  if (isNaN(d)) return isoDate;
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatDatetime(isoDatetime) {
   if (!isoDatetime) return null;
   const d = new Date(isoDatetime);
+  if (isNaN(d)) return isoDatetime;
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
