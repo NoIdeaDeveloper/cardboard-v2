@@ -250,9 +250,15 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   margin-bottom: 0;
 }
 .filter-panel.open {
-  max-height: 80px;
+  max-height: 300px;
   opacity: 1;
   margin-bottom: 16px;
+}
+.filter-chips-row {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .filter-panel-inner {
   display: flex;

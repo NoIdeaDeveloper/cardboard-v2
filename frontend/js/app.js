@@ -35,6 +35,8 @@
     filterNeverPlayed: false,
     filterPlayers: null,
     filterTime: null,
+    filterMechanics: [],
+    filterCategories: [],
   };
 
   // ===== Init =====
@@ -205,6 +207,14 @@
         const lo = g.min_playtime ?? 0;
         const hi = g.max_playtime ?? Infinity;
         if (t < lo || t > hi) return false;
+      }
+      if (state.filterMechanics.length > 0) {
+        const gm = parseList(g.mechanics);
+        if (!state.filterMechanics.some(m => gm.includes(m))) return false;
+      }
+      if (state.filterCategories.length > 0) {
+        const gc = parseList(g.categories);
+        if (!state.filterCategories.some(c => gc.includes(c))) return false;
       }
       return true;
     });
@@ -745,6 +755,45 @@
   }
 
   // ===== Advanced Filters =====
+  function renderFilterChips() {
+    const mechRow = document.getElementById('filter-mechanics-chips');
+    const catRow  = document.getElementById('filter-categories-chips');
+
+    function buildChips(container, items, stateKey) {
+      container.innerHTML = '';
+      if (!items.length) { container.style.display = 'none'; return; }
+      container.style.display = 'flex';
+      items.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-pill' + (state[stateKey].includes(name) ? ' active' : '');
+        btn.type = 'button';
+        btn.textContent = name;
+        btn.addEventListener('click', () => {
+          if (state[stateKey].includes(name)) {
+            state[stateKey] = state[stateKey].filter(v => v !== name);
+            btn.classList.remove('active');
+          } else {
+            state[stateKey] = [...state[stateKey], name];
+            btn.classList.add('active');
+          }
+          renderCollection();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    const mc = {}, cc = {};
+    state.games.forEach(g => {
+      parseList(g.mechanics).forEach(m => { if (m) mc[m] = (mc[m] || 0) + 1; });
+      parseList(g.categories).forEach(c => { if (c) cc[c] = (cc[c] || 0) + 1; });
+    });
+    const topM = Object.entries(mc).sort(([, a], [, b]) => b - a).slice(0, 10).map(([n]) => n);
+    const topC = Object.entries(cc).sort(([, a], [, b]) => b - a).slice(0, 10).map(([n]) => n);
+
+    buildChips(mechRow, topM, 'filterMechanics');
+    buildChips(catRow,  topC, 'filterCategories');
+  }
+
   function bindFilters() {
     const panel      = document.getElementById('filter-panel');
     const searchEl   = document.getElementById('collection-search');
@@ -755,10 +804,12 @@
     const clearBtn   = document.getElementById('filter-clear-all');
 
     function hasActiveFilters() {
-      return state.filterNeverPlayed || state.filterPlayers !== null || state.filterTime !== null;
+      return state.filterNeverPlayed || state.filterPlayers !== null ||
+        state.filterTime !== null || state.filterMechanics.length > 0 ||
+        state.filterCategories.length > 0;
     }
 
-    function openPanel()  { panel.classList.add('open'); }
+    function openPanel()  { renderFilterChips(); panel.classList.add('open'); }
     function closePanel() { if (!hasActiveFilters()) panel.classList.remove('open'); }
 
     searchEl.addEventListener('click', openPanel);
@@ -795,9 +846,13 @@
       state.filterNeverPlayed = false;
       state.filterPlayers = null;
       state.filterTime = null;
+      state.filterMechanics = [];
+      state.filterCategories = [];
       neverBtn.classList.remove('active');
       playersEl.value = '';
       timeEl.value = '';
+      document.querySelectorAll('#filter-mechanics-chips .filter-pill, #filter-categories-chips .filter-pill')
+        .forEach(el => el.classList.remove('active'));
       panel.classList.remove('open');
       renderCollection();
     });
