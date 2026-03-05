@@ -937,6 +937,21 @@
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
       statsView.addEventListener('click', e => {
+        const moreBtn = e.target.closest('.insight-more-btn');
+        if (moreBtn) {
+          const overflow = moreBtn.previousElementSibling;
+          const isOpen = overflow.classList.contains('open');
+          if (!isOpen) {
+            overflow.style.maxHeight = overflow.scrollHeight + 'px';
+            overflow.classList.add('open');
+            moreBtn.textContent = 'Show less';
+          } else {
+            overflow.style.maxHeight = '0';
+            overflow.classList.remove('open');
+            moreBtn.textContent = `+${moreBtn.dataset.count} more`;
+          }
+          return;
+        }
         const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
         if (!row) return;
         const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));
@@ -958,6 +973,21 @@
       statsView.querySelector('#stats-export-json').addEventListener('click', exportCollectionJSON);
       statsView.querySelector('#stats-export-csv').addEventListener('click', exportCollectionCSV);
       statsView.addEventListener('click', e => {
+        const moreBtn = e.target.closest('.insight-more-btn');
+        if (moreBtn) {
+          const overflow = moreBtn.previousElementSibling;
+          const isOpen = overflow.classList.contains('open');
+          if (!isOpen) {
+            overflow.style.maxHeight = overflow.scrollHeight + 'px';
+            overflow.classList.add('open');
+            moreBtn.textContent = 'Show less';
+          } else {
+            overflow.style.maxHeight = '0';
+            overflow.classList.remove('open');
+            moreBtn.textContent = `+${moreBtn.dataset.count} more`;
+          }
+          return;
+        }
         const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
         if (!row) return;
         const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));

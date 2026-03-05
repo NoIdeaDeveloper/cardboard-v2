@@ -1450,24 +1450,28 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
 
   // Never played — owned games only
   const neverPlayed = games.filter(g => g.status === 'owned' && !g.last_played);
+  const _npRow = g => {
+    const parts = [
+      formatPlayers(g.min_players, g.max_players),
+      formatPlaytime(g.min_playtime, g.max_playtime),
+      g.difficulty ? `${g.difficulty.toFixed(1)}\u2605` : ''
+    ].filter(Boolean);
+    return `<div class="insight-game-row" data-game-id="${g.id}">
+               <span class="insight-game-name">${escapeHtml(g.name)}</span>
+               <span class="insight-game-meta">${parts.join(' \u00b7 ') || '\u2014'}</span>
+             </div>`;
+  };
   const neverPlayedHtml = `
     <div class="stats-section" data-section="never_played"${!currentPrefs.show_never_played ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Never Played (${neverPlayed.length})</h3>
       ${neverPlayed.length
         ? `<div class="insight-game-list">
-             ${neverPlayed.slice(0, 10).map(g => {
-               const parts = [
-                 formatPlayers(g.min_players, g.max_players),
-                 formatPlaytime(g.min_playtime, g.max_playtime),
-                 g.difficulty ? `${g.difficulty.toFixed(1)}\u2605` : ''
-               ].filter(Boolean);
-               return `
-               <div class="insight-game-row" data-game-id="${g.id}">
-                 <span class="insight-game-name">${escapeHtml(g.name)}</span>
-                 <span class="insight-game-meta">${parts.join(' \u00b7 ') || '\u2014'}</span>
-               </div>`;
-             }).join('')}
-             ${neverPlayed.length > 10 ? `<div class="insight-more">+${neverPlayed.length - 10} more</div>` : ''}
+             ${neverPlayed.slice(0, 10).map(_npRow).join('')}
+             ${neverPlayed.length > 10 ? `
+             <div class="insight-overflow">
+               ${neverPlayed.slice(10).map(_npRow).join('')}
+             </div>
+             <button type="button" class="insight-more-btn" data-count="${neverPlayed.length - 10}">+${neverPlayed.length - 10} more</button>` : ''}
            </div>`
         : '<p class="no-sessions">All your games have been played!</p>'}
     </div>`;
@@ -1488,7 +1492,15 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
             <span class="insight-game-name">${escapeHtml(g.name)}</span>
             <span class="insight-game-meta">Last played ${escapeHtml(formatDate(g.last_played))}</span>
           </div>`).join('')}
-        ${dormantGames.length > 10 ? `<div class="insight-more">+${dormantGames.length - 10} more</div>` : ''}
+        ${dormantGames.length > 10 ? `
+        <div class="insight-overflow">
+          ${dormantGames.slice(10).map(g => `
+            <div class="insight-game-row" data-game-id="${g.id}">
+              <span class="insight-game-name">${escapeHtml(g.name)}</span>
+              <span class="insight-game-meta">Last played ${escapeHtml(formatDate(g.last_played))}</span>
+            </div>`).join('')}
+        </div>
+        <button type="button" class="insight-more-btn" data-count="${dormantGames.length - 10}">+${dormantGames.length - 10} more</button>` : ''}
       </div>
     </div>` : '';
 
