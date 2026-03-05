@@ -1288,21 +1288,25 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     show_summary: true, show_most_played: true, show_recently_played: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
+    show_dormant: true, show_top_mechanics: true,
     section_order: ['summary', 'most_played', 'recently_played', 'ratings',
-                    'labels', 'added_by_month', 'sessions_by_month', 'never_played'],
+                    'labels', 'added_by_month', 'sessions_by_month', 'never_played',
+                    'dormant', 'top_mechanics'],
   };
   let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
 
   // [prefKey, display label, section id (= data-section attribute value)]
   const SECTION_TOGGLES = [
-    ['show_summary',           'Summary Cards',     'summary'],
-    ['show_most_played',       'Most Played',       'most_played'],
-    ['show_recently_played',   'Recently Played',   'recently_played'],
+    ['show_summary',           'Summary Cards',      'summary'],
+    ['show_most_played',       'Most Played',        'most_played'],
+    ['show_recently_played',   'Recently Played',    'recently_played'],
     ['show_ratings',           'Rating Distribution','ratings'],
-    ['show_labels',            'Labels',            'labels'],
-    ['show_added_by_month',    'Added by Month',    'added_by_month'],
-    ['show_sessions_by_month', 'Sessions by Month', 'sessions_by_month'],
-    ['show_never_played',      'Never Played',      'never_played'],
+    ['show_labels',            'Labels',             'labels'],
+    ['show_added_by_month',    'Added by Month',     'added_by_month'],
+    ['show_sessions_by_month', 'Sessions by Month',  'sessions_by_month'],
+    ['show_never_played',      'Never Played',       'never_played'],
+    ['show_dormant',           'Dormant Games',      'dormant'],
+    ['show_top_mechanics',     'Top Mechanics',      'top_mechanics'],
   ];
 
   const gripSvg = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -1442,18 +1446,64 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </div>
     </div>` : '';
 
-  // Never played — use last_played as the criterion (matches what's listed)
-  const neverPlayed = games.filter(g => !g.last_played);
+  // Never played — owned games only, with optional unplayed value
+  const neverPlayed = games.filter(g => g.status === 'owned' && !g.last_played);
+  const neverPlayedValue = neverPlayed.reduce((sum, g) => sum + (g.purchase_price || 0), 0);
   const neverPlayedHtml = `
     <div class="stats-section" data-section="never_played"${!currentPrefs.show_never_played ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Never Played (${neverPlayed.length})</h3>
       ${neverPlayed.length
-        ? `<div class="never-played-list">
-            ${neverPlayed.slice(0, 20).map(g => `<span class="never-played-item">${escapeHtml(g.name)}</span>`).join('')}
-            ${neverPlayed.length > 20 ? `<span class="never-played-more">…and ${neverPlayed.length - 20} more</span>` : ''}
-          </div>`
+        ? `${neverPlayedValue > 0 ? `<p class="insight-subtext">Unplayed value: <strong>$${neverPlayedValue.toFixed(2)}</strong></p>` : ''}
+           <div class="insight-game-list">
+             ${neverPlayed.slice(0, 10).map(g => `
+               <div class="insight-game-row">
+                 <span class="insight-game-name">${escapeHtml(g.name)}</span>
+                 <span class="insight-game-meta">${g.purchase_price ? `$${g.purchase_price.toFixed(2)}` : g.date_added ? escapeHtml(formatDate(g.date_added)) : ''}</span>
+               </div>`).join('')}
+             ${neverPlayed.length > 10 ? `<div class="insight-more">+${neverPlayed.length - 10} more</div>` : ''}
+           </div>`
         : '<p class="no-sessions">All your games have been played!</p>'}
     </div>`;
+
+  // Dormant — owned games not played in 12+ months
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+  const dormantGames = games
+    .filter(g => g.status === 'owned' && g.last_played && new Date(g.last_played + 'T00:00:00') < twelveMonthsAgo)
+    .sort((a, b) => a.last_played.localeCompare(b.last_played));
+  const dormantHtml = dormantGames.length ? `
+    <div class="stats-section" data-section="dormant"${!currentPrefs.show_dormant ? ' style="display:none"' : ''}>
+      <h3 class="stats-section-title">Dormant Games (${dormantGames.length})</h3>
+      <p class="insight-subtext">Owned but not played in over a year</p>
+      <div class="insight-game-list">
+        ${dormantGames.slice(0, 10).map(g => `
+          <div class="insight-game-row">
+            <span class="insight-game-name">${escapeHtml(g.name)}</span>
+            <span class="insight-game-meta">Last played ${escapeHtml(formatDate(g.last_played))}</span>
+          </div>`).join('')}
+        ${dormantGames.length > 10 ? `<div class="insight-more">+${dormantGames.length - 10} more</div>` : ''}
+      </div>
+    </div>` : '';
+
+  // Top Mechanics — most common mechanics in owned collection
+  const mechanicCounts = {};
+  games.filter(g => g.status === 'owned').forEach(g => {
+    parseList(g.mechanics).forEach(m => { if (m) mechanicCounts[m] = (mechanicCounts[m] || 0) + 1; });
+  });
+  const topMechanics = Object.entries(mechanicCounts).sort(([, a], [, b]) => b - a).slice(0, 10);
+  const maxMechanic = topMechanics[0]?.[1] || 1;
+  const topMechanicsHtml = topMechanics.length ? `
+    <div class="stats-section" data-section="top_mechanics"${!currentPrefs.show_top_mechanics ? ' style="display:none"' : ''}>
+      <h3 class="stats-section-title">Top Mechanics</h3>
+      <div class="stat-bar-chart">
+        ${topMechanics.map(([name, count]) => `
+          <div class="stat-bar-row">
+            <span class="stat-bar-label">${escapeHtml(name)}</span>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(count / maxMechanic * 100)}%"></div></div>
+            <span class="stat-bar-count">${count}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
 
   // Build ordered sections HTML
   const sectionsMap = {
@@ -1465,6 +1515,8 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     added_by_month:    addedHtml,
     sessions_by_month: sessionsByMonthHtml,
     never_played:      neverPlayedHtml,
+    dormant:           dormantHtml,
+    top_mechanics:     topMechanicsHtml,
   };
   const orderedSectionsHtml = currentPrefs.section_order.map(k => sectionsMap[k] || '').join('');
 

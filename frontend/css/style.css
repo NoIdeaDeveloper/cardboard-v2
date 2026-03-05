@@ -1723,6 +1723,49 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   padding: 3px 0;
 }
 
+/* Insight sections (never played, dormant, top mechanics) */
+.insight-subtext {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin: 0 0 10px;
+}
+.insight-subtext strong { color: var(--text-2); }
+.insight-game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.insight-game-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--bg-3);
+  border-radius: var(--radius-sm);
+}
+.insight-game-name {
+  font-size: 0.875rem;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insight-game-meta {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.insight-more {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: center;
+  padding: 4px;
+}
+
 /* Recent sessions */
 .recent-sessions-list {
   display: flex;
