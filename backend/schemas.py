@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 
 class GameBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
 
     @field_validator('name', mode='before')
     @classmethod
@@ -18,25 +18,25 @@ class GameBase(BaseModel):
     min_playtime: Optional[int] = Field(None, ge=1)
     max_playtime: Optional[int] = Field(None, ge=1)
     difficulty: Optional[float] = Field(None, ge=1, le=5)
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=5000)
+    image_url: Optional[str] = Field(None, max_length=2000)
+    thumbnail_url: Optional[str] = Field(None, max_length=2000)
     instructions_filename: Optional[str] = None
     scan_filename: Optional[str] = None
     scan_glb_filename: Optional[str] = None
     scan_featured: bool = False
-    categories: Optional[str] = None
-    mechanics: Optional[str] = None
-    designers: Optional[str] = None
-    publishers: Optional[str] = None
-    labels: Optional[str] = None
+    categories: Optional[str] = Field(None, max_length=2000)
+    mechanics: Optional[str] = Field(None, max_length=2000)
+    designers: Optional[str] = Field(None, max_length=2000)
+    publishers: Optional[str] = Field(None, max_length=2000)
+    labels: Optional[str] = Field(None, max_length=2000)
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
-    purchase_location: Optional[str] = None
-    location: Optional[str] = None
+    purchase_location: Optional[str] = Field(None, max_length=255)
+    location: Optional[str] = Field(None, max_length=255)
     show_location: bool = False
     user_rating: Optional[float] = Field(None, ge=1, le=10)
-    user_notes: Optional[str] = None
+    user_notes: Optional[str] = Field(None, max_length=2000)
     last_played: Optional[date] = None
 
 
@@ -45,7 +45,7 @@ class GameCreate(GameBase):
 
 
 class GameUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=255)
 
     @field_validator('name', mode='before')
     @classmethod
@@ -59,23 +59,23 @@ class GameUpdate(BaseModel):
     min_playtime: Optional[int] = Field(None, ge=1)
     max_playtime: Optional[int] = Field(None, ge=1)
     difficulty: Optional[float] = Field(None, ge=1, le=5)
-    description: Optional[str] = None
-    image_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
-    categories: Optional[str] = None
-    mechanics: Optional[str] = None
-    designers: Optional[str] = None
-    publishers: Optional[str] = None
-    labels: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=5000)
+    image_url: Optional[str] = Field(None, max_length=2000)
+    thumbnail_url: Optional[str] = Field(None, max_length=2000)
+    categories: Optional[str] = Field(None, max_length=2000)
+    mechanics: Optional[str] = Field(None, max_length=2000)
+    designers: Optional[str] = Field(None, max_length=2000)
+    publishers: Optional[str] = Field(None, max_length=2000)
+    labels: Optional[str] = Field(None, max_length=2000)
     purchase_date: Optional[date] = None
     purchase_price: Optional[float] = None
-    purchase_location: Optional[str] = None
-    location: Optional[str] = None
+    purchase_location: Optional[str] = Field(None, max_length=255)
+    location: Optional[str] = Field(None, max_length=255)
     show_location: Optional[bool] = None
     user_rating: Optional[float] = Field(None, ge=1, le=10)
-    user_notes: Optional[str] = None
+    user_notes: Optional[str] = Field(None, max_length=2000)
     last_played: Optional[date] = None
-    scan_glb_filename: Optional[str] = None
+    scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: Optional[bool] = None
 
 
@@ -102,7 +102,7 @@ class GameImageResponse(BaseModel):
 
 
 class GameImageUpdate(BaseModel):
-    caption: Optional[str] = None
+    caption: Optional[str] = Field(None, max_length=500)
 
 
 class ReorderImagesBody(BaseModel):
@@ -110,14 +110,14 @@ class ReorderImagesBody(BaseModel):
 
 
 class GalleryImageFromUrl(BaseModel):
-    url: str
+    url: str = Field(..., max_length=2000)
 
 
 class PlaySessionCreate(BaseModel):
     played_at: date
     player_count: Optional[int] = None
     duration_minutes: Optional[int] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=2000)
 
 
 class PlaySessionResponse(PlaySessionCreate):
