@@ -134,14 +134,16 @@ def get_stats(db: Session = Depends(get_db)):
 
     # ── Sessions by month ─────────────────────────────────────────────────────
     session_month_counts: dict = {k: 0 for k in month_keys}
-    for (dt,) in db.query(models.PlaySession.played_at).all():
+    session_month_game_ids: dict = {k: set() for k in month_keys}
+    for (game_id, dt) in db.query(models.PlaySession.game_id, models.PlaySession.played_at).all():
         if dt:
             key = dt.strftime("%b %Y")
             if key in session_month_counts:
                 session_month_counts[key] += 1
+                session_month_game_ids[key].add(game_id)
 
     sessions_by_month = [
-        schemas.AddedByMonthEntry(month=m, count=c)
+        schemas.SessionsByMonthEntry(month=m, count=c, game_ids=sorted(session_month_game_ids[m]))
         for m, c in session_month_counts.items()
     ]
 

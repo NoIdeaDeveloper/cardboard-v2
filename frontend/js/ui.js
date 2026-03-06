@@ -1133,6 +1133,34 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   return el;
 }
 
+// ===== Month Drill-Down List =====
+
+function buildMonthGameList(title, games, onGameClick, onClose) {
+  const el = document.createElement('div');
+  el.className = 'month-drilldown';
+  el.innerHTML = `
+    <div class="month-drilldown-header">
+      <h2 class="month-drilldown-title">${escapeHtml(title)}</h2>
+      <button class="month-drilldown-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="month-drilldown-list"></div>`;
+  el.querySelector('.month-drilldown-close').addEventListener('click', onClose);
+  const list = el.querySelector('.month-drilldown-list');
+  for (const game of games) {
+    const item = buildGameListItem(game);
+    item.addEventListener('click', e => {
+      if (e.target.closest('.quick-log-btn, .quick-owned-btn, .scan-badge')) return;
+      onGameClick(game);
+    });
+    list.appendChild(item);
+  }
+  return el;
+}
+
 // ===== Modal Management =====
 
 function openModal(contentEl) {
@@ -1412,7 +1440,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     <div class="stats-section" data-section="added_by_month"${!currentPrefs.show_added_by_month ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Added by Month</h3>
       <div class="stat-bar-chart">
-        ${stats.added_by_month.map(entry => `<div class="stat-bar-row">
+        ${stats.added_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="added" data-count="${entry.count}">
           <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
           <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${entry.count ? Math.round(entry.count / addedMax * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${entry.count}</span>
@@ -1426,7 +1454,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     <div class="stats-section" data-section="sessions_by_month"${!currentPrefs.show_sessions_by_month ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Sessions by Month</h3>
       <div class="stat-bar-chart">
-        ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row">
+        ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="sessions" data-count="${entry.count}" data-game-ids="${escapeHtml(JSON.stringify(entry.game_ids || []))}">
           <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
           <div class="stat-bar-track"><div class="stat-bar-fill stat-bar-fill-sessions" style="width:${entry.count ? Math.round(entry.count / sessionsMax * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${entry.count}</span>

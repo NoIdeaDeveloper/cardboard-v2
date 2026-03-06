@@ -280,7 +280,7 @@
   }
 
   // ===== Game Modal =====
-  async function openGameModal(game, mode = 'view') {
+  async function openGameModal(game, mode = 'view', onBack = null) {
     const [sessResult, imgResult] = await Promise.allSettled([
       API.getSessions(game.id),
       API.getImages(game.id),
@@ -288,10 +288,10 @@
     const sessions = sessResult.status === 'fulfilled' ? sessResult.value : [];
     const images   = imgResult.status  === 'fulfilled' ? imgResult.value  : [];
 
-    const onSwitchToEdit = () => openGameModal(game, 'edit');
+    const onSwitchToEdit = () => openGameModal(game, 'edit', onBack);
     const onSwitchToView = () => {
       const fresh = state.games.find(g => g.id === game.id) || game;
-      openGameModal(fresh, 'view');
+      openGameModal(fresh, 'view', onBack);
     };
 
     const contentEl = buildModalContent(
@@ -308,6 +308,16 @@
       handleUpdateGalleryImageCaption,
       mode, onSwitchToEdit, onSwitchToView,
     );
+
+    if (onBack) {
+      const backBtn = document.createElement('button');
+      backBtn.className = 'modal-back-btn';
+      backBtn.setAttribute('aria-label', 'Back');
+      backBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`;
+      backBtn.addEventListener('click', onBack);
+      contentEl.querySelector('.modal-hero').appendChild(backBtn);
+    }
+
     openModal(contentEl);
   }
 
@@ -719,6 +729,11 @@
         show_location:      fd.get('show_location') === 'on',
       };
 
+      const lastAdded = state.games.reduce((max, g) => {
+        const d = g.date_added ? new Date(g.date_added) : new Date(0);
+        return d > max ? d : max;
+      }, new Date(0));
+
       try {
         const created = await API.createGame(payload);
         if (file) {
@@ -729,6 +744,8 @@
           }
         }
         showToast(`"${payload.name}" added to collection!`, 'success');
+        const lastAddedDay = lastAdded.getTime() > 0 ? lastAdded.toDateString() : null;
+        if (!lastAddedDay || lastAddedDay !== new Date().toDateString()) launchConfetti();
         form.reset();
         if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
         setPreview(null);
@@ -997,6 +1014,39 @@
     statsView.querySelector('#stats-export-json').addEventListener('click', () => exportCollectionJSON(exportCols));
     statsView.querySelector('#stats-export-csv').addEventListener('click', () => exportCollectionCSV(exportCols));
     statsView.addEventListener('click', e => {
+      const barRow = e.target.closest('.stat-bar-row[data-month]');
+      if (barRow) {
+        if (!parseInt(barRow.dataset.count || '0', 10)) return;
+        const month = barRow.dataset.month;
+        const type  = barRow.dataset.type;
+        let gamesForMonth;
+        if (type === 'added') {
+          const [mon, yr] = month.split(' ');
+          gamesForMonth = state.games.filter(g => {
+            if (!g.date_added) return false;
+            const d = new Date(g.date_added);
+            return d.toLocaleString('en-US', { month: 'short' }) === mon
+                && d.getFullYear() === parseInt(yr, 10);
+          });
+        } else {
+          const ids = JSON.parse(barRow.dataset.gameIds || '[]');
+          gamesForMonth = ids.map(id => state.games.find(g => g.id === id)).filter(Boolean);
+        }
+        const n = gamesForMonth.length;
+        const label = type === 'added'
+          ? `${month} · ${n} game${n !== 1 ? 's' : ''} added`
+          : `${month} · ${n} game${n !== 1 ? 's' : ''} played`;
+        function showList() {
+          const listEl = buildMonthGameList(label, gamesForMonth,
+            game => openGameModal(game, 'view', showList),
+            closeModal
+          );
+          openModal(listEl);
+        }
+        showList();
+        return;
+      }
+
       const moreBtn = e.target.closest('.insight-more-btn');
       if (moreBtn) {
         const overflow = moreBtn.previousElementSibling;

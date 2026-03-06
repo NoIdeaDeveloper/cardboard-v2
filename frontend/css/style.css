@@ -853,6 +853,26 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .modal-close svg { width: 16px; height: 16px; }
 .modal-close:hover { background: rgba(16,12,9,0.9); }
 
+.modal-back-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(16,12,9,0.6);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition);
+  z-index: 2;
+}
+.modal-back-btn svg { width: 18px; height: 18px; }
+.modal-back-btn:hover { background: rgba(16,12,9,0.9); }
+
 /* ===== Modal Body ===== */
 .modal-body {
   padding: 24px;
@@ -1860,6 +1880,60 @@ input[type="date"] { color-scheme: dark; }
 .stat-bar-fill-sessions {
   background: #4db8a0;
 }
+
+/* Clickable bar rows */
+.stat-bar-row[data-month] { cursor: default; }
+.stat-bar-row[data-month][data-count]:not([data-count="0"]) {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.stat-bar-row[data-month][data-count]:not([data-count="0"]):hover { background: var(--bg-3); }
+
+/* ===== Month Drill-Down ===== */
+.month-drilldown {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+.month-drilldown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.month-drilldown-title {
+  font-family: Georgia, serif;
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-1);
+  margin: 0;
+}
+.month-drilldown-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.month-drilldown-close svg { width: 16px; height: 16px; }
+.month-drilldown-close:hover { background: var(--bg-4); color: var(--text-1); }
+.month-drilldown-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.month-drilldown-list .game-list-item { border-radius: 0; }
+.month-drilldown-list .game-list-item + .game-list-item { border-top: 1px solid var(--border); }
 
 /* ===== 3D Scan Badge (on cards) ===== */
 .scan-badge {
