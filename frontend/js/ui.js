@@ -1150,13 +1150,17 @@ function buildMonthGameList(title, games, onGameClick, onClose) {
     <div class="month-drilldown-list"></div>`;
   el.querySelector('.month-drilldown-close').addEventListener('click', onClose);
   const list = el.querySelector('.month-drilldown-list');
-  for (const game of games) {
-    const item = buildGameListItem(game);
-    item.addEventListener('click', e => {
-      if (e.target.closest('.quick-log-btn, .quick-owned-btn, .scan-badge')) return;
-      onGameClick(game);
-    });
-    list.appendChild(item);
+  if (!games.length) {
+    list.innerHTML = '<p class="month-drilldown-empty">No games found for this period.</p>';
+  } else {
+    for (const game of games) {
+      const item = buildGameListItem(game);
+      item.addEventListener('click', e => {
+        if (e.target.closest('.quick-log-btn, .quick-owned-btn, .scan-badge')) return;
+        onGameClick(game);
+      });
+      list.appendChild(item);
+    }
   }
   return el;
 }
@@ -1454,7 +1458,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     <div class="stats-section" data-section="sessions_by_month"${!currentPrefs.show_sessions_by_month ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Sessions by Month</h3>
       <div class="stat-bar-chart">
-        ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="sessions" data-count="${entry.count}" data-game-ids="${escapeHtml(JSON.stringify(entry.game_ids || []))}">
+        ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="sessions" data-count="${entry.count}" data-game-ids='${JSON.stringify(entry.game_ids || [])}'>
           <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
           <div class="stat-bar-track"><div class="stat-bar-fill stat-bar-fill-sessions" style="width:${entry.count ? Math.round(entry.count / sessionsMax * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${entry.count}</span>

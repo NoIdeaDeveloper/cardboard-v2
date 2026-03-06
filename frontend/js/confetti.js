@@ -1,9 +1,14 @@
+let _confettiCanvas = null;
+
 function launchConfetti() {
+  if (_confettiCanvas) { _confettiCanvas.remove(); _confettiCanvas = null; }
+
   const canvas = document.createElement('canvas');
   canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none';
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   document.body.appendChild(canvas);
+  _confettiCanvas = canvas;
 
   const ctx = canvas.getContext('2d');
   const COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c'];
@@ -41,7 +46,12 @@ function launchConfetti() {
       ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
       ctx.restore();
     }
-    elapsed < DURATION ? requestAnimationFrame(draw) : canvas.remove();
+    if (elapsed < DURATION) {
+      requestAnimationFrame(draw);
+    } else {
+      _confettiCanvas = null;
+      canvas.remove();
+    }
   }
 
   requestAnimationFrame(draw);

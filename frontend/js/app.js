@@ -315,7 +315,8 @@
       backBtn.setAttribute('aria-label', 'Back');
       backBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>`;
       backBtn.addEventListener('click', onBack);
-      contentEl.querySelector('.modal-hero').appendChild(backBtn);
+      const hero = contentEl.querySelector('.modal-hero');
+      if (hero) hero.appendChild(backBtn);
     }
 
     openModal(contentEl);
@@ -1022,12 +1023,11 @@
         let gamesForMonth;
         if (type === 'added') {
           const [mon, yr] = month.split(' ');
-          gamesForMonth = state.games.filter(g => {
-            if (!g.date_added) return false;
-            const d = new Date(g.date_added);
-            return d.toLocaleString('en-US', { month: 'short' }) === mon
-                && d.getFullYear() === parseInt(yr, 10);
-          });
+          const monthIndex = new Date(`${mon} 1 ${yr}`).getMonth() + 1;
+          const target = `${yr}-${String(monthIndex).padStart(2, '0')}`;
+          gamesForMonth = state.games.filter(g =>
+            g.date_added && g.date_added.slice(0, 7) === target
+          );
         } else {
           const ids = JSON.parse(barRow.dataset.gameIds || '[]');
           gamesForMonth = ids.map(id => state.games.find(g => g.id === id)).filter(Boolean);

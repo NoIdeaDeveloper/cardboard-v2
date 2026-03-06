@@ -1887,8 +1887,6 @@ input[type="date"] { color-scheme: dark; }
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background var(--transition);
-  padding: 2px 4px;
-  margin: -2px -4px;
 }
 .stat-bar-row[data-month][data-count]:not([data-count="0"]):hover { background: var(--bg-3); }
 
@@ -1910,7 +1908,7 @@ input[type="date"] { color-scheme: dark; }
   font-family: Georgia, serif;
   font-size: 1rem;
   font-weight: bold;
-  color: var(--text-1);
+  color: var(--text);
   margin: 0;
 }
 .month-drilldown-close {
@@ -1927,13 +1925,20 @@ input[type="date"] { color-scheme: dark; }
   flex-shrink: 0;
 }
 .month-drilldown-close svg { width: 16px; height: 16px; }
-.month-drilldown-close:hover { background: var(--bg-4); color: var(--text-1); }
+.month-drilldown-close:hover { background: var(--bg-4); color: var(--text); }
 .month-drilldown-list {
   overflow-y: auto;
   flex: 1;
 }
 .month-drilldown-list .game-list-item { border-radius: 0; }
 .month-drilldown-list .game-list-item + .game-list-item { border-top: 1px solid var(--border); }
+.month-drilldown-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  margin: 0;
+}
 
 /* ===== 3D Scan Badge (on cards) ===== */
 .scan-badge {
