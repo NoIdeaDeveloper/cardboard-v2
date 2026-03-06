@@ -69,6 +69,7 @@
     bindFilters();
     bindAddGame();
     bindModalBackdrop();
+    bindKeyboardShortcuts();
     syncCollectionUI();
     loadCollection();
   });
@@ -645,6 +646,27 @@
     document.getElementById('modal-backdrop').addEventListener('click', closeModal);
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeModal();
+    });
+  }
+
+  // ===== Keyboard Shortcuts =====
+  function bindKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.target.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        document.querySelector('[data-view="add"]')?.click();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        if (!document.getElementById('view-collection')?.classList.contains('active')) {
+          switchView('collection');
+        }
+        document.getElementById('collection-search')?.focus();
+      }
     });
   }
 
