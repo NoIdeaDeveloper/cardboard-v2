@@ -2501,6 +2501,7 @@ input[type="date"] { color-scheme: dark; }
   gap: 2px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
+.stats-export-cols-dropdown[hidden] { display: none; }
 .export-col-item {
   display: flex;
   align-items: center;
