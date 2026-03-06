@@ -215,6 +215,7 @@ def update_game(
 
     db.commit()
     db.refresh(db_game)
+    logger.info("Game updated: id=%d name=%r", db_game.id, db_game.name)
 
     if new_image_url and not new_image_url.startswith("/api/"):
         background_tasks.add_task(_cache_game_image, game_id, new_image_url)
