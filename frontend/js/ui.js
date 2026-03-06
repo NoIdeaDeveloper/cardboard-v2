@@ -1156,7 +1156,7 @@ function buildMonthGameList(title, games, onGameClick, onClose) {
     for (const game of games) {
       const item = buildGameListItem(game);
       item.addEventListener('click', e => {
-        if (e.target.closest('.quick-log-btn, .quick-owned-btn, .scan-badge')) return;
+        if (e.target.closest('.quick-log-btn, .quick-owned-btn, .scan-badge, .scan-badge-list')) return;
         onGameClick(game);
       });
       list.appendChild(item);

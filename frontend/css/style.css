@@ -1910,6 +1910,10 @@ input[type="date"] { color-scheme: dark; }
   font-weight: bold;
   color: var(--text);
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .month-drilldown-close {
   width: 32px;

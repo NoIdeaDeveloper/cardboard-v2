@@ -1022,7 +1022,9 @@
         const type  = barRow.dataset.type;
         let gamesForMonth;
         if (type === 'added') {
-          const [mon, yr] = month.split(' ');
+          const parts = month.split(' ');
+          if (parts.length !== 2) return;
+          const [mon, yr] = parts;
           const monthIndex = new Date(`${mon} 1 ${yr}`).getMonth() + 1;
           const target = `${yr}-${String(monthIndex).padStart(2, '0')}`;
           gamesForMonth = state.games.filter(g =>
