@@ -1318,6 +1318,28 @@ function openScanViewer(game) {
 
 // ===== Stats View =====
 
+function buildAddedByMonthHtml(games, includeWishlist) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  const entries = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const month = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const target = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const count = games.filter(g =>
+      g.date_added && g.date_added.slice(0, 7) === target &&
+      (includeWishlist || g.status !== 'wishlist')
+    ).length;
+    entries.push({ month, count });
+  }
+  const max = Math.max(...entries.map(e => e.count), 1);
+  return entries.map(e => `<div class="stat-bar-row" data-month="${escapeHtml(e.month)}" data-type="added" data-count="${e.count}">
+          <span class="stat-bar-label">${escapeHtml(e.month)}</span>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${e.count ? Math.round(e.count / max * 100) : 0}%"></div></div>
+          <span class="stat-bar-count">${e.count}</span>
+        </div>`).join('');
+}
+
 function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   const SECTION_DEFAULTS = {
     show_summary: true, show_most_played: true, show_recently_played: true,
@@ -1439,16 +1461,18 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     </div>` : '';
 
   // Added by month
-  const addedMax = Math.max(...stats.added_by_month.map(e => e.count), 1);
+  const addedIncludeWishlist = currentPrefs.added_by_month_include_wishlist ?? true;
   const addedHtml = `
     <div class="stats-section" data-section="added_by_month"${!currentPrefs.show_added_by_month ? ' style="display:none"' : ''}>
-      <h3 class="stats-section-title">Added by Month</h3>
-      <div class="stat-bar-chart">
-        ${stats.added_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="added" data-count="${entry.count}">
-          <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
-          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${entry.count ? Math.round(entry.count / addedMax * 100) : 0}%"></div></div>
-          <span class="stat-bar-count">${entry.count}</span>
-        </div>`).join('')}
+      <div class="stats-section-header">
+        <h3 class="stats-section-title">Added by Month</h3>
+        <label class="stats-section-inline-toggle">
+          <input type="checkbox" id="added-wishlist-toggle"${addedIncludeWishlist ? ' checked' : ''}>
+          Include wishlist
+        </label>
+      </div>
+      <div class="stat-bar-chart" id="added-by-month-chart">
+        ${buildAddedByMonthHtml(games, addedIncludeWishlist)}
       </div>
     </div>`;
 

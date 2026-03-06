@@ -882,6 +882,7 @@
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
     show_dormant: true, show_top_mechanics: true,
+    added_by_month_include_wishlist: true,
     section_order: ['summary', 'most_played', 'recently_played', 'ratings',
                     'labels', 'added_by_month', 'sessions_by_month', 'never_played',
                     'dormant', 'top_mechanics'],
@@ -1014,6 +1015,16 @@
     document.addEventListener('click', _closeExportDropdown);
     statsView.querySelector('#stats-export-json').addEventListener('click', () => exportCollectionJSON(exportCols));
     statsView.querySelector('#stats-export-csv').addEventListener('click', () => exportCollectionCSV(exportCols));
+    const wishlistToggle = statsView.querySelector('#added-wishlist-toggle');
+    if (wishlistToggle) {
+      wishlistToggle.addEventListener('change', () => {
+        const prefs = loadStatsPrefs();
+        prefs.added_by_month_include_wishlist = wishlistToggle.checked;
+        saveStatsPrefs(prefs);
+        const chart = statsView.querySelector('#added-by-month-chart');
+        if (chart) chart.innerHTML = buildAddedByMonthHtml(state.games, wishlistToggle.checked);
+      });
+    }
     const bucketFilters = {
       '1\u20132':  r => r <= 2,
       '3\u20134':  r => r > 2 && r <= 4,
@@ -1056,8 +1067,10 @@
           const [mon, yr] = parts;
           const monthIndex = new Date(`${mon} 1 ${yr}`).getMonth() + 1;
           const target = `${yr}-${String(monthIndex).padStart(2, '0')}`;
+          const includeWishlist = statsView.querySelector('#added-wishlist-toggle')?.checked ?? true;
           gamesForMonth = state.games.filter(g =>
-            g.date_added && g.date_added.slice(0, 7) === target
+            g.date_added && g.date_added.slice(0, 7) === target &&
+            (includeWishlist || g.status !== 'wishlist')
           );
         } else {
           const ids = JSON.parse(barRow.dataset.gameIds || '[]');

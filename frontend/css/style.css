@@ -1635,6 +1635,30 @@ input[type="date"] { color-scheme: dark; }
   color: var(--text);
   margin-bottom: 14px;
 }
+.stats-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.stats-section-header .stats-section-title { margin-bottom: 0; }
+.stats-section-inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.stats-section-inline-toggle:hover { color: var(--text-2); }
+.stats-section-inline-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+}
 
 /* Bar charts */
 .stat-bar-chart {
