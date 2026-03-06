@@ -1415,7 +1415,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     <div class="stats-section" data-section="ratings"${!currentPrefs.show_ratings ? ' style="display:none"' : ''}>
       <h3 class="stats-section-title">Rating Distribution</h3>
       <div class="stat-bar-chart">
-        ${ratingEntries.map(([bucket, count]) => `<div class="stat-bar-row">
+        ${ratingEntries.map(([bucket, count]) => `<div class="stat-bar-row" data-bucket="${escapeHtml(bucket)}" data-count="${count}">
           <span class="stat-bar-label">${escapeHtml(bucket)}</span>
           <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${count ? Math.round(count / maxRating * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${count}</span>

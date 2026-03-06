@@ -1014,7 +1014,36 @@
     document.addEventListener('click', _closeExportDropdown);
     statsView.querySelector('#stats-export-json').addEventListener('click', () => exportCollectionJSON(exportCols));
     statsView.querySelector('#stats-export-csv').addEventListener('click', () => exportCollectionCSV(exportCols));
+    const bucketFilters = {
+      '1\u20132':  r => r <= 2,
+      '3\u20134':  r => r > 2 && r <= 4,
+      '5\u20136':  r => r > 4 && r <= 6,
+      '7\u20138':  r => r > 6 && r <= 8,
+      '9\u201310': r => r > 8,
+    };
+
     statsView.addEventListener('click', e => {
+      const ratingRow = e.target.closest('.stat-bar-row[data-bucket]');
+      if (ratingRow) {
+        if (!parseInt(ratingRow.dataset.count || '0', 10)) return;
+        const bucket = ratingRow.dataset.bucket;
+        const filterFn = bucketFilters[bucket];
+        const gamesForBucket = filterFn
+          ? state.games.filter(g => g.user_rating != null && filterFn(g.user_rating))
+          : [];
+        const n = gamesForBucket.length;
+        const label = `Rated ${bucket} \u00b7 ${n} game${n !== 1 ? 's' : ''}`;
+        function showRatingList() {
+          const listEl = buildMonthGameList(label, gamesForBucket,
+            game => openGameModal(game, 'view', showRatingList),
+            closeModal
+          );
+          openModal(listEl);
+        }
+        showRatingList();
+        return;
+      }
+
       const barRow = e.target.closest('.stat-bar-row[data-month]');
       if (barRow) {
         if (!parseInt(barRow.dataset.count || '0', 10)) return;
