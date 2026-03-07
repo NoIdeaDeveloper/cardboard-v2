@@ -323,6 +323,21 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 }
 .filter-clear-all:hover { color: var(--danger); border-color: var(--danger); }
 
+.pick-for-me-btn {
+  padding: 5px 14px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #1a1208;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), transform 0.1s;
+}
+.pick-for-me-btn:hover { background: var(--accent-2); }
+.pick-for-me-btn:active { transform: scale(0.96); }
+
 .toolbar-controls {
   display: flex;
   align-items: center;
