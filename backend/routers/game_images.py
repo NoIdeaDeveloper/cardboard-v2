@@ -136,9 +136,13 @@ def get_gallery_image_file(game_id: int, img_id: int, db: Session = Depends(get_
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
     path = _image_file_path(game_id, img.filename)
-    if not os.path.isfile(path):
+    real = os.path.realpath(path)
+    gallery_dir = os.path.realpath(_game_gallery_dir(game_id))
+    if not real.startswith(gallery_dir + os.sep):
         raise HTTPException(status_code=404, detail="Image file not found")
-    return FileResponse(path)
+    if not os.path.isfile(real):
+        raise HTTPException(status_code=404, detail="Image file not found")
+    return FileResponse(real)
 
 
 @router.delete("/{game_id}/images/{img_id}", status_code=204)
