@@ -2,29 +2,61 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:            #100c09;
-  --bg-2:          #1a1511;
-  --bg-3:          #241d16;
-  --bg-4:          #2e261c;
-  --border:        rgba(210,170,100,0.12);
-  --border-hover:  rgba(210,170,100,0.30);
-  --text:          #f0e6d3;
-  --text-2:        #b8a88a;
-  --text-3:        #7a6a52;
-  --accent:        #c9a84c;
-  --accent-2:      #e8c468;
-  --accent-glow:   rgba(201,168,76,0.22);
-  --danger:        #e05c5c;
-  --danger-bg:     rgba(224,92,92,0.12);
-  --success:       #6ab572;
-  --success-bg:    rgba(106,181,114,0.12);
-  --warning:       #e8a020;
-  --radius:        10px;
-  --radius-sm:     6px;
-  --radius-lg:     14px;
-  --shadow:        0 4px 24px rgba(0,0,0,0.5);
-  --shadow-lg:     0 8px 48px rgba(0,0,0,0.7);
-  --transition:    0.18s ease;
+  --bg:                 #100c09;
+  --bg-2:               #1a1511;
+  --bg-3:               #241d16;
+  --bg-4:               #2e261c;
+  --border:             rgba(210,170,100,0.12);
+  --border-hover:       rgba(210,170,100,0.30);
+  --text:               #f0e6d3;
+  --text-2:             #b8a88a;
+  --text-3:             #7a6a52;
+  --accent:             #c9a84c;
+  --accent-2:           #e8c468;
+  --accent-glow:        rgba(201,168,76,0.22);
+  --danger:             #e05c5c;
+  --danger-bg:          rgba(224,92,92,0.12);
+  --success:            #6ab572;
+  --success-bg:         rgba(106,181,114,0.12);
+  --warning:            #e8a020;
+  --radius:             10px;
+  --radius-sm:          6px;
+  --radius-lg:          14px;
+  --shadow:             0 4px 24px rgba(0,0,0,0.5);
+  --shadow-lg:          0 8px 48px rgba(0,0,0,0.7);
+  --transition:         0.18s ease;
+  /* Theme-aware variables */
+  --bg-glass:           rgba(16,12,9,0.92);
+  --overlay:            rgba(0,0,0,0.65);
+  --overlay-sm:         rgba(0,0,0,0.45);
+  --img-gradient:       rgba(16,12,9,0);
+  --img-gradient-end:   rgba(16,12,9,0.72);
+  --btn-on-accent:      #1a1208;
+  --accent-teal:        #4db8a0;
+  --accent-teal-bg:     rgba(77,184,160,0.18);
+  --accent-teal-border: rgba(77,184,160,0.4);
+}
+
+[data-theme="light"] {
+  --bg:               #fdf8f2;
+  --bg-2:             #f5ede0;
+  --bg-3:             #ede0cf;
+  --bg-4:             #e4d5bf;
+  --border:           rgba(140,100,50,0.18);
+  --border-hover:     rgba(140,100,50,0.40);
+  --text:             #2a1f12;
+  --text-2:           #6b5740;
+  --text-3:           #9a7f63;
+  --shadow:           0 4px 24px rgba(0,0,0,0.10);
+  --shadow-lg:        0 8px 48px rgba(0,0,0,0.16);
+  --accent-glow:      rgba(201,168,76,0.15);
+  --danger-bg:        rgba(224,92,92,0.10);
+  --success-bg:       rgba(106,181,114,0.10);
+  --bg-glass:         rgba(253,248,242,0.92);
+  --overlay:          rgba(0,0,0,0.50);
+  --overlay-sm:       rgba(0,0,0,0.30);
+  --img-gradient:     rgba(253,248,242,0);
+  --img-gradient-end: rgba(0,0,0,0.45);
 }
 
 html { font-size: 16px; }
@@ -51,7 +83,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(16, 12, 9, 0.92);
+  background: var(--bg-glass);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -175,11 +207,17 @@ button.footer-link {
   font-size: inherit;
 }
 
+/* ===== Theme Toggle Icons ===== */
+.theme-icon-sun  { display: none; }
+.theme-icon-moon { display: block; }
+[data-theme="light"] .theme-icon-sun  { display: block; }
+[data-theme="light"] .theme-icon-moon { display: none; }
+
 /* ===== Shortcuts Overlay ===== */
 .shortcuts-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -421,7 +459,7 @@ button.footer-link {
   background: var(--accent);
   border: none;
   border-radius: var(--radius-sm);
-  color: #1a1208;
+  color: var(--btn-on-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -838,7 +876,7 @@ button.footer-link {
 
 .btn-primary {
   background: var(--accent);
-  color: #1a1000;
+  color: var(--btn-on-accent);
   font-weight: 600;
 }
 
@@ -887,7 +925,7 @@ button.footer-link {
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.75);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
 }
 
@@ -925,7 +963,7 @@ button.footer-link {
 .modal-hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(16,12,9,0.2) 0%, rgba(16,12,9,0.7) 100%);
+  background: linear-gradient(to bottom, var(--img-gradient) 0%, var(--img-gradient-end) 100%);
 }
 
 .modal-hero-placeholder {
@@ -946,7 +984,7 @@ button.footer-link {
   right: 12px;
   width: 34px;
   height: 34px;
-  background: rgba(16,12,9,0.6);
+  background: var(--overlay-sm);
   border: 1px solid var(--border);
   border-radius: 50%;
   color: var(--text);
@@ -959,7 +997,7 @@ button.footer-link {
 }
 
 .modal-close svg { width: 16px; height: 16px; }
-.modal-close:hover { background: rgba(16,12,9,0.9); }
+.modal-close:hover { background: var(--overlay); }
 
 .modal-back-btn {
   position: absolute;
@@ -968,7 +1006,7 @@ button.footer-link {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: rgba(16,12,9,0.6);
+  background: var(--overlay-sm);
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
@@ -979,7 +1017,7 @@ button.footer-link {
   z-index: 2;
 }
 .modal-back-btn svg { width: 18px; height: 18px; }
-.modal-back-btn:hover { background: rgba(16,12,9,0.9); }
+.modal-back-btn:hover { background: var(--overlay); }
 
 /* ===== Modal Body ===== */
 .modal-body {
@@ -1380,7 +1418,7 @@ input[type="date"] { color-scheme: dark; }
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
   z-index: 400;
   display: flex;
@@ -1546,7 +1584,7 @@ input[type="date"] { color-scheme: dark; }
 .quick-log-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
 }
 .quick-log-popup {
@@ -2061,7 +2099,7 @@ input[type="date"] { color-scheme: dark; }
 
 /* Sessions-by-month bar (teal, distinct from the gold add-by-month bars) */
 .stat-bar-fill-sessions {
-  background: #4db8a0;
+  background: var(--accent-teal);
 }
 
 /* Clickable bar rows */
@@ -2155,9 +2193,9 @@ input[type="date"] { color-scheme: dark; }
   width: 13px;
   height: 13px;
   flex-shrink: 0;
-  stroke: #4db8a0;
+  stroke: var(--accent-teal);
 }
-.scan-badge:hover { background: rgba(77,184,160,0.85); transform: scale(1.05); }
+.scan-badge:hover { background: var(--accent-teal); transform: scale(1.05); }
 .scan-badge:hover svg { stroke: #fff; }
 
 .scan-badge-list {
@@ -2216,7 +2254,7 @@ input[type="date"] { color-scheme: dark; }
 .scan-viewer-close svg { width: 14px; height: 14px; }
 .scan-viewer-close:hover { color: var(--text); background: var(--bg-3); filter: brightness(1.2); }
 
-.scan-viewer-icon svg { width: 56px; height: 56px; stroke: #4db8a0; }
+.scan-viewer-icon svg { width: 56px; height: 56px; stroke: var(--accent-teal); }
 
 .scan-viewer-title {
   font-size: 1.2rem;
@@ -2395,9 +2433,9 @@ input[type="date"] { color-scheme: dark; }
   width: 100%;
   height: 100%;
   gap: 8px;
-  background: linear-gradient(135deg, rgba(77,184,160,0.12), rgba(77,184,160,0.04));
+  background: linear-gradient(135deg, var(--accent-teal-bg), rgba(77,184,160,0.04));
   text-decoration: none;
-  color: #4db8a0;
+  color: var(--accent-teal);
 }
 .scan-ar-icon { width: 40px; height: 40px; }
 .scan-ar-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; }
@@ -2411,17 +2449,17 @@ input[type="date"] { color-scheme: dark; }
   align-items: center;
   justify-content: center;
   gap: 3px;
-  background: linear-gradient(135deg, rgba(77,184,160,0.15), rgba(77,184,160,0.05));
-  color: #4db8a0;
+  background: linear-gradient(135deg, var(--accent-teal-bg), rgba(77,184,160,0.05));
+  color: var(--accent-teal);
 }
 .scan-featured-thumb svg { width: 22px; height: 22px; }
 .scan-featured-thumb span { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; }
 
 /* ===== Featured scan toggle button (active state) ===== */
 .btn.btn-active {
-  background: rgba(77,184,160,0.18);
-  border-color: rgba(77,184,160,0.4);
-  color: #4db8a0;
+  background: var(--accent-teal-bg);
+  border-color: var(--accent-teal-border);
+  color: var(--accent-teal);
 }
 
 /* ===== Gallery view strip (view mode) ===== */

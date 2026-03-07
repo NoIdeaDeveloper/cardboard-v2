@@ -5,6 +5,30 @@
 (function () {
   'use strict';
 
+  // ===== Theme =====
+  const THEME_KEY = 'cardboard_theme';
+
+  function bindThemeToggle() {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (!btn) return;
+    const update = () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    };
+    update();
+    btn.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem(THEME_KEY, 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem(THEME_KEY, 'light');
+      }
+      update();
+    });
+  }
+
   // ===== Collection Prefs =====
   const COLLECTION_PREFS_KEY = 'cardboard_collection_prefs';
   const COLLECTION_PREFS_DEFAULTS = { sortBy: 'name', sortDir: 'asc', viewMode: 'grid', statusFilter: 'owned' };
@@ -96,6 +120,7 @@
     bindModalBackdrop();
     bindKeyboardShortcuts();
     bindShortcutsOverlay();
+    bindThemeToggle();
     syncCollectionUI();
     loadCollection();
   });
