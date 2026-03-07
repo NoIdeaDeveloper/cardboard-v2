@@ -14,8 +14,8 @@ def _is_safe_url(url: str) -> bool:
         except ValueError:
             try:
                 ip = ipaddress.ip_address(socket.gethostbyname(hostname))
-            except (socket.gaierror, ValueError):
+            except (socket.gaierror, socket.timeout, ValueError):
                 return False  # unresolvable hostname = block
         return not (ip.is_private or ip.is_loopback or ip.is_link_local)
-    except (socket.gaierror, socket.herror, ValueError, OSError):
+    except (socket.gaierror, socket.herror, socket.timeout, ValueError, OSError):
         return False

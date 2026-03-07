@@ -1364,7 +1364,7 @@ function buildMilestonesSection(milestones, onGameClick, onClear) {
   title.textContent = 'Milestones';
   el.appendChild(title);
 
-  if (!milestones.length) {
+  if (!Array.isArray(milestones) || !milestones.length) {
     const empty = document.createElement('p');
     empty.className = 'milestones-empty';
     empty.textContent = 'Log play sessions to earn milestones!';

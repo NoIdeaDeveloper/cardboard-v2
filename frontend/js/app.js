@@ -34,6 +34,12 @@
   const CONFETTI_COUNT_THRESHOLD = 25;  // play count milestones ≥ this value launch confetti
   const CONFETTI_HOURS_THRESHOLD = 10;  // hours milestones ≥ this value launch confetti
 
+  function ordinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
   function loadMilestones() {
     try { return JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]'); }
     catch { return []; }
@@ -487,7 +493,7 @@
       saveMilestones([...earned, ...newOnes]);
       newOnes.forEach((m, i) => setTimeout(() => {
         const msg = m.type === 'count'
-          ? `🎉 ${m.value}th play of ${m.gameName}!`
+          ? `🎉 ${ordinal(m.value)} play of ${m.gameName}!`
           : `⏱ ${m.value} hours with ${m.gameName}!`;
         showMilestoneToast(msg, m.gameId, (id) => {
           const g = state.games.find(g => g.id === id);
