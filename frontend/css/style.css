@@ -2138,9 +2138,9 @@ input[type="date"] { color-scheme: dark; }
   border-radius: 10px;
 }
 
-/* Sessions-by-month bar (teal, distinct from the gold add-by-month bars) */
+/* Sessions-by-month bar */
 .stat-bar-fill-sessions {
-  background: var(--accent-teal);
+  background: var(--accent);
 }
 
 /* Clickable bar rows */
