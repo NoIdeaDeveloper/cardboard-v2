@@ -26,7 +26,7 @@ def get_stats(db: Session = Depends(get_db)):
     by_status: dict = {"owned": 0, "wishlist": 0, "sold": 0}
     for status, count in status_rows:
         key = status or "owned"
-        by_status[key] = count
+        by_status[key] = by_status.get(key, 0) + count
 
     total_games = sum(by_status.values())
 
@@ -174,7 +174,14 @@ def get_stats(db: Session = Depends(get_db)):
     )
     session_counts = {str(gid): count for gid, count in session_counts_rows}
 
-    logger.info("Stats computed: %d games, %d sessions", total_games, total_sessions)
+    # ── Expansion count ──────────────────────────────────────────────────────
+    total_expansions = (
+        db.query(func.count(models.Game.id))
+        .filter(models.Game.parent_game_id.isnot(None))
+        .scalar() or 0
+    )
+
+    logger.info("Stats computed: %d games, %d sessions, %d expansions", total_games, total_sessions, total_expansions)
 
     return schemas.StatsResponse(
         total_games=total_games,
@@ -192,4 +199,5 @@ def get_stats(db: Session = Depends(get_db)):
         sessions_by_month=sessions_by_month,
         recent_sessions=recent_sessions,
         session_counts=session_counts,
+        total_expansions=total_expansions,
     )

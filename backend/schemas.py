@@ -38,6 +38,7 @@ class GameBase(BaseModel):
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = Field(None, max_length=2000)
     last_played: Optional[date] = None
+    parent_game_id: Optional[int] = None
 
 
 class GameCreate(GameBase):
@@ -77,6 +78,7 @@ class GameUpdate(BaseModel):
     last_played: Optional[date] = None
     scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: Optional[bool] = None
+    parent_game_id: Optional[int] = None
 
 
 class GameResponse(GameBase):
@@ -84,6 +86,7 @@ class GameResponse(GameBase):
     image_cached: bool = False
     date_added: Optional[datetime] = None
     date_modified: Optional[datetime] = None
+    parent_game_name: Optional[str] = None  # denormalized — joined in GET
 
     class Config:
         from_attributes = True
@@ -171,3 +174,4 @@ class StatsResponse(BaseModel):
     sessions_by_month: List[SessionsByMonthEntry]
     recent_sessions: List[RecentSessionEntry]
     session_counts: Dict[str, int]
+    total_expansions: int = 0

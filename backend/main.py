@@ -50,6 +50,7 @@ _GAMES_MIGRATIONS = [
     ("scan_featured",         "INTEGER NOT NULL DEFAULT 0"),
     ("location",              "VARCHAR(255)"),
     ("show_location",         "INTEGER NOT NULL DEFAULT 0"),
+    ("parent_game_id",        "INTEGER"),
 ]
 
 # NOTE: _col and _typedef are hardcoded above — never from user input.

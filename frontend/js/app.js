@@ -86,6 +86,7 @@
     filterTime: null,
     filterMechanics: [],
     filterCategories: [],
+    showExpansions: false,
   };
 
   // ===== Init =====
@@ -229,6 +230,17 @@
       saveCollectionPrefs();
       renderCollection();
     });
+
+    const expansionsBtn = document.getElementById('show-expansions-btn');
+    if (expansionsBtn) {
+      expansionsBtn.addEventListener('click', () => {
+        state.showExpansions = !state.showExpansions;
+        expansionsBtn.classList.toggle('active', state.showExpansions);
+        expansionsBtn.setAttribute('aria-pressed', state.showExpansions);
+        expansionsBtn.title = state.showExpansions ? 'Hide expansions' : 'Show expansions';
+        renderCollection();
+      });
+    }
   }
 
   // ===== Load Collection =====
@@ -253,6 +265,8 @@
     const search = (state.search || '').toLowerCase();
     const filtered = state.games.filter(g => {
       if (state.statusFilter !== 'all' && g.status !== state.statusFilter) return false;
+      // Hide expansions by default; search always overrides so matching expansions appear
+      if (g.parent_game_id && !state.showExpansions && !search) return false;
       if (search && !g.name.toLowerCase().includes(search)) return false;
       if (state.filterNeverPlayed && g.last_played) return false;
       if (state.filterPlayers !== null) {
@@ -279,10 +293,15 @@
     });
 
     if (state.games.length > 0) {
-      const shown = filtered.length !== state.games.length ? `${filtered.length} of ${state.games.length}` : state.games.length;
-      const rated = state.games.filter(g => g.user_rating).length;
+      const baseGames = state.games.filter(g => !g.parent_game_id);
+      const expansionCount = state.games.length - baseGames.length;
+      const totalLabel = expansionCount > 0
+        ? `${baseGames.length} game${baseGames.length !== 1 ? 's' : ''} (+${expansionCount} expansion${expansionCount !== 1 ? 's' : ''})`
+        : `${state.games.length} game${state.games.length !== 1 ? 's' : ''}`;
+      const shown = filtered.length !== state.games.length ? `${filtered.length} shown of ${totalLabel}` : totalLabel;
+      const rated  = state.games.filter(g => g.user_rating).length;
       const played = state.games.filter(g => g.last_played).length;
-      statsEl.textContent = `${shown} game${state.games.length !== 1 ? 's' : ''} in collection${rated ? ` · ${rated} rated` : ''}${played ? ` · ${played} played` : ''}`;
+      statsEl.textContent = `${shown} in collection${rated ? ` · ${rated} rated` : ''}${played ? ` · ${played} played` : ''}`;
     } else {
       statsEl.textContent = '';
     }
@@ -304,8 +323,17 @@
 
     container.className = state.viewMode === 'grid' ? 'games-grid' : 'games-list';
 
+    // Pre-compute expansion counts for base games
+    const expansionCounts = {};
+    state.games.forEach(g => {
+      if (g.parent_game_id) expansionCounts[g.parent_game_id] = (expansionCounts[g.parent_game_id] || 0) + 1;
+    });
+
     filtered.forEach(game => {
-      const el = state.viewMode === 'grid' ? buildGameCard(game) : buildGameListItem(game);
+      const gameWithMeta = Object.assign({}, game, {
+        _expansionCount: expansionCounts[game.id] || 0,
+      });
+      const el = state.viewMode === 'grid' ? buildGameCard(gameWithMeta) : buildGameListItem(gameWithMeta);
       el.addEventListener('mouseenter', () => { hoveredGame = game; });
       el.addEventListener('mouseleave', () => { hoveredGame = null; });
       el.addEventListener('click', (e) => {
@@ -368,6 +396,8 @@
       handleAddGalleryImageFromUrl,
       handleUpdateGalleryImageCaption,
       mode, onSwitchToEdit, onSwitchToView,
+      state.games,
+      (targetGame) => openGameModal(targetGame, 'view', () => openGameModal(game, 'view', onBack)),
     );
 
     if (onBack) {
@@ -1050,6 +1080,7 @@
     pickBtn.addEventListener('click', () => {
       const search = (state.search || '').toLowerCase();
       const matching = state.games.filter(g => {
+        if (g.parent_game_id) return false;  // expansions can't be played standalone
         if (state.statusFilter !== 'all' && g.status !== state.statusFilter) return false;
         if (search && !g.name.toLowerCase().includes(search)) return false;
         if (state.filterNeverPlayed && g.last_played) return false;

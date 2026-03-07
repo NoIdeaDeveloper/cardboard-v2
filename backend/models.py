@@ -39,6 +39,7 @@ class Game(Base):
     # Python-side defaults so they work reliably with SQLite
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
     date_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    parent_game_id = Column(Integer, ForeignKey("games.id"), nullable=True, index=True)
 
 
 class GameImage(Base):

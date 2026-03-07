@@ -210,6 +210,13 @@ function buildGameCard(game) {
     ? `<span class="location-line">${escapeHtml(game.location)}</span>`
     : '';
 
+  const expansionBadgeHtml = game._expansionCount > 0
+    ? `<span class="card-expansion-badge">🧩 ${game._expansionCount} expansion${game._expansionCount !== 1 ? 's' : ''}</span>`
+    : '';
+  const partOfTagHtml = game.parent_game_id
+    ? `<span class="card-expansion-tag">↳ ${escapeHtml(game.parent_game_name || 'Expansion')}</span>`
+    : '';
+
   el.innerHTML = `
     <div class="game-card-image">
       ${cardMediaHtml(game)}
@@ -219,12 +226,14 @@ function buildGameCard(game) {
         <div class="game-card-title">${escapeHtml(game.name)}</div>
         ${cardStatusBadge}
       </div>
+      ${partOfTagHtml}
       ${metaHtml ? `<div class="game-card-meta">${metaHtml}</div>` : ''}
       <div class="game-card-footer">
         <div class="rating-row">${ratingHtml}</div>
         ${lastPlayedHtml}
         ${cardLabelsHtml}
         ${cardLocationHtml}
+        ${expansionBadgeHtml}
         ${game.date_added ? `<span class="game-date-added">Added ${escapeHtml(formatDatetime(game.date_added))}</span>` : ''}
         ${game.status === 'owned' ? `<button class="quick-log-btn" type="button">+ Log Play</button>` : ''}
       </div>
@@ -263,13 +272,20 @@ function buildGameListItem(game) {
     ? `<div class="label-chips">${listLabels.slice(0, 4).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div>`
     : '';
 
+  const listTitlePrefix = game.parent_game_id
+    ? `<span class="list-expansion-prefix">↳</span> `
+    : '';
+  const listExpBadge = (game._expansionCount > 0)
+    ? `<span class="card-expansion-badge">🧩 ${game._expansionCount} expansion${game._expansionCount !== 1 ? 's' : ''}</span>`
+    : '';
+
   el.innerHTML = `
     <div class="list-thumb">
       ${listThumbHtml(game)}
     </div>
-    <div class="list-info">
+    <div class="list-info${game.parent_game_id ? ' list-info-expansion' : ''}">
       <div class="list-title-row">
-        <div class="list-title">${escapeHtml(game.name)}</div>
+        <div class="list-title">${listTitlePrefix}${escapeHtml(game.name)}</div>
         ${listStatusBadge}
         ${(game.scan_filename || game.scan_glb_filename) ? `<button class="scan-badge scan-badge-list" type="button" title="View 3D Scan">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -278,6 +294,7 @@ function buildGameListItem(game) {
       </div>
       ${metaParts.length ? `<div class="list-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : ''}
       ${listLabelsHtml}
+      ${listExpBadge}
       ${game.last_played ? `<div class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</div>` : ''}
       ${game.date_added ? `<div class="last-played-line">Added ${escapeHtml(formatDatetime(game.date_added))}</div>` : ''}
       ${(game.show_location && game.location) ? `<div class="location-line">${escapeHtml(game.location)}</div>` : ''}
@@ -295,7 +312,7 @@ function buildGameListItem(game) {
 
 // ===== Modal =====
 
-function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, onAddGalleryImageFromUrl, onUpdateGalleryImageCaption, mode = 'view', onSwitchToEdit, onSwitchToView) {
+function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDeleteSession, onUploadInstructions, onDeleteInstructions, onUploadImage, onDeleteImage, onUploadScan, onDeleteScan, images, onUploadGalleryImage, onDeleteGalleryImage, onReorderGalleryImages, onUploadScanGlb, onDeleteScanGlb, onSetScanFeatured, onAddGalleryImageFromUrl, onUpdateGalleryImageCaption, mode = 'view', onSwitchToEdit, onSwitchToView, allGames = [], onOpenGame = null) {
   const el = document.createElement('div');
 
   const categories = parseList(game.categories);
@@ -304,8 +321,54 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const publishers = parseList(game.publishers);
   const modalLabels = parseList(game.labels);
 
+  const isEdit = mode === 'edit';
+
   const modalStatusBadge = game.status && game.status !== 'owned'
     ? `<span class="status-badge status-${escapeHtml(game.status)}">${game.status === 'wishlist' ? 'Wishlist' : 'Sold'}</span>`
+    : '';
+
+  // Expansion relationship display blocks
+  const parentGame = game.parent_game_id
+    ? (allGames.find(g => g.id === game.parent_game_id) || { id: game.parent_game_id, name: game.parent_game_name || 'Unknown' })
+    : null;
+
+  const partOfHtml = parentGame && !isEdit
+    ? `<div class="modal-part-of">
+        Part of:
+        <button class="expansion-link-btn" data-game-id="${parentGame.id}">${escapeHtml(parentGame.name)} ↗</button>
+       </div>`
+    : '';
+
+  const ownedExpansions = !game.parent_game_id && !isEdit
+    ? allGames.filter(g => g.parent_game_id === game.id)
+    : [];
+
+  const expansionChipsHtml = ownedExpansions.length && !isEdit
+    ? `<div class="modal-tags-group modal-expansions-group">
+        <span class="modal-tags-label">Expansions (${ownedExpansions.length})</span>
+        <div class="modal-tags">${ownedExpansions.map(e =>
+          `<button class="expansion-chip expansion-chip-${e.status || 'owned'}" data-game-id="${e.id}">${escapeHtml(e.name)} ↗</button>`
+        ).join('')}</div>
+       </div>`
+    : '';
+
+  // Edit-mode: base game picker
+  const baseGameOptions = allGames
+    .filter(g => g.id !== game.id && !g.parent_game_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const baseGameEditHtml = isEdit
+    ? `<div class="form-group full-width">
+        <label>Base Game <span class="hint">(leave blank if this is a base game)</span></label>
+        <div class="base-game-picker">
+          <input type="text" id="edit-base-game-search" class="form-input" autocomplete="off"
+            placeholder="Search base games…"
+            value="${parentGame ? escapeHtml(parentGame.name) : ''}">
+          <input type="hidden" id="edit-base-game-id" value="${game.parent_game_id || ''}">
+          <button class="btn btn-ghost btn-sm" id="edit-base-game-clear" style="${game.parent_game_id ? '' : 'display:none'}">Clear</button>
+        </div>
+        <div class="base-game-dropdown" id="base-game-dropdown" style="display:none"></div>
+       </div>`
     : '';
 
   const labelsDisplayHtml = modalLabels.length
@@ -388,7 +451,6 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const hasScanAny   = hasScan || hasGlb;
   const scanFeatured = !!game.scan_featured;
 
-  const isEdit = mode === 'edit';
   let selectedRating = game.user_rating || null;
 
   // ===== Mode-specific HTML blocks =====
@@ -605,6 +667,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
             <label>Labels <span class="hint">(comma-separated)</span></label>
             <input type="text" id="edit-labels" class="form-input" value="${escapeHtml(modalLabels.join(', '))}">
           </div>
+          ${baseGameEditHtml}
           <div class="form-group">
             <label>Purchase Date</label>
             <input type="date" id="edit-purchase-date" class="form-input date-input" value="${game.purchase_date || ''}">
@@ -655,6 +718,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         ${modalStatusBadge}
       </div>
 
+      ${partOfHtml}
+
       ${chipsHtml ? `<div class="modal-chips">${chipsHtml}</div>` : ''}
       ${game.difficulty ? `<div class="modal-difficulty">${renderDifficultyBar(game.difficulty)}</div>` : ''}
 
@@ -662,6 +727,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       ${tagsBlock('Mechanics', mechanics)}
       ${tagsBlock('Designers', designers)}
       ${tagsBlock('Publishers', publishers)}
+      ${expansionChipsHtml}
       ${labelsDisplayHtml}
       ${purchaseDisplayHtml}
       ${locationDisplayHtml}
@@ -791,6 +857,26 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     // ===== View mode wiring =====
     el.querySelector('#edit-game-btn').addEventListener('click', () => onSwitchToEdit());
 
+    // Expansion: "Part of [Base]" link
+    const partOfBtn = el.querySelector('.modal-part-of .expansion-link-btn');
+    if (partOfBtn && onOpenGame) {
+      partOfBtn.addEventListener('click', () => {
+        const targetId = parseInt(partOfBtn.dataset.gameId, 10);
+        const target = allGames.find(g => g.id === targetId);
+        if (target) onOpenGame(target);
+      });
+    }
+
+    // Expansion chips on base game modal
+    el.querySelectorAll('.expansion-chip').forEach(chip => {
+      if (!onOpenGame) return;
+      chip.addEventListener('click', () => {
+        const targetId = parseInt(chip.dataset.gameId, 10);
+        const target = allGames.find(g => g.id === targetId);
+        if (target) onOpenGame(target);
+      });
+    });
+
     if (hasScanAny) {
       el.querySelector('#view-scan-view-btn').addEventListener('click', () => openScanViewer(game));
     }
@@ -852,6 +938,46 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     el.querySelector('#today-btn').addEventListener('click', () => {
       el.querySelector('#last-played-input').value = new Date().toISOString().split('T')[0];
     });
+
+    // Base game picker
+    const baseSearch   = el.querySelector('#edit-base-game-search');
+    const baseIdInput  = el.querySelector('#edit-base-game-id');
+    const baseClear    = el.querySelector('#edit-base-game-clear');
+    const baseDropdown = el.querySelector('#base-game-dropdown');
+
+    if (baseSearch) {
+      baseSearch.addEventListener('input', () => {
+        const q = baseSearch.value.trim().toLowerCase();
+        if (!q) { baseDropdown.style.display = 'none'; return; }
+        const matches = baseGameOptions.filter(g => g.name.toLowerCase().includes(q)).slice(0, 8);
+        if (!matches.length) { baseDropdown.style.display = 'none'; return; }
+        baseDropdown.innerHTML = matches.map(g =>
+          `<button class="base-game-option" data-id="${g.id}" data-name="${escapeHtml(g.name)}">${escapeHtml(g.name)}</button>`
+        ).join('');
+        baseDropdown.style.display = 'block';
+      });
+
+      baseDropdown.addEventListener('mousedown', e => {
+        const opt = e.target.closest('.base-game-option');
+        if (!opt) return;
+        e.preventDefault();
+        baseIdInput.value  = opt.dataset.id;
+        baseSearch.value   = opt.dataset.name;
+        baseDropdown.style.display = 'none';
+        baseClear.style.display = '';
+      });
+
+      baseSearch.addEventListener('blur', () => {
+        setTimeout(() => { baseDropdown.style.display = 'none'; }, 150);
+      });
+
+      baseClear.addEventListener('click', () => {
+        baseIdInput.value  = '';
+        baseSearch.value   = '';
+        baseClear.style.display = 'none';
+        baseDropdown.style.display = 'none';
+      });
+    }
 
     // Instructions upload
     const fileInput = el.querySelector('#instructions-file-input');
@@ -1140,6 +1266,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         purchase_location: el.querySelector('#edit-purchase-location').value.trim() || null,
         location:           el.querySelector('#edit-location').value.trim() || null,
         show_location:      el.querySelector('#edit-show-location').checked,
+        parent_game_id:     parseInt(el.querySelector('#edit-base-game-id').value, 10) || null,
       };
       onSave(game.id, payload);
     });
@@ -1401,6 +1528,18 @@ function buildMilestonesSection(milestones, onGameClick, onClear) {
   return el;
 }
 
+function _ownedFor(dateAdded) {
+  const now = new Date();
+  const added = new Date(dateAdded);
+  let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
+  if (months < 1) return 'less than a month';
+  const years = Math.floor(months / 12);
+  months = months % 12;
+  if (years && months) return `${years}y ${months}m`;
+  if (years) return `${years}y`;
+  return `${months}m`;
+}
+
 function buildCollectionValueSection(games, sessionCounts, visible) {
   const el = document.createElement('div');
   el.className = 'stats-section';
@@ -1466,17 +1605,6 @@ function buildCollectionValueSection(games, sessionCounts, visible) {
     euTitle.className = 'value-subtitle';
     euTitle.textContent = 'Most Expensive Unplayed';
     el.appendChild(euTitle);
-    const _ownedFor = (dateAdded) => {
-      const now = new Date();
-      const added = new Date(dateAdded);
-      let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
-      if (months < 1) return 'less than a month';
-      const years = Math.floor(months / 12);
-      months = months % 12;
-      if (years && months) return `${years}y ${months}m`;
-      if (years) return `${years}y`;
-      return `${months}m`;
-    };
     const euList = document.createElement('div');
     euList.className = 'insight-game-list';
     euList.innerHTML = expUnplayed.map(g => `
@@ -1553,8 +1681,14 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   el.className = 'stats-view';
 
   // Stat cards
+  const totalExpansions = stats.total_expansions || 0;
+  const baseGameCount   = stats.total_games - totalExpansions;
+  const totalGamesLabel = totalExpansions > 0
+    ? `${baseGameCount} <span class="stat-expansion-note">(+${totalExpansions} exp.)</span>`
+    : stats.total_games;
+
   const statDefs = [
-    { label: 'Total Games',   value: stats.total_games },
+    { label: 'Total Games',   value: totalGamesLabel, raw: true },
     { label: 'Owned',         value: stats.by_status.owned    || 0 },
     { label: 'Wishlist',      value: stats.by_status.wishlist || 0 },
     { label: 'Play Sessions', value: stats.total_sessions },
@@ -1566,8 +1700,8 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   const cardsHtml = `<div class="stat-cards" data-section="summary"${!currentPrefs.show_summary ? ' style="display:none"' : ''}>
     ${statDefs.map(c => `
       <div class="stat-card">
-        <div class="stat-card-value">${c.value}</div>
-        <div class="stat-card-label">${c.label}</div>
+        <div class="stat-card-value">${c.raw ? c.value : escapeHtml(String(c.value))}</div>
+        <div class="stat-card-label">${escapeHtml(c.label)}</div>
       </div>`).join('')}
   </div>`;
 
@@ -1687,17 +1821,6 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     </div>` : '';
 
   // Shelf of Shame — owned games never played, oldest owned first
-  const _ownedFor = (dateAdded) => {
-    const now = new Date();
-    const added = new Date(dateAdded);
-    let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
-    if (months < 1) return 'Added this month';
-    const years = Math.floor(months / 12);
-    months = months % 12;
-    if (years && months) return `${years}y ${months}m`;
-    if (years) return `${years}y`;
-    return `${months}m`;
-  };
   const neverPlayed = games
     .filter(g => g.status === 'owned' && !g.last_played)
     .sort((a, b) => new Date(a.date_added) - new Date(b.date_added));

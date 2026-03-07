@@ -136,14 +136,27 @@ def _delete_cached_image(game_id: int) -> None:
 # Collection CRUD
 # ---------------------------------------------------------------------------
 
+def _attach_parent_name(game: models.Game, db: Session) -> schemas.GameResponse:
+    """Build a GameResponse with parent_game_name populated if applicable."""
+    data = schemas.GameResponse.model_validate(game)
+    if game.parent_game_id:
+        parent = db.query(models.Game).filter(models.Game.id == game.parent_game_id).first()
+        data.parent_game_name = parent.name if parent else None
+    return data
+
+
 @router.get("/", response_model=List[schemas.GameResponse])
 def get_games(
     search: Optional[str] = None,
     sort_by: Optional[str] = Query(None, pattern="^(name|min_playtime|max_playtime|min_players|max_players|difficulty|user_rating|date_added|last_played|status|purchase_price|purchase_date)$"),
     sort_dir: Optional[str] = Query("asc", pattern="^(asc|desc)$"),
+    include_expansions: bool = True,
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Game)
+
+    if not include_expansions:
+        query = query.filter(models.Game.parent_game_id.is_(None))
 
     if search:
         query = query.filter(models.Game.name.ilike(f"%{search}%"))
@@ -173,7 +186,22 @@ def get_games(
     else:
         query = query.order_by(asc(sort_column))
 
-    return query.all()
+    games = query.all()
+
+    # Build a parent-name lookup in one query to avoid N+1
+    parent_ids = {g.parent_game_id for g in games if g.parent_game_id}
+    parent_names: dict[int, str] = {}
+    if parent_ids:
+        parents = db.query(models.Game.id, models.Game.name).filter(models.Game.id.in_(parent_ids)).all()
+        parent_names = {p.id: p.name for p in parents}
+
+    results = []
+    for g in games:
+        row = schemas.GameResponse.model_validate(g)
+        if g.parent_game_id:
+            row.parent_game_name = parent_names.get(g.parent_game_id)
+        results.append(row)
+    return results
 
 
 @router.get("/{game_id}", response_model=schemas.GameResponse)
@@ -181,7 +209,20 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
     game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
-    return game
+    return _attach_parent_name(game, db)
+
+
+def _validate_parent_game_id(parent_id: Optional[int], self_id: Optional[int], db: Session) -> None:
+    """Validate parent_game_id: must exist, not self, not itself an expansion."""
+    if parent_id is None:
+        return
+    if self_id is not None and parent_id == self_id:
+        raise HTTPException(status_code=400, detail="A game cannot be its own parent")
+    parent = db.query(models.Game).filter(models.Game.id == parent_id).first()
+    if not parent:
+        raise HTTPException(status_code=400, detail="Parent game not found")
+    if parent.parent_game_id is not None:
+        raise HTTPException(status_code=400, detail="Cannot nest expansions — the target game is already an expansion")
 
 
 @router.post("/", response_model=schemas.GameResponse, status_code=201)
@@ -190,6 +231,7 @@ def create_game(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    _validate_parent_game_id(game.parent_game_id, None, db)
     db_game = models.Game(**game.model_dump())
     db.add(db_game)
     db.commit()
@@ -199,7 +241,7 @@ def create_game(
     if db_game.image_url and not db_game.image_url.startswith("/api/"):
         background_tasks.add_task(_cache_game_image, db_game.id, db_game.image_url)
 
-    return db_game
+    return _attach_parent_name(db_game, db)
 
 
 @router.patch("/{game_id}", response_model=schemas.GameResponse)
@@ -214,6 +256,9 @@ def update_game(
         raise HTTPException(status_code=404, detail="Game not found")
 
     update_data = game.model_dump(exclude_unset=True)
+
+    if "parent_game_id" in update_data:
+        _validate_parent_game_id(update_data["parent_game_id"], game_id, db)
 
     # If image_url is being explicitly changed, clean up the old cached file first.
     new_image_url = None
@@ -234,7 +279,7 @@ def update_game(
     if new_image_url and not new_image_url.startswith("/api/"):
         background_tasks.add_task(_cache_game_image, game_id, new_image_url)
 
-    return db_game
+    return _attach_parent_name(db_game, db)
 
 
 @router.delete("/{game_id}", status_code=204)
@@ -256,6 +301,10 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
         except OSError:
             pass
     delete_all_gallery_images(game_id, db)
+
+    # Detach any expansions that had this game as their parent
+    db.query(models.Game).filter(models.Game.parent_game_id == game_id)\
+        .update({"parent_game_id": None})
 
     # Delete associated play sessions
     db.query(models.PlaySession).filter(models.PlaySession.game_id == game_id).delete()
