@@ -122,6 +122,14 @@ def _instructions_path(game_id: int, filename: str) -> str:
     return os.path.join(INSTRUCTIONS_DIR, f"{game_id}_{os.path.basename(filename)}")
 
 
+def _verify_within(path: str, directory: str) -> str:
+    """Resolve *path* and verify it lives inside *directory*; raise 404 otherwise."""
+    real = os.path.realpath(path)
+    if not real.startswith(os.path.realpath(directory) + os.sep):
+        raise HTTPException(status_code=404, detail="File not found")
+    return real
+
+
 def _delete_cached_image(game_id: int) -> None:
     for path in glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*")):
         try:
@@ -146,13 +154,26 @@ def get_games(
     if search:
         query = query.filter(models.Game.name.ilike(f"%{search}%"))
 
+    SORT_COLUMNS = {
+        "min_playtime": models.Game.min_playtime,
+        "max_playtime": models.Game.max_playtime,
+        "min_players": models.Game.min_players,
+        "max_players": models.Game.max_players,
+        "difficulty": models.Game.difficulty,
+        "user_rating": models.Game.user_rating,
+        "date_added": models.Game.date_added,
+        "last_played": models.Game.last_played,
+        "status": models.Game.status,
+        "purchase_price": models.Game.purchase_price,
+        "purchase_date": models.Game.purchase_date,
+    }
     if not sort_by or sort_by == 'name':
         sort_column = case(
             (func.lower(models.Game.name).like('the %'), func.substr(models.Game.name, 5)),
             else_=models.Game.name,
         )
     else:
-        sort_column = getattr(models.Game, sort_by, models.Game.name)
+        sort_column = SORT_COLUMNS.get(sort_by, models.Game.name)
     if sort_dir == "desc":
         query = query.order_by(desc(sort_column))
     else:
@@ -207,8 +228,6 @@ def update_game(
         if not new_image_url or not new_image_url.startswith("/api/"):
             _delete_cached_image(game_id)
             db_game.image_cached = False
-    else:
-        new_image_url = None
 
     for field, value in update_data.items():
         setattr(db_game, field, value)
@@ -360,6 +379,7 @@ def get_instructions(game_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No instructions uploaded")
 
     path = _instructions_path(game_id, db_game.instructions_filename)
+    path = _verify_within(path, INSTRUCTIONS_DIR)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="Instructions file not found")
 
@@ -449,6 +469,7 @@ def get_scan(game_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No 3D scan uploaded")
 
     path = os.path.join(SCANS_DIR, f"{game_id}.usdz")
+    path = _verify_within(path, SCANS_DIR)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="3D scan file not found")
 
@@ -515,6 +536,7 @@ def get_scan_glb(game_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No GLB scan uploaded")
 
     path = os.path.join(SCANS_DIR, f"{game_id}.glb")
+    path = _verify_within(path, SCANS_DIR)
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="GLB file not found")
 

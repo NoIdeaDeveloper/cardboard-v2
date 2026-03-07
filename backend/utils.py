@@ -17,5 +17,5 @@ def _is_safe_url(url: str) -> bool:
             except (socket.gaierror, ValueError):
                 return False  # unresolvable hostname = block
         return not (ip.is_private or ip.is_loopback or ip.is_link_local)
-    except Exception:
+    except (socket.gaierror, socket.herror, ValueError, OSError):
         return False

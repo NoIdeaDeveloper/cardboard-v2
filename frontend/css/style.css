@@ -19,7 +19,6 @@
   --success:       #6ab572;
   --success-bg:    rgba(106,181,114,0.12);
   --warning:       #e8a020;
-  --gold:          #c9a84c;
   --radius:        10px;
   --radius-sm:     6px;
   --radius-lg:     14px;
@@ -53,6 +52,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   top: 0;
   z-index: 100;
   background: rgba(16, 12, 9, 0.92);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -512,8 +512,8 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .star {
   width: 14px;
   height: 14px;
-  fill: var(--gold);
-  color: var(--gold);
+  fill: var(--accent);
+  color: var(--accent);
 }
 
 .star.empty {
@@ -991,7 +991,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
   transition: fill var(--transition), stroke var(--transition);
 }
 
-.star-btn.active svg { fill: var(--gold); stroke: var(--gold); }
+.star-btn.active svg { fill: var(--accent); stroke: var(--accent); }
 .star-btn:hover { transform: scale(1.15); }
 
 .rating-display {
