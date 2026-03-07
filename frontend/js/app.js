@@ -1088,13 +1088,14 @@
   const STATS_PREFS_KEY = 'cardboard_stats_prefs';
   const STATS_PREFS_DEFAULTS = {
     show_summary: true, show_most_played: true, show_recently_played: true,
+    show_recently_added: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
     show_dormant: true, show_top_mechanics: true, show_collection_value: true,
     added_by_month_include_wishlist: true,
-    section_order: ['summary', 'most_played', 'recently_played', 'ratings',
-                    'labels', 'added_by_month', 'sessions_by_month', 'never_played',
-                    'dormant', 'top_mechanics', 'collection_value'],
+    section_order: ['summary', 'most_played', 'recently_played', 'recently_added',
+                    'ratings', 'labels', 'added_by_month', 'sessions_by_month',
+                    'never_played', 'dormant', 'top_mechanics', 'collection_value'],
   };
 
   function loadStatsPrefs() {

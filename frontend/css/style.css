@@ -2863,4 +2863,7 @@ input[type="date"] { color-scheme: dark; }
   .main { padding: 20px 16px; }
   .modal-body { padding: 18px; }
   .game-form { padding: 18px; }
+  .value-summary { gap: 8px; }
+  .value-pill { padding: 10px 8px; }
+  .value-pill-value { font-size: 1.05rem; }
 }
