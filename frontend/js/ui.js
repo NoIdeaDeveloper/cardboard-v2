@@ -1401,16 +1401,113 @@ function buildMilestonesSection(milestones, onGameClick, onClear) {
   return el;
 }
 
+function buildCollectionValueSection(games, sessionCounts, visible) {
+  const el = document.createElement('div');
+  el.className = 'stats-section';
+  el.dataset.section = 'collection_value';
+  if (!visible) el.style.display = 'none';
+
+  const title = document.createElement('h3');
+  title.className = 'stats-section-title';
+  title.textContent = 'Collection Value';
+  el.appendChild(title);
+
+  // Filter games with a purchase price
+  const owned = games.filter(g => g.status === 'owned' && g.purchase_price > 0);
+  const ownedValue = owned.reduce((s, g) => s + g.purchase_price, 0);
+  const avgPrice = owned.length ? ownedValue / owned.length : 0;
+  const unplayedValue = owned.filter(g => !g.last_played).reduce((s, g) => s + g.purchase_price, 0);
+
+  // Value summary pills
+  const pills = document.createElement('div');
+  pills.className = 'value-summary';
+  pills.innerHTML = [
+    { label: 'Owned Value', value: '$' + ownedValue.toFixed(2) },
+    { label: 'Avg Price',   value: '$' + avgPrice.toFixed(2) },
+    { label: 'Unplayed Value', value: '$' + unplayedValue.toFixed(2) },
+  ].map(p => `<div class="value-pill"><div class="value-pill-value">${p.value}</div><div class="value-pill-label">${p.label}</div></div>`).join('');
+  el.appendChild(pills);
+
+  // Best Value — lowest cost-per-play (owned, price > 0, sessions > 0)
+  const bestValue = owned
+    .filter(g => sessionCounts[String(g.id)] > 0)
+    .map(g => ({ ...g, sessions: sessionCounts[String(g.id)], cpp: g.purchase_price / sessionCounts[String(g.id)] }))
+    .sort((a, b) => a.cpp - b.cpp)
+    .slice(0, 5);
+
+  if (bestValue.length) {
+    const maxSessions = Math.max(...bestValue.map(g => g.sessions));
+    const bvTitle = document.createElement('h4');
+    bvTitle.className = 'value-subtitle';
+    bvTitle.textContent = 'Best Value';
+    el.appendChild(bvTitle);
+    const list = document.createElement('div');
+    list.className = 'most-played-list';
+    list.innerHTML = bestValue.map((g, i) => `
+      <div class="most-played-item" data-game-id="${g.id}">
+        <div class="most-played-rank">${i + 1}</div>
+        <div class="most-played-info">
+          <div class="most-played-name">${escapeHtml(g.name)}</div>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${maxSessions ? (g.sessions / maxSessions * 100) : 0}%"></div></div>
+        </div>
+        <div class="most-played-count cost-per-play">$${g.cpp.toFixed(2)}/play</div>
+      </div>`).join('');
+    el.appendChild(list);
+  }
+
+  // Most Expensive Unplayed — top 5 priciest owned, never played
+  const expUnplayed = owned
+    .filter(g => !g.last_played)
+    .sort((a, b) => b.purchase_price - a.purchase_price)
+    .slice(0, 5);
+
+  if (expUnplayed.length) {
+    const euTitle = document.createElement('h4');
+    euTitle.className = 'value-subtitle';
+    euTitle.textContent = 'Most Expensive Unplayed';
+    el.appendChild(euTitle);
+    const _ownedFor = (dateAdded) => {
+      const now = new Date();
+      const added = new Date(dateAdded);
+      let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
+      if (months < 1) return 'Added this month';
+      const years = Math.floor(months / 12);
+      months = months % 12;
+      if (years && months) return `${years}y ${months}m`;
+      if (years) return `${years}y`;
+      return `${months}m`;
+    };
+    const euList = document.createElement('div');
+    euList.className = 'insight-game-list';
+    euList.innerHTML = expUnplayed.map(g => `
+      <div class="insight-game-row" data-game-id="${g.id}">
+        <span class="insight-game-name">${escapeHtml(g.name)}</span>
+        <span class="insight-game-meta"><span class="value-price">$${g.purchase_price.toFixed(2)}</span> · Owned for ${_ownedFor(g.date_added)}</span>
+      </div>`).join('');
+    el.appendChild(euList);
+  }
+
+  // Empty state: no games have purchase prices
+  if (!owned.length) {
+    const empty = document.createElement('p');
+    empty.className = 'no-sessions';
+    empty.textContent = 'Add purchase prices to your games to see value insights.';
+    el.appendChild(empty);
+  }
+
+  return el;
+}
+
 function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   const SECTION_DEFAULTS = {
     show_summary: true, show_most_played: true, show_recently_played: true,
     show_recently_added: true,
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
-    show_dormant: true, show_top_mechanics: true,
+    show_dormant: true, show_top_mechanics: true, show_collection_value: true,
     section_order: ['summary', 'most_played', 'recently_played', 'recently_added',
                     'ratings', 'labels', 'added_by_month', 'sessions_by_month',
-                    'never_played', 'dormant', 'top_mechanics'],
+                    'never_played', 'dormant', 'top_mechanics', 'collection_value'],
   };
   let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
 
@@ -1427,6 +1524,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     ['show_never_played',      'Never Played',       'never_played'],
     ['show_dormant',           'Dormant Games',      'dormant'],
     ['show_top_mechanics',     'Top Mechanics',      'top_mechanics'],
+    ['show_collection_value',  'Collection Value',   'collection_value'],
   ];
 
   const gripSvg = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -1459,7 +1557,6 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     { label: 'Play Sessions', value: stats.total_sessions },
     { label: 'Hours Played',  value: stats.total_hours },
     ...(stats.avg_rating    != null ? [{ label: 'Avg Rating',        value: stats.avg_rating + ' / 10' }] : []),
-    { label: 'Collection Value', value: '$' + (stats.total_spent != null ? stats.total_spent.toFixed(2) : '0.00') },
     { label: 'Never Played',  value: stats.never_played_count },
   ];
 
@@ -1671,6 +1768,11 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </div>
     </div>` : '';
 
+  // Collection Value
+  const collectionValueHtml = buildCollectionValueSection(
+    games, stats.session_counts || {}, currentPrefs.show_collection_value !== false
+  ).outerHTML;
+
   // Build ordered sections HTML
   const sectionsMap = {
     summary:           cardsHtml,
@@ -1684,6 +1786,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     never_played:      neverPlayedHtml,
     dormant:           dormantHtml,
     top_mechanics:     topMechanicsHtml,
+    collection_value:  collectionValueHtml,
   };
   const orderedSectionsHtml = currentPrefs.section_order.map(k => sectionsMap[k] || '').join('');
 

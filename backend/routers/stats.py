@@ -166,6 +166,14 @@ def get_stats(db: Session = Depends(get_db)):
         for s, name in recent_rows
     ]
 
+    # ── Session counts per game ─────────────────────────────────────────────
+    session_counts_rows = (
+        db.query(models.PlaySession.game_id, func.count(models.PlaySession.id))
+        .group_by(models.PlaySession.game_id)
+        .all()
+    )
+    session_counts = {str(gid): count for gid, count in session_counts_rows}
+
     logger.info("Stats computed: %d games, %d sessions", total_games, total_sessions)
 
     return schemas.StatsResponse(
@@ -183,4 +191,5 @@ def get_stats(db: Session = Depends(get_db)):
         added_by_month=added_by_month,
         sessions_by_month=sessions_by_month,
         recent_sessions=recent_sessions,
+        session_counts=session_counts,
     )

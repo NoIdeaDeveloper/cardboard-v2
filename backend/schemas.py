@@ -170,3 +170,4 @@ class StatsResponse(BaseModel):
     added_by_month: List[AddedByMonthEntry]
     sessions_by_month: List[SessionsByMonthEntry]
     recent_sessions: List[RecentSessionEntry]
+    session_counts: Dict[str, int]
