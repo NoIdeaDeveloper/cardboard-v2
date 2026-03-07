@@ -23,6 +23,10 @@
     }));
   }
 
+  // ===== Transient UI state (not persisted) =====
+  let hoveredGame  = null;  // game card the mouse is currently over
+  let activeModal  = null;  // { game, mode } when the game modal is open
+
   // ===== State =====
   const _cp = loadCollectionPrefs();
   let state = {
@@ -70,6 +74,7 @@
     bindAddGame();
     bindModalBackdrop();
     bindKeyboardShortcuts();
+    bindShortcutsOverlay();
     syncCollectionUI();
     loadCollection();
   });
@@ -248,6 +253,8 @@
 
     filtered.forEach(game => {
       const el = state.viewMode === 'grid' ? buildGameCard(game) : buildGameListItem(game);
+      el.addEventListener('mouseenter', () => { hoveredGame = game; });
+      el.addEventListener('mouseleave', () => { hoveredGame = null; });
       el.addEventListener('click', (e) => {
         if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn, .quick-log-btn')) return;
         openGameModal(game);
@@ -320,6 +327,7 @@
       if (hero) hero.appendChild(backBtn);
     }
 
+    activeModal = { game, mode };
     openModal(contentEl);
   }
 
@@ -410,6 +418,7 @@
     try {
       const updated = await API.updateGame(gameId, payload);
       showToast('Changes saved!', 'success');
+      activeModal = null;
       closeModal();
       const idx = state.games.findIndex(g => g.id === gameId);
       if (idx !== -1) state.games[idx] = updated;
@@ -429,6 +438,7 @@
     try {
       await API.deleteGame(gameId);
       showToast(`"${gameName}" removed from collection.`, 'success');
+      activeModal = null;
       closeModal();
       state.games = state.games.filter(g => g.id !== gameId);
       renderCollection();
@@ -643,9 +653,9 @@
 
   // ===== Modal Backdrop =====
   function bindModalBackdrop() {
-    document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+    document.getElementById('modal-backdrop').addEventListener('click', () => { activeModal = null; closeModal(); });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Escape') { activeModal = null; closeModal(); }
     });
   }
 
@@ -666,7 +676,64 @@
           switchView('collection');
         }
         document.getElementById('collection-search')?.focus();
+      } else if (e.key === 'e' || e.key === 'E') {
+        if (activeModal && activeModal.mode === 'view') {
+          e.preventDefault();
+          openGameModal(activeModal.game, 'edit');
+        } else if (!activeModal && hoveredGame) {
+          e.preventDefault();
+          openGameModal(hoveredGame, 'edit');
+        }
       }
+    });
+  }
+
+  // ===== Shortcuts Overlay =====
+  function bindShortcutsOverlay() {
+    const btn = document.getElementById('shortcuts-btn');
+    if (!btn) return;
+
+    const SHORTCUTS = [
+      { key: 'N', desc: 'Add a new game' },
+      { key: 'S', desc: 'Focus the search bar' },
+      { key: 'E', desc: 'Edit hovered or open game' },
+      { key: 'Esc', desc: 'Close modal or overlay' },
+    ];
+
+    btn.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.className = 'shortcuts-overlay';
+      overlay.innerHTML = `
+        <div class="shortcuts-panel">
+          <div class="shortcuts-header">
+            <span class="shortcuts-title">Keyboard Shortcuts</span>
+            <button class="shortcuts-close" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <ul class="shortcuts-list">
+            ${SHORTCUTS.map(s => `
+              <li class="shortcuts-row">
+                <kbd class="kbd">${escapeHtml(s.key)}</kbd>
+                <span class="shortcuts-desc">${escapeHtml(s.desc)}</span>
+              </li>`).join('')}
+          </ul>
+        </div>`;
+
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('open'));
+
+      function close() {
+        overlay.classList.remove('open');
+        document.removeEventListener('keydown', onKey);
+        setTimeout(() => overlay.remove(), 180);
+      }
+
+      function onKey(e) { if (e.key === 'Escape') close(); }
+
+      overlay.querySelector('.shortcuts-close').addEventListener('click', close);
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      document.addEventListener('keydown', onKey);
     });
   }
 
