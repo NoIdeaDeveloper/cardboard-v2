@@ -1371,9 +1371,10 @@ input[type="date"] { color-scheme: dark; }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-.toast-info    { background: var(--bg-4); color: var(--text); border: 1px solid var(--border-hover); }
-.toast-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(106,181,114,0.3); }
-.toast-error   { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(224,92,92,0.3); }
+.toast-info      { background: var(--bg-4); color: var(--text); border: 1px solid var(--border-hover); }
+.toast-success   { background: var(--success-bg); color: var(--success); border: 1px solid rgba(106,181,114,0.3); }
+.toast-error     { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(224,92,92,0.3); }
+.toast-milestone { background: rgba(201,168,76,0.15); color: var(--accent-2); border: 1px solid rgba(201,168,76,0.45); font-weight: 600; }
 
 /* ===== Confirm Dialog ===== */
 .confirm-overlay {
@@ -1742,6 +1743,56 @@ input[type="date"] { color-scheme: dark; }
   font-weight: 700;
   color: var(--text);
   margin-bottom: 14px;
+}
+
+/* ===== Milestones Section ===== */
+.milestones-section { margin-top: 32px; }
+
+.milestones-empty {
+  color: var(--text-3);
+  font-size: 0.9rem;
+}
+
+.milestone-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.milestone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  font-size: 0.82rem;
+  text-align: left;
+}
+.milestone-badge:hover {
+  background: rgba(201,168,76,0.18);
+  border-color: rgba(201,168,76,0.5);
+}
+
+.milestone-icon { font-size: 1rem; flex-shrink: 0; }
+
+.milestone-game {
+  color: var(--text);
+  font-weight: 600;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.milestone-value {
+  color: var(--accent);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .stats-section-header {
   display: flex;

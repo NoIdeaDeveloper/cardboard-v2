@@ -13,6 +13,21 @@ function showToast(message, type = 'info', duration = 3500) {
   setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 400); }, duration);
 }
 
+// Clickable milestone toast — clicking navigates to the game (callback injected by app.js)
+function showMilestoneToast(message, gameId, onClickGame) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-milestone';
+  toast.textContent = message;
+  if (onClickGame) {
+    toast.style.cursor = 'pointer';
+    toast.title = 'Click to open game';
+    toast.addEventListener('click', () => { toast.remove(); onClickGame(gameId); });
+  }
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 400); }, 5000);
+}
+
 function showConfirm(title, message) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -1338,6 +1353,52 @@ function buildAddedByMonthHtml(games, includeWishlist) {
           <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${e.count ? Math.round(e.count / max * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${e.count}</span>
         </div>`).join('');
+}
+
+function buildMilestonesSection(milestones, onGameClick, onClear) {
+  const el = document.createElement('div');
+  el.className = 'stats-section milestones-section';
+
+  const title = document.createElement('h3');
+  title.className = 'stats-section-title';
+  title.textContent = 'Milestones';
+  el.appendChild(title);
+
+  if (!milestones.length) {
+    const empty = document.createElement('p');
+    empty.className = 'milestones-empty';
+    empty.textContent = 'Log play sessions to earn milestones!';
+    el.appendChild(empty);
+    return el;
+  }
+
+  // Show most recent first, cap at 30
+  const sorted = [...milestones].sort((a, b) => new Date(b.earnedAt) - new Date(a.earnedAt)).slice(0, 30);
+
+  const grid = document.createElement('div');
+  grid.className = 'milestone-grid';
+
+  sorted.forEach(m => {
+    const badge = document.createElement('button');
+    badge.className = 'milestone-badge';
+    badge.title = `Earned ${new Date(m.earnedAt).toLocaleDateString()}`;
+    const icon = m.type === 'count' ? '🎉' : '⏱';
+    const label = m.type === 'count' ? `${m.value} plays` : `${m.value} hrs`;
+    badge.innerHTML = `<span class="milestone-icon">${icon}</span><span class="milestone-game">${escapeHtml(m.gameName)}</span><span class="milestone-value">${escapeHtml(label)}</span>`;
+    badge.addEventListener('click', () => onGameClick(m.gameId));
+    grid.appendChild(badge);
+  });
+
+  el.appendChild(grid);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'filter-clear-all';
+  clearBtn.style.marginTop = '12px';
+  clearBtn.textContent = 'Clear milestone history';
+  clearBtn.addEventListener('click', () => { onClear(); el.remove(); });
+  el.appendChild(clearBtn);
+
+  return el;
 }
 
 function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {

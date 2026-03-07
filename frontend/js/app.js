@@ -27,6 +27,21 @@
   let hoveredGame  = null;  // game card the mouse is currently over
   let activeModal  = null;  // { game, mode } when the game modal is open
 
+  // ===== Milestones =====
+  const MILESTONE_STORAGE_KEY    = 'cardboard_milestones';
+  const COUNT_MILESTONES         = [5, 10, 25, 50, 100, 200];
+  const HOURS_MILESTONES         = [5, 10, 25, 50, 100];
+  const CONFETTI_COUNT_THRESHOLD = 25;  // play count milestones ≥ this value launch confetti
+  const CONFETTI_HOURS_THRESHOLD = 10;  // hours milestones ≥ this value launch confetti
+
+  function loadMilestones() {
+    try { return JSON.parse(localStorage.getItem(MILESTONE_STORAGE_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function saveMilestones(list) {
+    localStorage.setItem(MILESTONE_STORAGE_KEY, JSON.stringify(list));
+  }
+
   // ===== State =====
   const _cp = loadCollectionPrefs();
   let state = {
@@ -448,6 +463,42 @@
     }
   }
 
+  async function checkAndShowMilestones(gameId, gameName) {
+    try {
+      const sessions   = await API.getSessions(gameId);
+      const count      = sessions.length;
+      const totalHours = sessions.reduce((s, p) => s + (p.duration_minutes || 0), 0) / 60;
+      const earned     = loadMilestones();
+      const seenKeys   = new Set(earned.map(m => m.key));
+      const newOnes    = [];
+
+      for (const n of COUNT_MILESTONES) {
+        const key = `${gameId}:count:${n}`;
+        if (count >= n && !seenKeys.has(key))
+          newOnes.push({ key, gameId, gameName, type: 'count', value: n, earnedAt: new Date().toISOString() });
+      }
+      for (const h of HOURS_MILESTONES) {
+        const key = `${gameId}:hours:${h}`;
+        if (totalHours >= h && !seenKeys.has(key))
+          newOnes.push({ key, gameId, gameName, type: 'hours', value: h, earnedAt: new Date().toISOString() });
+      }
+
+      if (!newOnes.length) return;
+      saveMilestones([...earned, ...newOnes]);
+      newOnes.forEach((m, i) => setTimeout(() => {
+        const msg = m.type === 'count'
+          ? `🎉 ${m.value}th play of ${m.gameName}!`
+          : `⏱ ${m.value} hours with ${m.gameName}!`;
+        showMilestoneToast(msg, m.gameId, (id) => {
+          const g = state.games.find(g => g.id === id);
+          if (g) openGameModal(g);
+        });
+        const bigEnough = m.type === 'count' ? m.value >= CONFETTI_COUNT_THRESHOLD : m.value >= CONFETTI_HOURS_THRESHOLD;
+        if (bigEnough) launchConfetti();
+      }, i * 900));
+    } catch (_) { /* non-fatal: never block normal session logging */ }
+  }
+
   async function handleAddSession(gameId, sessionData, onSuccess) {
     try {
       const created = await API.addSession(gameId, sessionData);
@@ -461,6 +512,9 @@
         }
       }
       if (onSuccess) onSuccess(created);
+      // Milestone check fires after callback so UI updates first
+      const gameName = state.games[idx]?.name || 'this game';
+      checkAndShowMilestones(gameId, gameName);
     } catch (err) {
       showToast(`Failed to log session: ${err.message}`, 'error');
     }
@@ -1248,6 +1302,11 @@
       const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
       el.appendChild(statsView);
       wireStatsView(statsView);
+      el.appendChild(buildMilestonesSection(
+        loadMilestones(),
+        (gameId) => { const g = state.games.find(g => g.id === gameId); if (g) openGameModal(g); },
+        () => saveMilestones([]),
+      ));
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -1262,6 +1321,11 @@
       const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
       el.appendChild(statsView);
       wireStatsView(statsView);
+      el.appendChild(buildMilestonesSection(
+        loadMilestones(),
+        (gameId) => { const g = state.games.find(g => g.id === gameId); if (g) openGameModal(g); },
+        () => saveMilestones([]),
+      ));
     } catch (_) { /* non-fatal */ }
   }
 
