@@ -1470,7 +1470,7 @@ function buildCollectionValueSection(games, sessionCounts, visible) {
       const now = new Date();
       const added = new Date(dateAdded);
       let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
-      if (months < 1) return 'Added this month';
+      if (months < 1) return 'less than a month';
       const years = Math.floor(months / 12);
       months = months % 12;
       if (years && months) return `${years}y ${months}m`;
@@ -1505,9 +1505,11 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
     show_dormant: true, show_top_mechanics: true, show_collection_value: true,
+    show_milestones: true,
     section_order: ['summary', 'most_played', 'recently_played', 'recently_added',
                     'ratings', 'labels', 'added_by_month', 'sessions_by_month',
-                    'never_played', 'dormant', 'top_mechanics', 'collection_value'],
+                    'never_played', 'dormant', 'top_mechanics', 'collection_value',
+                    'milestones'],
   };
   let currentPrefs = { ...SECTION_DEFAULTS, ...prefs };
 
@@ -1521,10 +1523,11 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
     ['show_labels',            'Labels',             'labels'],
     ['show_added_by_month',    'Added by Month',     'added_by_month'],
     ['show_sessions_by_month', 'Sessions by Month',  'sessions_by_month'],
-    ['show_never_played',      'Never Played',       'never_played'],
+    ['show_never_played',      'Shelf of Shame',     'never_played'],
     ['show_dormant',           'Dormant Games',      'dormant'],
     ['show_top_mechanics',     'Top Mechanics',      'top_mechanics'],
     ['show_collection_value',  'Collection Value',   'collection_value'],
+    ['show_milestones',        'Milestones',         'milestones'],
   ];
 
   const gripSvg = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none">

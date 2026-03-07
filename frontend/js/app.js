@@ -1092,10 +1092,12 @@
     show_ratings: true, show_labels: true, show_added_by_month: true,
     show_sessions_by_month: true, show_never_played: true,
     show_dormant: true, show_top_mechanics: true, show_collection_value: true,
+    show_milestones: true,
     added_by_month_include_wishlist: true,
     section_order: ['summary', 'most_played', 'recently_played', 'recently_added',
                     'ratings', 'labels', 'added_by_month', 'sessions_by_month',
-                    'never_played', 'dormant', 'top_mechanics', 'collection_value'],
+                    'never_played', 'dormant', 'top_mechanics', 'collection_value',
+                    'milestones'],
   };
 
   function loadStatsPrefs() {
@@ -1325,20 +1327,33 @@
     });
   }
 
+  function _injectMilestonesIntoGrid(statsView, prefs) {
+    const milestonesEl = buildMilestonesSection(
+      loadMilestones(),
+      (gameId) => { const g = state.games.find(g => g.id === gameId); if (g) openGameModal(g); },
+      () => saveMilestones([]),
+    );
+    milestonesEl.dataset.section = 'milestones';
+    if (prefs.show_milestones === false) milestonesEl.style.display = 'none';
+    const sectionsGrid = statsView.querySelector('#stats-sections');
+    const order = prefs.section_order;
+    const milIdx = order.indexOf('milestones');
+    const nextKey = order[milIdx + 1];
+    const nextEl = nextKey ? sectionsGrid.querySelector(`[data-section="${nextKey}"]`) : null;
+    sectionsGrid.insertBefore(milestonesEl, nextEl); // insertBefore(el, null) === appendChild
+  }
+
   async function loadStats() {
     const el = document.getElementById('stats-content');
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
     try {
       const stats = await API.getStats();
+      const prefs = loadStatsPrefs();
       el.innerHTML = '';
-      const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
+      const statsView = buildStatsView(stats, state.games, prefs, saveStatsPrefs);
       el.appendChild(statsView);
       wireStatsView(statsView);
-      el.appendChild(buildMilestonesSection(
-        loadMilestones(),
-        (gameId) => { const g = state.games.find(g => g.id === gameId); if (g) openGameModal(g); },
-        () => saveMilestones([]),
-      ));
+      _injectMilestonesIntoGrid(statsView, prefs);
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -1348,16 +1363,13 @@
     if (!document.getElementById('view-stats')?.classList.contains('active')) return;
     try {
       const stats = await API.getStats();
+      const prefs = loadStatsPrefs();
       const el = document.getElementById('stats-content');
       el.innerHTML = '';
-      const statsView = buildStatsView(stats, state.games, loadStatsPrefs(), saveStatsPrefs);
+      const statsView = buildStatsView(stats, state.games, prefs, saveStatsPrefs);
       el.appendChild(statsView);
       wireStatsView(statsView);
-      el.appendChild(buildMilestonesSection(
-        loadMilestones(),
-        (gameId) => { const g = state.games.find(g => g.id === gameId); if (g) openGameModal(g); },
-        () => saveMilestones([]),
-      ));
+      _injectMilestonesIntoGrid(statsView, prefs);
     } catch (_) { /* non-fatal */ }
   }
 
