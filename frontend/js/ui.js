@@ -1586,22 +1586,31 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       </div>
     </div>` : '';
 
-  // Never played — owned games only
-  const neverPlayed = games.filter(g => g.status === 'owned' && !g.last_played);
+  // Shelf of Shame — owned games never played, oldest owned first
+  const _ownedFor = (dateAdded) => {
+    const now = new Date();
+    const added = new Date(dateAdded);
+    let months = (now.getFullYear() - added.getFullYear()) * 12 + (now.getMonth() - added.getMonth());
+    if (months < 1) return 'Added this month';
+    const years = Math.floor(months / 12);
+    months = months % 12;
+    if (years && months) return `${years}y ${months}m`;
+    if (years) return `${years}y`;
+    return `${months}m`;
+  };
+  const neverPlayed = games
+    .filter(g => g.status === 'owned' && !g.last_played)
+    .sort((a, b) => new Date(a.date_added) - new Date(b.date_added));
   const _npRow = g => {
-    const parts = [
-      formatPlayers(g.min_players, g.max_players),
-      formatPlaytime(g.min_playtime, g.max_playtime),
-      g.difficulty ? `${g.difficulty.toFixed(1)}\u2605` : ''
-    ].filter(Boolean);
     return `<div class="insight-game-row" data-game-id="${g.id}">
                <span class="insight-game-name">${escapeHtml(g.name)}</span>
-               <span class="insight-game-meta">${parts.join(' \u00b7 ') || '\u2014'}</span>
+               <span class="insight-game-meta">Owned for ${_ownedFor(g.date_added)}</span>
              </div>`;
   };
   const neverPlayedHtml = `
     <div class="stats-section" data-section="never_played"${!currentPrefs.show_never_played ? ' style="display:none"' : ''}>
-      <h3 class="stats-section-title">Never Played (${neverPlayed.length})</h3>
+      <h3 class="stats-section-title">Shelf of Shame (${neverPlayed.length})</h3>
+      <p class="insight-subtext">Owned but never played \u2014 longest owned first</p>
       ${neverPlayed.length
         ? `<div class="insight-game-list">
              ${neverPlayed.slice(0, 10).map(_npRow).join('')}
