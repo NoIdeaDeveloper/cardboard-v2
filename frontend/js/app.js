@@ -1376,7 +1376,7 @@
     const sectionsGrid = statsView.querySelector('#stats-sections');
     const order = prefs.section_order;
     const milIdx = order.indexOf('milestones');
-    const nextKey = order[milIdx + 1];
+    const nextKey = milIdx >= 0 ? order[milIdx + 1] : undefined;
     const nextEl = nextKey ? sectionsGrid.querySelector(`[data-section="${nextKey}"]`) : null;
     sectionsGrid.insertBefore(milestonesEl, nextEl); // insertBefore(el, null) === appendChild
   }

@@ -31,14 +31,14 @@ class GameBase(BaseModel):
     publishers: Optional[str] = Field(None, max_length=2000)
     labels: Optional[str] = Field(None, max_length=2000)
     purchase_date: Optional[date] = None
-    purchase_price: Optional[float] = None
+    purchase_price: Optional[float] = Field(None, ge=0)
     purchase_location: Optional[str] = Field(None, max_length=255)
     location: Optional[str] = Field(None, max_length=255)
     show_location: bool = False
     user_rating: Optional[float] = Field(None, ge=1, le=10)
     user_notes: Optional[str] = Field(None, max_length=2000)
     last_played: Optional[date] = None
-    parent_game_id: Optional[int] = None
+    parent_game_id: Optional[int] = Field(None, ge=1)
 
 
 class GameCreate(GameBase):
@@ -69,7 +69,7 @@ class GameUpdate(BaseModel):
     publishers: Optional[str] = Field(None, max_length=2000)
     labels: Optional[str] = Field(None, max_length=2000)
     purchase_date: Optional[date] = None
-    purchase_price: Optional[float] = None
+    purchase_price: Optional[float] = Field(None, ge=0)
     purchase_location: Optional[str] = Field(None, max_length=255)
     location: Optional[str] = Field(None, max_length=255)
     show_location: Optional[bool] = None
@@ -78,7 +78,7 @@ class GameUpdate(BaseModel):
     last_played: Optional[date] = None
     scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: Optional[bool] = None
-    parent_game_id: Optional[int] = None
+    parent_game_id: Optional[int] = Field(None, ge=1)
 
 
 class GameResponse(GameBase):
