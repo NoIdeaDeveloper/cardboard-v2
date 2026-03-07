@@ -265,7 +265,7 @@
 
       // Card image area → gallery lightbox (only when gallery images exist)
       if (state.viewMode === 'grid') {
-        const cardMedia = el.querySelector('.card-media');
+        const cardMedia = el.querySelector('.game-card-image');
         if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
           cardMedia.classList.add('gallery-clickable');
           cardMedia.addEventListener('click', async (e) => {

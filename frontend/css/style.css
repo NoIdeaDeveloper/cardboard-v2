@@ -2386,9 +2386,9 @@ input[type="date"] { color-scheme: dark; }
 }
 
 /* ===== Clickable card media (when gallery images exist) ===== */
-.card-media.gallery-clickable { cursor: zoom-in; }
-.card-media.gallery-clickable img { transition: opacity 0.15s; }
-.card-media.gallery-clickable:hover img { opacity: 0.88; }
+.game-card-image.gallery-clickable { cursor: zoom-in; }
+.game-card-image.gallery-clickable img { transition: opacity 0.15s; }
+.game-card-image.gallery-clickable:hover img { opacity: 0.88; }
 
 /* ===== Clickable gallery view thumbnails ===== */
 .gallery-view-thumb-btn {

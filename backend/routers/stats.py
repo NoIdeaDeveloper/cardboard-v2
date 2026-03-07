@@ -94,7 +94,7 @@ def get_stats(db: Session = Depends(get_db)):
                 if label:
                     label_counts[label] += 1
         except (json.JSONDecodeError, TypeError):
-            pass
+            logger.warning("Failed to parse labels JSON: %s", labels_json)
 
     # ── Rating distribution ───────────────────────────────────────────────────
     rated_games = (

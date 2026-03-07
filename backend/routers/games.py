@@ -69,14 +69,11 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
 
     # Abort early if the URL has already been changed (e.g. user uploaded a file
     # or changed the URL before this background task ran).
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         game = db.query(models.Game).filter(models.Game.id == game_id).first()
         if not game or game.image_url != image_url:
             logger.info("Image cache skipped for game %d: URL has changed", game_id)
             return
-    finally:
-        db.close()
 
     os.makedirs(IMAGES_DIR, exist_ok=True)
 
@@ -103,8 +100,7 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
 
     # Verify the URL is still current before updating the DB — the user may have
     # changed or uploaded a new image while we were downloading.
-    db = SessionLocal()
-    try:
+    with SessionLocal() as db:
         game = db.query(models.Game).filter(models.Game.id == game_id).first()
         if game and game.image_url == image_url:
             game.image_url = f"/api/games/{game_id}/image"
@@ -114,8 +110,6 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
         else:
             _delete_cached_image(game_id)
             logger.info("Image cache discarded for game %d: URL changed during download", game_id)
-    finally:
-        db.close()
 
 
 def _instructions_path(game_id: int, filename: str) -> str:
@@ -222,6 +216,7 @@ def update_game(
     update_data = game.model_dump(exclude_unset=True)
 
     # If image_url is being explicitly changed, clean up the old cached file first.
+    new_image_url = None
     if "image_url" in update_data:
         new_image_url = update_data["image_url"] or None
         update_data["image_url"] = new_image_url  # normalise empty string → None

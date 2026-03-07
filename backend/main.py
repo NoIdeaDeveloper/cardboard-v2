@@ -52,6 +52,7 @@ _GAMES_MIGRATIONS = [
     ("show_location",         "INTEGER NOT NULL DEFAULT 0"),
 ]
 
+# NOTE: _col and _typedef are hardcoded above — never from user input.
 with engine.connect() as _conn:
     _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(games)"))}
     for _col, _typedef in _GAMES_MIGRATIONS:
@@ -75,7 +76,7 @@ with engine.connect() as _conn:
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
 
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
-_ALLOWED_ORIGINS = [o.strip() for o in _raw_origins if o.strip()] or ["null"]
+_ALLOWED_ORIGINS = [o.strip() for o in _raw_origins if o.strip()] or ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
