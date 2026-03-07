@@ -165,7 +165,14 @@
     if (viewEl) viewEl.classList.add('active');
     document.querySelectorAll(`[data-view="${view}"]`).forEach(btn => btn.classList.add('active'));
     if (view === 'collection') loadCollection();
-    if (view === 'stats') loadStats();
+    if (view === 'stats') {
+      const statsContent = document.getElementById('stats-content');
+      if (statsContent && statsContent.children.length > 0) {
+        refreshStatsBackground(); // return visit — show existing data instantly, refresh silently
+      } else {
+        loadStats();              // first visit — show spinner, fetch, render
+      }
+    }
   }
 
   // ===== Collection Controls =====
