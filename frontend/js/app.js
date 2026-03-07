@@ -123,7 +123,9 @@
     bindShortcutsOverlay();
     bindThemeToggle();
     syncCollectionUI();
-    loadCollection();
+    const initialView = location.hash.replace('#', '') || 'collection';
+    const validViews = ['collection', 'add', 'stats'];
+    switchView(validViews.includes(initialView) ? initialView : 'collection');
   });
 
   // ===== Navigation =====
@@ -165,6 +167,7 @@
     const viewEl = document.getElementById(`view-${view}`);
     if (viewEl) viewEl.classList.add('active');
     document.querySelectorAll(`[data-view="${view}"]`).forEach(btn => btn.classList.add('active'));
+    location.hash = view === 'collection' ? '' : view;
     if (view === 'collection') loadCollection();
     if (view === 'stats') {
       const statsContent = document.getElementById('stats-content');
