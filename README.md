@@ -4,6 +4,61 @@ A self-hosted board game collection manager. Search for any game on BoardGameGee
 
 ---
 
+## Features
+
+**Collection Management**
+- Add games with full metadata: name, status, year published, player count, playtime, difficulty, description, categories, mechanics, designers, publishers, and custom labels
+- Grid and list view with real-time search, multi-field sort (name, date added, rating, playtime, players, difficulty, last played, purchase date/price), and sort direction toggle
+- Status filter pills — All, Owned, Wishlist, Sold
+- Cover image per game — local file upload or external URL (auto-cached locally)
+- User rating (1–10 stars), personal notes, purchase details, and storage location
+
+**Expansions**
+- Link expansion games to a parent base game (one level deep)
+- Expansion count badge on parent game cards; toggle to show/hide expansions in the collection
+- Validation prevents chained or circular expansion links
+
+**Photo Gallery**
+- Multiple photos per game, uploaded from file or URL
+- Reorder images, add captions, and feature any photo as the primary cover
+- Full-screen lightbox viewer
+
+**Instructions & Documents**
+- Upload PDF or TXT instruction files per game
+- PDFs viewable inline; all files downloadable from the game modal
+
+**3D Scans**
+- Upload USDZ (for AR on iOS/iPadOS) and GLB (for the in-browser 3D viewer) per game
+- Toggle which format is featured on the card
+
+**Play Session Tracking**
+- Log play sessions with date, player count, duration, and notes
+- Quick-log overlay for fast entry (keyboard shortcut available)
+- Last played date auto-synced from session history
+
+**Statistics Dashboard**
+- Summary cards: total games by status, sessions, hours played, average session length, never-played count, average rating, total spent
+- Rating distribution and label frequency charts
+- Games added per month and sessions per month — 12-month bar charts, clickable to see which games
+- Recent 10 play sessions list
+
+**Milestones**
+- Automatic milestone detection on session count (5, 10, 25, 50, 100, 200) and hours (5, 10, 25, 50, 100)
+- Toast notification with a confetti burst on major milestones
+
+**Filters & Discovery**
+- Advanced filter panel: never played, player count, playtime, mechanics, categories
+- "Pick for Me" random game selector — respects active filters and excludes expansions
+
+**UI / UX**
+- Dark mode (default) and light mode — preference persisted across sessions
+- Keyboard shortcuts with an in-app reference overlay
+- Hash-based URL navigation (page refresh stays on the current view)
+- Toast notifications for all actions
+- Fully responsive — works on mobile, tablet, and desktop
+
+---
+
 ## What you need
 
 - An Unraid server with Docker enabled
@@ -127,22 +182,34 @@ cardboard/
 ├── .env                   # Your local settings (port, data path)
 │
 ├── backend/               # Python / FastAPI
-│   ├── main.py            # App startup, logging, static file serving
-│   ├── database.py        # SQLite connection
-│   ├── models.py          # Database table definition
-│   ├── schemas.py         # Data validation (what the API accepts/returns)
+│   ├── main.py            # App startup, DB migration, static file serving
+│   ├── database.py        # SQLite connection (SQLAlchemy)
+│   ├── models.py          # Game, GameImage, PlaySession table definitions
+│   ├── schemas.py         # Pydantic request/response validation
+│   ├── utils.py           # Shared helpers (safe URL validation)
 │   ├── requirements.txt   # Python dependencies
 │   └── routers/
-│       ├── games.py       # /api/games — add, edit, delete, list games
-│       └── bgg.py         # /api/bgg  — search BoardGameGeek
+│       ├── games.py       # /api/games — CRUD, images, instructions, scans
+│       ├── game_images.py # /api/games/{id}/images — gallery management
+│       ├── sessions.py    # /api/games/{id}/sessions — play session tracking
+│       └── stats.py       # /api/stats — collection statistics
 │
-└── frontend/              # Plain HTML, CSS, JavaScript (no build step)
-    ├── index.html
-    ├── css/style.css
-    └── js/
-        ├── api.js         # Talks to the backend API
-        ├── ui.js          # Builds cards, modals, toasts
-        └── app.js         # Page logic and state
+├── frontend/              # Plain HTML, CSS, JavaScript (no build step)
+│   ├── index.html
+│   ├── css/style.css      # Dark/light themes, responsive layout
+│   └── js/
+│       ├── api.js         # Talks to the backend API
+│       ├── ui.js          # Builds cards, modals, stats views, toasts
+│       ├── app.js         # Page logic, state, navigation, event wiring
+│       ├── confetti.js    # Confetti animation for play milestones
+│       └── model-viewer.min.js  # 3D model viewer web component
+│
+└── data/                  # Persisted outside the container
+    ├── cardboard.db       # SQLite database
+    ├── images/            # Cached cover images
+    ├── gallery/           # Per-game photo galleries
+    ├── instructions/      # Uploaded PDF/TXT instruction files
+    └── scans/             # 3D scan files (USDZ / GLB)
 ```
 
 **To change something in the UI** — edit files in `frontend/`. Refresh the browser. No build step needed.
