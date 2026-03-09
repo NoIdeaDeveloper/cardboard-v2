@@ -64,6 +64,18 @@ async function withLoading(btn, fn, loadingText) {
   }
 }
 
+// ===== Field Validation Helpers =====
+
+function setFieldError(errEl, inputEl, msg) {
+  if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  if (inputEl) inputEl.classList.add('invalid');
+}
+
+function clearFieldError(errEl, inputEl) {
+  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+  if (inputEl) inputEl.classList.remove('invalid');
+}
+
 // ===== Display Helpers =====
 
 function renderStars(rating) {
@@ -1261,6 +1273,18 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     saveBtn.addEventListener('click', () => {
       const name = el.querySelector('#edit-name').value.trim();
       if (!name) { showToast('Game name cannot be empty.', 'error'); return; }
+
+      const minP = parseInt(el.querySelector('#edit-min-players').value, 10);
+      const maxP = parseInt(el.querySelector('#edit-max-players').value, 10);
+      if (minP && maxP && minP > maxP) { showToast('Max players must be ≥ min players.', 'error'); return; }
+
+      const minT = parseInt(el.querySelector('#edit-min-playtime').value, 10);
+      const maxT = parseInt(el.querySelector('#edit-max-playtime').value, 10);
+      if (minT && maxT && minT > maxT) { showToast('Max playtime must be ≥ min playtime.', 'error'); return; }
+
+      const diffEl = el.querySelector('#edit-difficulty');
+      const diff = parseFloat(diffEl.value);
+      if (diffEl.value && (diff < 1 || diff > 5)) { showToast('Difficulty must be between 1 and 5.', 'error'); return; }
 
       const payload = {
         user_rating:      selectedRating || null,

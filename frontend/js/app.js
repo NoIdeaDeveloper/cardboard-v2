@@ -907,8 +907,65 @@
       setPreview(null);
     });
 
+    // ---- Inline validation ----
+    function f(id) { return form.querySelector(`#${id}`); }
+    function e(id) { return form.querySelector(`#err-${id}`); }
+
+    function validateAddForm() {
+      let valid = true;
+
+      const nameEl = f('m-name');
+      if (!nameEl.value.trim()) {
+        setFieldError(e('name'), nameEl, 'Name is required'); valid = false;
+      } else { clearFieldError(e('name'), nameEl); }
+
+      const minPEl = f('m-min-players'), maxPEl = f('m-max-players');
+      const minP = parseInt(minPEl.value, 10), maxP = parseInt(maxPEl.value, 10);
+      if (minP && maxP && minP > maxP) {
+        setFieldError(e('max-players'), maxPEl, 'Must be ≥ min players'); valid = false;
+      } else { clearFieldError(e('max-players'), maxPEl); }
+
+      const minTEl = f('m-min-playtime'), maxTEl = f('m-max-playtime');
+      const minT = parseInt(minTEl.value, 10), maxT = parseInt(maxTEl.value, 10);
+      if (minT && maxT && minT > maxT) {
+        setFieldError(e('max-playtime'), maxTEl, 'Must be ≥ min playtime'); valid = false;
+      } else { clearFieldError(e('max-playtime'), maxTEl); }
+
+      const diffEl = f('m-difficulty');
+      const diff = parseFloat(diffEl.value);
+      if (diffEl.value && (diff < 1 || diff > 5)) {
+        setFieldError(e('difficulty'), diffEl, 'Must be between 1 and 5'); valid = false;
+      } else { clearFieldError(e('difficulty'), diffEl); }
+
+      return valid;
+    }
+
+    // Clear individual field errors as user corrects them
+    f('m-name').addEventListener('input', () => {
+      if (f('m-name').value.trim()) clearFieldError(e('name'), f('m-name'));
+    });
+    ['m-min-players', 'm-max-players'].forEach(id => {
+      f(id).addEventListener('input', () => {
+        const minP = parseInt(f('m-min-players').value, 10);
+        const maxP = parseInt(f('m-max-players').value, 10);
+        if (!minP || !maxP || minP <= maxP) clearFieldError(e('max-players'), f('m-max-players'));
+      });
+    });
+    ['m-min-playtime', 'm-max-playtime'].forEach(id => {
+      f(id).addEventListener('input', () => {
+        const minT = parseInt(f('m-min-playtime').value, 10);
+        const maxT = parseInt(f('m-max-playtime').value, 10);
+        if (!minT || !maxT || minT <= maxT) clearFieldError(e('max-playtime'), f('m-max-playtime'));
+      });
+    });
+    f('m-difficulty').addEventListener('input', () => {
+      const diff = parseFloat(f('m-difficulty').value);
+      if (!f('m-difficulty').value || (diff >= 1 && diff <= 5)) clearFieldError(e('difficulty'), f('m-difficulty'));
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!validateAddForm()) return;
       const submitBtn = form.querySelector('[type="submit"]');
       const fd   = new FormData(form);
       const file = fileInput.files[0];
