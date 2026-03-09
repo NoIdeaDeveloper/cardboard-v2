@@ -52,6 +52,18 @@ function showConfirm(title, message) {
   });
 }
 
+async function withLoading(btn, fn, loadingText) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  if (loadingText) btn.textContent = loadingText;
+  try {
+    await fn();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
 // ===== Display Helpers =====
 
 function renderStars(rating) {
@@ -791,7 +803,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   // ===== Wire events =====
 
   el.querySelector('#modal-close-btn').addEventListener('click', closeModal);
-  el.querySelector('#delete-game-btn').addEventListener('click', () => onDelete(game.id, game.name));
+  const deleteGameBtn = el.querySelector('#delete-game-btn');
+  deleteGameBtn.addEventListener('click', () => withLoading(deleteGameBtn, () => onDelete(game.id, game.name), 'Removing…'));
 
   // Sessions (always wired)
   const sessionToggle = el.querySelector('#log-session-toggle');
@@ -806,7 +819,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     sessionToggle.textContent = '+ Log Session';
   });
 
-  el.querySelector('#session-submit').addEventListener('click', () => {
+  const sessionSubmitBtn = el.querySelector('#session-submit');
+  sessionSubmitBtn.addEventListener('click', () => {
     const dateVal = el.querySelector('#session-date').value;
     if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
 
@@ -817,7 +831,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       notes:            el.querySelector('#session-notes').value.trim() || null,
     };
 
-    onAddSession(game.id, sessionData, (created) => {
+    withLoading(sessionSubmitBtn, () => onAddSession(game.id, sessionData, (created) => {
       const list = el.querySelector('#sessions-list');
       const noSessions = list.querySelector('.no-sessions');
       if (noSessions) noSessions.remove();
@@ -842,7 +856,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       el.querySelector('#session-notes').value = '';
       sessionForm.style.display = 'none';
       sessionToggle.textContent = '+ Log Session';
-    });
+    }), 'Logging…');
   });
 
   el.querySelector('#sessions-list').addEventListener('click', e => {
@@ -1243,7 +1257,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
       return items.length ? JSON.stringify(items) : null;
     }
 
-    el.querySelector('#save-btn').addEventListener('click', () => {
+    const saveBtn = el.querySelector('#save-btn');
+    saveBtn.addEventListener('click', () => {
       const name = el.querySelector('#edit-name').value.trim();
       if (!name) { showToast('Game name cannot be empty.', 'error'); return; }
 
@@ -1273,7 +1288,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         show_location:      el.querySelector('#edit-show-location').checked,
         parent_game_id:     parseInt(el.querySelector('#edit-base-game-id').value, 10) || null,
       };
-      onSave(game.id, payload);
+      withLoading(saveBtn, () => onSave(game.id, payload), 'Saving…');
     });
   }
 

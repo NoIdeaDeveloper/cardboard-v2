@@ -909,6 +909,7 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submitBtn = form.querySelector('[type="submit"]');
       const fd   = new FormData(form);
       const file = fileInput.files[0];
 
@@ -950,22 +951,24 @@
       }, new Date(0));
 
       try {
-        const created = await API.createGame(payload);
-        if (file) {
-          try {
-            await API.uploadGalleryImage(created.id, file);
-          } catch (imgErr) {
-            showToast(`Game added but image upload failed: ${imgErr.message}`, 'error');
+        await withLoading(submitBtn, async () => {
+          const created = await API.createGame(payload);
+          if (file) {
+            try {
+              await API.uploadGalleryImage(created.id, file);
+            } catch (imgErr) {
+              showToast(`Game added but image upload failed: ${imgErr.message}`, 'error');
+            }
           }
-        }
-        showToast(`"${payload.name}" added to collection!`, 'success');
-        const lastAddedDay = lastAdded.getTime() > 0 ? lastAdded.toDateString() : null;
-        if (!lastAddedDay || lastAddedDay !== new Date().toDateString()) launchConfetti();
-        form.reset();
-        if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
-        setPreview(null);
-        switchView('collection');
-        refreshStatsBackground();
+          showToast(`"${payload.name}" added to collection!`, 'success');
+          const lastAddedDay = lastAdded.getTime() > 0 ? lastAdded.toDateString() : null;
+          if (!lastAddedDay || lastAddedDay !== new Date().toDateString()) launchConfetti();
+          form.reset();
+          if (previewBlobUrl) { URL.revokeObjectURL(previewBlobUrl); previewBlobUrl = null; }
+          setPreview(null);
+          switchView('collection');
+          refreshStatsBackground();
+        }, 'Adding…');
       } catch (err) {
         showToast(`Failed to add game: ${err.message}`, 'error');
       }

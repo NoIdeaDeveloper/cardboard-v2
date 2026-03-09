@@ -912,6 +912,8 @@ button.footer-link {
 
 .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
 
+.btn:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+
 /* ===== Modal ===== */
 .modal {
   display: none;
