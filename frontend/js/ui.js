@@ -9,6 +9,11 @@ function showToast(message, type = 'info', duration = 3500) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
+  if (type === 'error') {
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    duration = Math.max(duration, 5000);
+  }
   container.appendChild(toast);
   setTimeout(() => { toast.classList.add('hide'); setTimeout(() => toast.remove(), 400); }, duration);
 }
@@ -1309,6 +1314,11 @@ function buildMonthGameList(title, games, onGameClick, onClose) {
 
 // ===== Modal Management =====
 
+const FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+let _modalPrevFocus = null;
+let _modalTrapHandler = null;
+
 function openModal(contentEl) {
   const inner = document.getElementById('modal-inner');
   inner.innerHTML = '';
@@ -1316,12 +1326,48 @@ function openModal(contentEl) {
   const modal = document.getElementById('game-modal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => modal.classList.add('open'));
+  _modalPrevFocus = document.activeElement;
+
+  requestAnimationFrame(() => {
+    modal.classList.add('open');
+
+    // Focus first focusable element inside modal
+    const focusables = [...modal.querySelectorAll(FOCUSABLE)]
+      .filter(el => el.offsetParent !== null);
+    if (focusables.length) focusables[0].focus();
+
+    // Trap Tab key within modal
+    _modalTrapHandler = (e) => {
+      if (e.key !== 'Tab') return;
+      const els = [...modal.querySelectorAll(FOCUSABLE)]
+        .filter(el => el.offsetParent !== null);
+      if (!els.length) return;
+      const first = els[0], last = els[els.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    modal.addEventListener('keydown', _modalTrapHandler);
+  });
 }
 
 function closeModal() {
   const modal = document.getElementById('game-modal');
   modal.classList.remove('open');
+
+  if (_modalTrapHandler) {
+    modal.removeEventListener('keydown', _modalTrapHandler);
+    _modalTrapHandler = null;
+  }
+  if (_modalPrevFocus) {
+    _modalPrevFocus.focus();
+    _modalPrevFocus = null;
+  }
+
   setTimeout(() => {
     modal.style.display = 'none';
     document.getElementById('modal-inner').innerHTML = '';
