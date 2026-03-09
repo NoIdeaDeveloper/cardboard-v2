@@ -63,3 +63,62 @@ class PlaySession(Base):
     duration_minutes = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ===== Tag Junction Tables =====
+# Each tag type has a lookup table (unique names) and a pivot table linking games to tags.
+# The old TEXT columns on Game are kept for backward compatibility / rollback safety.
+
+class Category(Base):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+
+class GameCategory(Base):
+    __tablename__ = "game_categories"
+    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Mechanic(Base):
+    __tablename__ = "mechanics"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+
+class GameMechanic(Base):
+    __tablename__ = "game_mechanics"
+    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    mechanic_id = Column(Integer, ForeignKey("mechanics.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Designer(Base):
+    __tablename__ = "designers"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+
+class GameDesigner(Base):
+    __tablename__ = "game_designers"
+    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    designer_id = Column(Integer, ForeignKey("designers.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Publisher(Base):
+    __tablename__ = "publishers"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+
+class GamePublisher(Base):
+    __tablename__ = "game_publishers"
+    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    publisher_id = Column(Integer, ForeignKey("publishers.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Label(Base):
+    __tablename__ = "labels"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+
+class GameLabel(Base):
+    __tablename__ = "game_labels"
+    game_id = Column(Integer, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    label_id = Column(Integer, ForeignKey("labels.id", ondelete="CASCADE"), primary_key=True)

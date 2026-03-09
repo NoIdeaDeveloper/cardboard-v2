@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import time
@@ -73,6 +74,88 @@ with engine.connect() as _conn:
             _conn.execute(text(f"ALTER TABLE game_images ADD COLUMN {_col} {_typedef}"))
             _conn.commit()
             logger.info("Migration applied: game_images.%s added", _col)
+
+# ── Migrate JSON tag columns → junction tables (one-time, idempotent) ─────────
+_TAG_CONFIG = [
+    # (game_column, tag_table, pivot_table, fk_column)
+    ("categories", "categories", "game_categories", "category_id"),
+    ("mechanics",  "mechanics",  "game_mechanics",  "mechanic_id"),
+    ("designers",  "designers",  "game_designers",  "designer_id"),
+    ("publishers", "publishers", "game_publishers", "publisher_id"),
+    ("labels",     "labels",     "game_labels",     "label_id"),
+]
+
+
+def _migrate_json_tags_to_junction():
+    """Parse existing JSON TEXT columns into the new junction tables.
+
+    Safe to call on every startup:
+    - Skips entirely if pivot tables already have data
+    - Uses INSERT OR IGNORE so duplicates are impossible
+    - Commits per tag type so partial progress is preserved on crash
+    - Malformed JSON is logged and skipped, never crashes
+    """
+    with engine.connect() as conn:
+        # Quick check: if any pivot table has rows, migration already ran
+        try:
+            count = conn.execute(text("SELECT COUNT(*) FROM game_categories")).scalar()
+            if count and count > 0:
+                logger.info("Junction table migration already complete (%d game_categories rows), skipping", count)
+                return
+        except Exception:
+            # Table might not exist yet if create_all hasn't been called — shouldn't happen
+            logger.warning("game_categories table not found, skipping junction migration")
+            return
+
+        for game_col, tag_table, pivot_table, fk_col in _TAG_CONFIG:
+            rows = conn.execute(
+                text(f"SELECT id, {game_col} FROM games WHERE {game_col} IS NOT NULL")
+            ).fetchall()
+
+            migrated = 0
+            skipped = 0
+            for game_id, json_str in rows:
+                try:
+                    items = json.loads(json_str)
+                    if not isinstance(items, list):
+                        skipped += 1
+                        continue
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning("Skipping malformed %s JSON for game %d: %.80s", game_col, game_id, str(json_str))
+                    skipped += 1
+                    continue
+
+                for item in items:
+                    name = (str(item) if item else "").strip()
+                    if not name:
+                        continue
+                    # Get or create tag
+                    existing = conn.execute(
+                        text(f"SELECT id FROM {tag_table} WHERE name = :n"), {"n": name}
+                    ).first()
+                    if existing:
+                        tag_id = existing[0]
+                    else:
+                        conn.execute(text(f"INSERT INTO {tag_table} (name) VALUES (:n)"), {"n": name})
+                        tag_id = conn.execute(
+                            text(f"SELECT id FROM {tag_table} WHERE name = :n"), {"n": name}
+                        ).first()[0]
+                    # Link game ↔ tag (ignore if already exists)
+                    conn.execute(
+                        text(f"INSERT OR IGNORE INTO {pivot_table} (game_id, {fk_col}) VALUES (:gid, :tid)"),
+                        {"gid": game_id, "tid": tag_id},
+                    )
+                    migrated += 1
+
+            conn.commit()
+            if migrated or skipped:
+                logger.info("Junction migration [%s]: %d links created from %d games (%d skipped)",
+                            game_col, migrated, len(rows), skipped)
+
+    logger.info("Junction table migration complete")
+
+
+_migrate_json_tags_to_junction()
 
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
 

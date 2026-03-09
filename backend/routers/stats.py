@@ -1,6 +1,4 @@
-import json
 import logging
-from collections import defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Depends
@@ -83,18 +81,14 @@ def get_stats(db: Session = Depends(get_db)):
     )
     total_spent = round(float(total_spent_raw), 2) if total_spent_raw is not None else None
 
-    # ── Label counts (Python-side JSON parsing) ───────────────────────────────
-    label_counts: dict = defaultdict(int)
-    games_with_labels = (
-        db.query(models.Game.labels).filter(models.Game.labels.isnot(None)).all()
+    # ── Label counts (via junction tables) ──────────────────────────────────────
+    label_rows = (
+        db.query(models.Label.name, func.count(models.GameLabel.game_id))
+        .join(models.GameLabel)
+        .group_by(models.Label.name)
+        .all()
     )
-    for (labels_json,) in games_with_labels:
-        try:
-            for label in json.loads(labels_json):
-                if label:
-                    label_counts[label] += 1
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("Failed to parse labels JSON: %s", labels_json)
+    label_counts: dict = {name: count for name, count in label_rows}
 
     # ── Rating distribution ───────────────────────────────────────────────────
     rated_games = (

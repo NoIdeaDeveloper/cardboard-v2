@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 import models
 import schemas
+from sqlalchemy import text
 from routers.game_images import delete_all_gallery_images
 from utils import _is_safe_url
 
@@ -139,6 +140,83 @@ def _delete_cached_image(game_id: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Tag junction-table helpers (dual-write: junction tables + TEXT columns)
+# ---------------------------------------------------------------------------
+
+# (game_field, tag_model, pivot_model, fk_attr)
+_TAG_FIELDS = [
+    ("categories", models.Category, models.GameCategory, "category_id"),
+    ("mechanics",  models.Mechanic,  models.GameMechanic,  "mechanic_id"),
+    ("designers",  models.Designer,  models.GameDesigner,  "designer_id"),
+    ("publishers", models.Publisher, models.GamePublisher, "publisher_id"),
+    ("labels",     models.Label,     models.GameLabel,     "label_id"),
+]
+
+
+def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
+    """Sync junction tables for any tag fields present in *data_dict*.
+
+    Also keeps the legacy TEXT columns in sync (dual-write).
+    """
+    for field, TagModel, PivotModel, fk_attr in _TAG_FIELDS:
+        if field not in data_dict:
+            continue
+        json_str = data_dict[field]
+        try:
+            names = json.loads(json_str) if json_str else []
+            if not isinstance(names, list):
+                continue
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        # Clear existing pivot rows for this game + tag type
+        db.query(PivotModel).filter(PivotModel.game_id == game_id).delete()
+
+        for raw_name in names:
+            name = (str(raw_name) if raw_name else "").strip()
+            if not name:
+                continue
+            # Get or create tag
+            tag = db.query(TagModel).filter(TagModel.name == name).first()
+            if not tag:
+                tag = TagModel(name=name)
+                db.add(tag)
+                db.flush()  # assign tag.id
+            db.add(PivotModel(game_id=game_id, **{fk_attr: tag.id}))
+
+    db.flush()
+
+
+def _load_tags(games, db: Session) -> None:
+    """Populate tag TEXT columns on game objects from junction tables (batch).
+
+    Modifies games in-place. Falls back to the existing TEXT column if
+    junction tables return nothing for a game (partial-migration safety).
+    """
+    if not games:
+        return
+    game_ids = [g.id for g in games]
+
+    for field, TagModel, PivotModel, fk_attr in _TAG_FIELDS:
+        # Single batch query per tag type
+        rows = (
+            db.query(PivotModel.game_id, TagModel.name)
+            .join(TagModel, getattr(PivotModel, fk_attr) == TagModel.id)
+            .filter(PivotModel.game_id.in_(game_ids))
+            .all()
+        )
+        by_game: dict[int, list[str]] = {}
+        for gid, name in rows:
+            by_game.setdefault(gid, []).append(name)
+
+        for g in games:
+            junction_names = by_game.get(g.id)
+            if junction_names is not None:
+                setattr(g, field, json.dumps(sorted(junction_names)))
+            # else: keep existing TEXT column value (fallback)
+
+
+# ---------------------------------------------------------------------------
 # Collection CRUD
 # ---------------------------------------------------------------------------
 
@@ -194,6 +272,9 @@ def get_games(
 
     games = query.all()
 
+    # Populate tag fields from junction tables
+    _load_tags(games, db)
+
     # Build a parent-name lookup in one query to avoid N+1
     parent_ids = {g.parent_game_id for g in games if g.parent_game_id}
     parent_names: dict[int, str] = {}
@@ -215,6 +296,7 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
     game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
+    _load_tags([game], db)
     return _attach_parent_name(game, db)
 
 
@@ -238,10 +320,13 @@ def create_game(
     db: Session = Depends(get_db),
 ):
     _validate_parent_game_id(game.parent_game_id, None, db)
-    db_game = models.Game(**game.model_dump())
+    data = game.model_dump()
+    db_game = models.Game(**data)
     db.add(db_game)
     db.commit()
     db.refresh(db_game)
+    _save_tags(db_game.id, data, db)
+    db.commit()
     logger.info("Game added: id=%d name=%r", db_game.id, db_game.name)
 
     if db_game.image_url and not db_game.image_url.startswith("/api/"):
@@ -278,6 +363,7 @@ def update_game(
     for field, value in update_data.items():
         setattr(db_game, field, value)
 
+    _save_tags(game_id, update_data, db)
     db.commit()
     db.refresh(db_game)
     logger.info("Game updated: id=%d name=%r", db_game.id, db_game.name)
