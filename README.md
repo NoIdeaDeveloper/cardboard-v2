@@ -8,10 +8,13 @@ A self-hosted board game collection manager. Search for any game on BoardGameGee
 
 **Collection Management**
 - Add games with full metadata: name, status, year published, player count, playtime, difficulty, description, categories, mechanics, designers, publishers, and custom labels
+- Tag fields (categories, mechanics, designers, publishers, labels) autocomplete from existing values in your collection
 - Grid and list view with real-time search, multi-field sort (name, date added, rating, playtime, players, difficulty, last played, purchase date/price), and sort direction toggle
 - Status filter pills — All, Owned, Wishlist, Sold
 - Cover image per game — local file upload or external URL (auto-cached locally)
 - User rating (1–10 stars), personal notes, purchase details, and storage location
+- **Bulk operations** — select multiple games via the toolbar checkbox mode, then change status or delete in one action
+- **Import from BGG** — upload a BoardGameGeek XML collection export to bulk-import games (Settings panel → Import from BGG)
 
 **Expansions**
 - Link expansion games to a parent base game (one level deep)
@@ -41,6 +44,8 @@ A self-hosted board game collection manager. Search for any game on BoardGameGee
 - Rating distribution and label frequency charts
 - Games added per month and sessions per month — 12-month bar charts, clickable to see which games
 - Recent 10 play sessions list
+- **Export** — download your full collection as JSON or CSV (Settings panel → Export), with a configurable field picker
+- **Backup** — download a single ZIP containing the database and all media (Settings panel → Backup)
 
 **Milestones**
 - Automatic milestone detection on session count (5, 10, 25, 50, 100, 200) and hours (5, 10, 25, 50, 100)
@@ -130,13 +135,15 @@ This pulls the latest code and rebuilds the container. Your data is untouched.
 
 ## Backing up your data
 
-Your entire collection lives in a single file:
+The easiest way is to use the **in-app backup**: open the Stats view, click the settings icon, and hit **Download ZIP**. This creates a single archive containing the database and all media files (cover images, photo galleries, instruction PDFs).
+
+For a manual backup, copy the data directory somewhere safe:
 
 ```
-/mnt/user/appdata/cardboard/data/cardboard.db
+/mnt/user/appdata/cardboard/data/
 ```
 
-Copy that file somewhere safe to back up. Copy it back to restore.
+To restore, stop the container, replace the `data/` directory with your backup, and start again.
 
 ---
 
@@ -184,7 +191,7 @@ cardboard/
 ├── backend/               # Python / FastAPI
 │   ├── main.py            # App startup, DB migration, static file serving
 │   ├── database.py        # SQLite connection (SQLAlchemy)
-│   ├── models.py          # Game, GameImage, PlaySession table definitions
+│   ├── models.py          # Game, GameImage, PlaySession, tag junction tables
 │   ├── schemas.py         # Pydantic request/response validation
 │   ├── utils.py           # Shared helpers (safe URL validation)
 │   ├── requirements.txt   # Python dependencies
