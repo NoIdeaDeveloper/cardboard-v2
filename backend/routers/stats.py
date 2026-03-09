@@ -84,7 +84,7 @@ def get_stats(db: Session = Depends(get_db)):
     # ── Label counts (via junction tables) ──────────────────────────────────────
     label_rows = (
         db.query(models.Label.name, func.count(models.GameLabel.game_id))
-        .join(models.GameLabel)
+        .join(models.GameLabel, models.Label.id == models.GameLabel.label_id)
         .group_by(models.Label.name)
         .all()
     )

@@ -96,18 +96,16 @@ def _migrate_json_tags_to_junction():
     - Malformed JSON is logged and skipped, never crashes
     """
     with engine.connect() as conn:
-        # Quick check: if any pivot table has rows, migration already ran
-        try:
-            count = conn.execute(text("SELECT COUNT(*) FROM game_categories")).scalar()
-            if count and count > 0:
-                logger.info("Junction table migration already complete (%d game_categories rows), skipping", count)
-                return
-        except Exception:
-            # Table might not exist yet if create_all hasn't been called — shouldn't happen
-            logger.warning("game_categories table not found, skipping junction migration")
-            return
-
         for game_col, tag_table, pivot_table, fk_col in _TAG_CONFIG:
+            # Per-tag-type idempotency: skip if this pivot table already has data
+            try:
+                count = conn.execute(text(f"SELECT COUNT(*) FROM {pivot_table}")).scalar()
+                if count and count > 0:
+                    logger.info("Junction migration [%s] already complete (%d rows), skipping", game_col, count)
+                    continue
+            except Exception:
+                logger.warning("Table %s not found, skipping migration for %s", pivot_table, game_col)
+                continue
             rows = conn.execute(
                 text(f"SELECT id, {game_col} FROM games WHERE {game_col} IS NOT NULL")
             ).fetchall()

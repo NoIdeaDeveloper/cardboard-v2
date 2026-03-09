@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 import models
 import schemas
-from sqlalchemy import text
 from routers.game_images import delete_all_gallery_images
 from utils import _is_safe_url
 
@@ -166,7 +165,9 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
             names = json.loads(json_str) if json_str else []
             if not isinstance(names, list):
                 continue
+            names = list(dict.fromkeys(names))  # deduplicate, preserve order
         except (json.JSONDecodeError, TypeError):
+            logger.warning("Invalid JSON for tag field %s on game %d: %.80s", field, game_id, str(json_str))
             continue
 
         # Clear existing pivot rows for this game + tag type
@@ -323,10 +324,11 @@ def create_game(
     data = game.model_dump()
     db_game = models.Game(**data)
     db.add(db_game)
-    db.commit()
-    db.refresh(db_game)
+    db.flush()
     _save_tags(db_game.id, data, db)
     db.commit()
+    db.refresh(db_game)
+    _load_tags([db_game], db)
     logger.info("Game added: id=%d name=%r", db_game.id, db_game.name)
 
     if db_game.image_url and not db_game.image_url.startswith("/api/"):
@@ -366,6 +368,7 @@ def update_game(
     _save_tags(game_id, update_data, db)
     db.commit()
     db.refresh(db_game)
+    _load_tags([db_game], db)
     logger.info("Game updated: id=%d name=%r", db_game.id, db_game.name)
 
     if new_image_url and not new_image_url.startswith("/api/"):
