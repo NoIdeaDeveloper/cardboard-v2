@@ -87,6 +87,8 @@
     filterMechanics: [],
     filterCategories: [],
     showExpansions: false,
+    bulkMode: false,
+    selectedGameIds: new Set(),
   };
 
   // ===== Init =====
@@ -245,6 +247,21 @@
         renderCollection();
       });
     }
+
+    const bulkToggle = document.getElementById('bulk-select-toggle');
+    if (bulkToggle) {
+      bulkToggle.addEventListener('click', () => {
+        state.bulkMode = !state.bulkMode;
+        if (!state.bulkMode) {
+          state.selectedGameIds.clear();
+          renderBulkToolbar();
+        }
+        bulkToggle.classList.toggle('active', state.bulkMode);
+        bulkToggle.setAttribute('aria-pressed', state.bulkMode);
+        bulkToggle.title = state.bulkMode ? 'Exit selection mode' : 'Select games for bulk actions';
+        renderCollection();
+      });
+    }
   }
 
   // ===== Tag Autocomplete =====
@@ -298,6 +315,79 @@
     } catch (err) {
       container.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load collection: ${escapeHtml(err.message)}</p></div>`;
     }
+  }
+
+  // ===== Bulk Operations =====
+  function renderBulkToolbar() {
+    const toolbar = document.getElementById('bulk-toolbar');
+    if (!toolbar) return;
+    if (!state.bulkMode || state.selectedGameIds.size === 0) {
+      toolbar.innerHTML = '';
+      toolbar.style.display = 'none';
+      return;
+    }
+    const n = state.selectedGameIds.size;
+    toolbar.style.display = '';
+    toolbar.innerHTML = `
+      <span class="bulk-count">${n} game${n !== 1 ? 's' : ''} selected</span>
+      <select class="bulk-status-select" id="bulk-status-select" aria-label="Change status of selected games">
+        <option value="">Change status…</option>
+        <option value="owned">Owned</option>
+        <option value="wishlist">Wishlist</option>
+        <option value="sold">Sold</option>
+      </select>
+      <button class="btn btn-danger btn-sm" id="bulk-delete-btn">Delete</button>
+      <button class="btn btn-secondary btn-sm" id="bulk-deselect-btn">Deselect All</button>
+    `;
+    toolbar.querySelector('#bulk-status-select').addEventListener('change', async (e) => {
+      const newStatus = e.target.value;
+      if (!newStatus) return;
+      await handleBulkStatusChange(newStatus);
+    });
+    toolbar.querySelector('#bulk-delete-btn').addEventListener('click', handleBulkDelete);
+    toolbar.querySelector('#bulk-deselect-btn').addEventListener('click', () => {
+      state.selectedGameIds.clear();
+      renderCollection();
+      renderBulkToolbar();
+    });
+  }
+
+  async function handleBulkStatusChange(newStatus) {
+    const ids = [...state.selectedGameIds];
+    const results = await Promise.allSettled(ids.map(id => API.updateGame(id, { status: newStatus })));
+    const succeeded = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    const failCount = results.length - succeeded.length;
+    succeeded.forEach(updated => {
+      const idx = state.games.findIndex(g => g.id === updated.id);
+      if (idx !== -1) state.games[idx] = updated;
+    });
+    state.selectedGameIds.clear();
+    const msg = failCount > 0
+      ? `${succeeded.length} updated · ${failCount} failed`
+      : `${succeeded.length} game${succeeded.length !== 1 ? 's' : ''} set to ${newStatus}`;
+    showToast(msg, failCount > 0 ? 'error' : 'success');
+    renderCollection();
+    renderBulkToolbar();
+  }
+
+  async function handleBulkDelete() {
+    const n = state.selectedGameIds.size;
+    const confirmed = await showConfirm(`Delete ${n} selected game${n !== 1 ? 's' : ''}? This cannot be undone.`);
+    if (!confirmed) return;
+    const ids = [...state.selectedGameIds];
+    const results = await Promise.allSettled(ids.map(id => API.deleteGame(id)));
+    const failedIds = new Set(ids.filter((_, i) => results[i].status === 'rejected'));
+    const successCount = ids.length - failedIds.size;
+    state.games = state.games.filter(g => !state.selectedGameIds.has(g.id) || failedIds.has(g.id));
+    state.selectedGameIds.clear();
+    const failCount = failedIds.size;
+    const msg = failCount > 0
+      ? `${successCount} deleted · ${failCount} failed`
+      : `${successCount} game${successCount !== 1 ? 's' : ''} deleted`;
+    showToast(msg, failCount > 0 ? 'error' : 'success');
+    renderCollection();
+    renderBulkToolbar();
+    refreshStatsBackground();
   }
 
   function renderCollection() {
@@ -377,33 +467,54 @@
         _expansionCount: expansionCounts[game.id] || 0,
       });
       const el = state.viewMode === 'grid' ? buildGameCard(gameWithMeta) : buildGameListItem(gameWithMeta);
-      el.addEventListener('mouseenter', () => { hoveredGame = game; });
-      el.addEventListener('mouseleave', () => { hoveredGame = null; });
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn, .quick-log-btn')) return;
-        openGameModal(game);
-      });
 
-      el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handleQuickStatusChange(game.id, 'owned');
-      });
+      if (state.bulkMode) {
+        el.style.position = 'relative';
+        const cb = document.createElement('div');
+        cb.className = 'bulk-checkbox';
+        cb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+        el.insertBefore(cb, el.firstChild);
+        if (state.selectedGameIds.has(game.id)) el.classList.add('selected');
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.quick-owned-btn, .quick-log-btn')) return;
+          if (state.selectedGameIds.has(game.id)) {
+            state.selectedGameIds.delete(game.id);
+            el.classList.remove('selected');
+          } else {
+            state.selectedGameIds.add(game.id);
+            el.classList.add('selected');
+          }
+          renderBulkToolbar();
+        });
+      } else {
+        el.addEventListener('mouseenter', () => { hoveredGame = game; });
+        el.addEventListener('mouseleave', () => { hoveredGame = null; });
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn, .quick-log-btn')) return;
+          openGameModal(game);
+        });
 
-      el.querySelector('.quick-log-btn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openQuickLogSession(game);
-      });
+        el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleQuickStatusChange(game.id, 'owned');
+        });
 
-      // Card image area → gallery lightbox (only when gallery images exist)
-      if (state.viewMode === 'grid') {
-        const cardMedia = el.querySelector('.game-card-image');
-        if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
-          cardMedia.classList.add('gallery-clickable');
-          cardMedia.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const imgs = await API.getImages(game.id).catch(() => []);
-            if (imgs.length) openGalleryLightbox(imgs, 0);
-          });
+        el.querySelector('.quick-log-btn')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openQuickLogSession(game);
+        });
+
+        // Card image area → gallery lightbox (only when gallery images exist)
+        if (state.viewMode === 'grid') {
+          const cardMedia = el.querySelector('.game-card-image');
+          if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
+            cardMedia.classList.add('gallery-clickable');
+            cardMedia.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              const imgs = await API.getImages(game.id).catch(() => []);
+              if (imgs.length) openGalleryLightbox(imgs, 0);
+            });
+          }
         }
       }
 
@@ -832,7 +943,15 @@
       if (e.target.isContentEditable) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.key === 'n' || e.key === 'N') {
+      if (e.key === 'Escape' && state.bulkMode) {
+        state.bulkMode = false;
+        state.selectedGameIds.clear();
+        const bulkToggle = document.getElementById('bulk-select-toggle');
+        if (bulkToggle) { bulkToggle.classList.remove('active'); bulkToggle.setAttribute('aria-pressed', false); bulkToggle.title = 'Select games for bulk actions'; }
+        renderCollection();
+        renderBulkToolbar();
+        return;
+      } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         document.querySelector('[data-view="add"]')?.click();
       } else if (e.key === 's' || e.key === 'S') {
