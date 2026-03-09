@@ -77,4 +77,7 @@ const API = {
 
   // Stats
   getStats: () => request('GET', '/stats'),
+
+  // BGG import
+  importBGG: (file) => uploadFile('/games/import/bgg', file),
 };

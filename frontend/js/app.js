@@ -1368,6 +1368,23 @@
     document.addEventListener('click', _closeExportDropdown);
     statsView.querySelector('#stats-export-json').addEventListener('click', () => exportCollectionJSON(exportCols));
     statsView.querySelector('#stats-export-csv').addEventListener('click', () => exportCollectionCSV(exportCols));
+
+    const bggImportBtn  = statsView.querySelector('#stats-import-bgg');
+    const bggFileInput  = statsView.querySelector('#stats-import-bgg-file');
+    bggImportBtn.addEventListener('click', () => bggFileInput.click());
+    bggFileInput.addEventListener('change', async () => {
+      const file = bggFileInput.files[0];
+      if (!file) return;
+      bggFileInput.value = '';
+      await withLoading(bggImportBtn, async () => {
+        const result = await API.importBGG(file);
+        const parts = [`${result.imported} imported`, `${result.skipped} skipped`];
+        if (result.errors && result.errors.length) parts.push(`${result.errors.length} error(s)`);
+        showToast(parts.join(' · '), result.imported > 0 ? 'success' : 'info');
+        if (result.imported > 0) await loadCollection();
+      }, 'Importing…');
+    });
+
     const wishlistToggle = statsView.querySelector('#added-wishlist-toggle');
     if (wishlistToggle) {
       wishlistToggle.addEventListener('change', () => {

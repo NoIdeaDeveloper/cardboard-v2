@@ -2026,6 +2026,13 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
           <button class="btn btn-secondary btn-sm" id="stats-export-csv">CSV</button>
         </div>
       </div>
+      <div class="stats-export-group">
+        <span class="stats-export-label">Import from BGG</span>
+        <div class="stats-export-btns">
+          <button class="btn btn-secondary btn-sm" id="stats-import-bgg">Import XML</button>
+          <input type="file" id="stats-import-bgg-file" accept=".xml" style="display:none" aria-hidden="true">
+        </div>
+      </div>
     </div>
     <div class="stats-grid" id="stats-sections">
       ${orderedSectionsHtml}

@@ -1,10 +1,12 @@
 import glob
+import json
 import logging
 import mimetypes
 import os
 import re
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
@@ -603,3 +605,118 @@ def delete_scan_glb(game_id: int, db: Session = Depends(get_db)):
         db_game.scan_featured = False
     db.commit()
     logger.info("GLB scan deleted for game %d", game_id)
+
+
+# ===== BGG XML Import =====
+
+BGG_IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post("/import/bgg")
+async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Import a BoardGameGeek XML collection export (collectionlist format)."""
+    content = await file.read(BGG_IMPORT_MAX_BYTES + 1)
+    if len(content) > BGG_IMPORT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid XML: {exc}")
+
+    # BGG exports use <items> as root with <item> children, or <boardgames> with <boardgame>
+    items = root.findall("item") or root.findall("boardgame")
+    if not items:
+        raise HTTPException(status_code=400, detail="No game items found in XML — is this a BGG collection export?")
+
+    results = {"imported": 0, "skipped": 0, "errors": []}
+
+    for item in items:
+        try:
+            # Name: BGG exports have <name sortindex="1">Title</name>
+            name_el = item.find("name[@sortindex='1']") or item.find("name")
+            name = (name_el.text or "").strip() if name_el is not None else ""
+            if not name:
+                results["skipped"] += 1
+                continue
+
+            # Skip duplicates (case-insensitive)
+            if db.query(models.Game).filter(
+                models.Game.name.ilike(name)
+            ).first():
+                results["skipped"] += 1
+                continue
+
+            # Status
+            status_el = item.find("status")
+            status = "owned"
+            if status_el is not None:
+                if status_el.get("wishlist") == "1":
+                    status = "wishlist"
+                elif status_el.get("prevowned") == "1":
+                    status = "sold"
+
+            # Year
+            year_text = item.findtext("yearpublished", "").strip()
+            try:
+                year = int(year_text) or None
+            except ValueError:
+                year = None
+
+            # Players / playtime from <stats> attributes
+            stats_el = item.find("stats")
+            def _int_attr(el, attr):
+                if el is None:
+                    return None
+                try:
+                    v = int(el.get(attr, "0") or "0")
+                    return v if v > 0 else None
+                except ValueError:
+                    return None
+
+            min_players  = _int_attr(stats_el, "minplayers")
+            max_players  = _int_attr(stats_el, "maxplayers")
+            min_playtime = _int_attr(stats_el, "minplaytime")
+            max_playtime = _int_attr(stats_el, "maxplaytime")
+
+            # User rating
+            user_rating = None
+            rating_el = item.find(".//stats/rating") if stats_el is not None else None
+            if rating_el is not None:
+                val = rating_el.get("value", "N/A")
+                if val not in ("N/A", "0", ""):
+                    try:
+                        user_rating = round(min(10.0, max(1.0, float(val))), 1)
+                    except ValueError:
+                        pass
+
+            # Notes / comment
+            notes = (item.findtext("comment") or "").strip() or None
+
+            # Image URL
+            image_url = (item.findtext("image") or "").strip()
+            if image_url.startswith("//"):
+                image_url = "https:" + image_url
+            image_url = image_url or None
+
+            game = models.Game(
+                name=name,
+                status=status,
+                year_published=year,
+                min_players=min_players,
+                max_players=max_players,
+                min_playtime=min_playtime,
+                max_playtime=max_playtime,
+                user_rating=user_rating,
+                user_notes=notes,
+                image_url=image_url,
+            )
+            db.add(game)
+            results["imported"] += 1
+
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(str(exc))
+
+    db.commit()
+    logger.info("BGG import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
+    return results
