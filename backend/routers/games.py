@@ -292,6 +292,67 @@ def get_games(
     return results
 
 
+# ===== Backup =====
+
+@router.get("/backup")
+def download_backup(background_tasks: BackgroundTasks):
+    """
+    Create a ZIP backup of the database and media files (images, instructions, gallery).
+    3D scans are excluded as they can be very large.
+    The ZIP is streamed directly — nothing is persisted to disk permanently.
+    """
+    data_dir = os.getenv("DATA_DIR", "/app/data")
+    db_url = os.getenv("DATABASE_URL", "sqlite:///./data/cardboard.db")
+
+    # Strip SQLite URL prefix to get the file path
+    db_path = db_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+    if not os.path.isabs(db_path):
+        db_path = os.path.join("/app", db_path)
+
+    if not os.path.isfile(db_path):
+        raise HTTPException(status_code=500, detail=f"Database file not found at {db_path}")
+
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    zip_filename = f"cardboard-backup-{ts}.zip"
+
+    # Write to a named temp file so FileResponse can seek/stat it
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp.close()
+
+    # Use SQLite backup API — safe with active connections
+    db_tmp = tmp.name + ".db"
+    try:
+        src = sqlite3.connect(db_path)
+        dst = sqlite3.connect(db_tmp)
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+            src.close()
+
+        with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(db_tmp, "cardboard.db")
+            for subdir in ["images", "instructions", "gallery"]:
+                dir_path = os.path.join(data_dir, subdir)
+                for f in glob.glob(os.path.join(dir_path, "**"), recursive=True):
+                    if os.path.isfile(f):
+                        zf.write(f, os.path.relpath(f, data_dir))
+    finally:
+        if os.path.exists(db_tmp):
+            os.remove(db_tmp)
+
+    size_mb = round(os.path.getsize(tmp.name) / 1_048_576, 1)
+    logger.info("Backup created: %s (%.1f MB)", zip_filename, size_mb)
+
+    background_tasks.add_task(os.remove, tmp.name)
+
+    return FileResponse(
+        tmp.name,
+        media_type="application/zip",
+        filename=zip_filename,
+    )
+
+
 @router.get("/{game_id}", response_model=schemas.GameResponse)
 def get_game(game_id: int, db: Session = Depends(get_db)):
     game = db.query(models.Game).filter(models.Game.id == game_id).first()
@@ -813,64 +874,3 @@ async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)
     db.commit()
     logger.info("BGG import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
     return results
-
-
-# ===== Backup =====
-
-@router.get("/backup")
-def download_backup(background_tasks: BackgroundTasks):
-    """
-    Create a ZIP backup of the database and media files (images, instructions, gallery).
-    3D scans are excluded as they can be very large.
-    The ZIP is streamed directly — nothing is persisted to disk permanently.
-    """
-    data_dir = os.getenv("DATA_DIR", "/app/data")
-    db_url = os.getenv("DATABASE_URL", "sqlite:///./data/cardboard.db")
-
-    # Strip SQLite URL prefix to get the file path
-    db_path = db_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
-    if not os.path.isabs(db_path):
-        db_path = os.path.join("/app", db_path)
-
-    if not os.path.isfile(db_path):
-        raise HTTPException(status_code=500, detail=f"Database file not found at {db_path}")
-
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    zip_filename = f"cardboard-backup-{ts}.zip"
-
-    # Write to a named temp file so FileResponse can seek/stat it
-    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
-    tmp.close()
-
-    # Use SQLite backup API — safe with active connections
-    db_tmp = tmp.name + ".db"
-    try:
-        src = sqlite3.connect(db_path)
-        dst = sqlite3.connect(db_tmp)
-        try:
-            src.backup(dst)
-        finally:
-            dst.close()
-            src.close()
-
-        with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.write(db_tmp, "cardboard.db")
-            for subdir in ["images", "instructions", "gallery"]:
-                dir_path = os.path.join(data_dir, subdir)
-                for f in glob.glob(os.path.join(dir_path, "**"), recursive=True):
-                    if os.path.isfile(f):
-                        zf.write(f, os.path.relpath(f, data_dir))
-    finally:
-        if os.path.exists(db_tmp):
-            os.remove(db_tmp)
-
-    size_mb = round(os.path.getsize(tmp.name) / 1_048_576, 1)
-    logger.info("Backup created: %s (%.1f MB)", zip_filename, size_mb)
-
-    background_tasks.add_task(os.remove, tmp.name)
-
-    return FileResponse(
-        tmp.name,
-        media_type="application/zip",
-        filename=zip_filename,
-    )

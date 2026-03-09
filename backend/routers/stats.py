@@ -58,7 +58,7 @@ def get_stats(db: Session = Depends(get_db)):
     ]
 
     # ── Never played ─────────────────────────────────────────────────────────
-    played_ids = db.query(models.PlaySession.game_id).distinct().subquery()
+    played_ids = db.query(models.PlaySession.game_id).distinct()
     never_played_count = (
         db.query(func.count(models.Game.id))
         .filter(models.Game.id.not_in(played_ids))
