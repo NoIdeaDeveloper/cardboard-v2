@@ -118,6 +118,7 @@
     bindStatusPills();
     bindFilters();
     bindAddGame();
+    wireTagInputs();
     bindModalBackdrop();
     bindKeyboardShortcuts();
     bindShortcutsOverlay();
@@ -246,6 +247,44 @@
     }
   }
 
+  // ===== Tag Autocomplete =====
+  const TAG_FIELDS = ['labels', 'categories', 'mechanics', 'designers', 'publishers'];
+
+  function buildDataLists() {
+    for (const field of TAG_FIELDS) {
+      const dl = document.getElementById(`dl-${field}`);
+      if (!dl) continue;
+      const seen = new Set();
+      state.games.forEach(g => {
+        try { JSON.parse(g[field] || '[]').forEach(v => { if (v) seen.add(v); }); } catch (_) {}
+      });
+      dl.innerHTML = [...seen].sort().map(v => `<option value="${escapeHtml(v)}">`).join('');
+    }
+  }
+
+  function wireTagInputs() {
+    TAG_FIELDS.forEach(field => {
+      const input = document.getElementById(`m-${field}`);
+      if (!input || input.dataset.tagWired) return;
+      input.dataset.tagWired = '1';
+      input.addEventListener('input', function () {
+        const dl = document.getElementById(this.getAttribute('list'));
+        if (!dl) return;
+        const options = new Set([...dl.options].map(o => o.value));
+        const val = this.value;
+        if (options.has(val)) {
+          // Datalist replaced the entire field — prepend stored prefix
+          const pfx = this.dataset.tagPrefix || '';
+          this.value = pfx ? pfx + val : val;
+          return;
+        }
+        // Normal typing — refresh prefix (everything up to and including last comma)
+        const commaIdx = val.lastIndexOf(',');
+        this.dataset.tagPrefix = commaIdx !== -1 ? val.slice(0, commaIdx + 1) + ' ' : '';
+      });
+    });
+  }
+
   // ===== Load Collection =====
   async function loadCollection() {
     const container = document.getElementById('games-container');
@@ -254,6 +293,7 @@
 
     try {
       state.games = await API.getGames({ sort_by: state.sortBy, sort_dir: state.sortDir });
+      buildDataLists();
       renderCollection();
     } catch (err) {
       container.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load collection: ${escapeHtml(err.message)}</p></div>`;

@@ -196,23 +196,23 @@
             </div>
             <div class="form-group full-width">
               <label for="m-labels">Labels <span class="hint">(comma-separated, e.g. Favourite, Kid-friendly)</span></label>
-              <input type="text" id="m-labels" name="labels_raw" placeholder="Favourite, Solo, Kid-friendly" />
+              <input type="text" id="m-labels" name="labels_raw" placeholder="Favourite, Solo, Kid-friendly" list="dl-labels" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-categories">Categories <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="m-categories" name="categories_raw" placeholder="Strategy, Card Game" />
+              <input type="text" id="m-categories" name="categories_raw" placeholder="Strategy, Card Game" list="dl-categories" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-mechanics">Mechanics <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="m-mechanics" name="mechanics_raw" placeholder="Hand Management, Set Collection" />
+              <input type="text" id="m-mechanics" name="mechanics_raw" placeholder="Hand Management, Set Collection" list="dl-mechanics" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-designers">Designers <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="m-designers" name="designers_raw" placeholder="Alan Moon" />
+              <input type="text" id="m-designers" name="designers_raw" placeholder="Alan Moon" list="dl-designers" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-publishers">Publishers <span class="hint">(comma-separated)</span></label>
-              <input type="text" id="m-publishers" name="publishers_raw" placeholder="Days of Wonder" />
+              <input type="text" id="m-publishers" name="publishers_raw" placeholder="Days of Wonder" list="dl-publishers" autocomplete="off" />
             </div>
             <div class="form-group">
               <label for="m-purchase-date">Purchase Date</label>
@@ -295,6 +295,13 @@
   <script type="module" src="/js/model-viewer.min.js"></script>
   <script src="js/api.js"></script>
   <script src="js/ui.js"></script>
+  <!-- Tag autocomplete datalists (populated by buildDataLists() in app.js) -->
+  <datalist id="dl-labels"></datalist>
+  <datalist id="dl-categories"></datalist>
+  <datalist id="dl-mechanics"></datalist>
+  <datalist id="dl-designers"></datalist>
+  <datalist id="dl-publishers"></datalist>
+
   <script src="js/confetti.js"></script>
   <script src="js/app.js"></script>
 </body>
