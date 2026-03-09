@@ -1872,6 +1872,33 @@ input[type="date"] { color-scheme: dark; }
   letter-spacing: 0.05em;
 }
 
+.stat-card[data-drilldown] {
+  cursor: pointer;
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.stat-card[data-drilldown]:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.stat-bar-row[data-drilldown] { cursor: pointer; }
+.stat-bar-row[data-drilldown]:hover .stat-bar-label { color: var(--accent); }
+
+.drilldown-title-btn {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  vertical-align: middle;
+}
+.drilldown-title-btn:hover { text-decoration: underline; }
+
 .stat-expansion-note {
   font-size: 0.85rem;
   font-weight: 400;

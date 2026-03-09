@@ -1421,6 +1421,28 @@
         }
         return;
       }
+      const drilldownEl = e.target.closest('[data-drilldown]');
+      if (drilldownEl && !e.target.closest('.insight-game-row, .most-played-item, .recent-session-item')) {
+        const drill = drilldownEl.dataset.drilldown;
+        state.filterNeverPlayed = false;
+        state.filterMechanics = [];
+        state.filterCategories = [];
+        if (drill === 'owned')         { state.statusFilter = 'owned'; }
+        else if (drill === 'wishlist') { state.statusFilter = 'wishlist'; }
+        else if (drill === 'never_played') {
+          state.statusFilter = 'owned';
+          state.filterNeverPlayed = true;
+        } else if (drill === 'mechanic') {
+          state.statusFilter = 'owned';
+          state.filterMechanics = [drilldownEl.dataset.mechanicName];
+        }
+        syncUIToState();
+        const neverBtn = document.getElementById('filter-never-played');
+        if (neverBtn) neverBtn.classList.toggle('active', state.filterNeverPlayed);
+        switchView('collection');
+        return;
+      }
+
       const row = e.target.closest('.insight-game-row[data-game-id], .most-played-item[data-game-id], .recent-session-item[data-game-id]');
       if (!row) return;
       const game = state.games.find(g => g.id === parseInt(row.dataset.gameId, 10));

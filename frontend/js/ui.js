@@ -1774,17 +1774,17 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
 
   const statDefs = [
     { label: 'Total Games',   value: totalGamesLabel, raw: true },
-    { label: 'Owned',         value: stats.by_status.owned    || 0 },
-    { label: 'Wishlist',      value: stats.by_status.wishlist || 0 },
+    { label: 'Owned',         value: stats.by_status.owned    || 0, drilldown: 'owned' },
+    { label: 'Wishlist',      value: stats.by_status.wishlist || 0, drilldown: 'wishlist' },
     { label: 'Play Sessions', value: stats.total_sessions },
     { label: 'Hours Played',  value: stats.total_hours },
     ...(stats.avg_rating    != null ? [{ label: 'Avg Rating',        value: stats.avg_rating + ' / 10' }] : []),
-    { label: 'Never Played',  value: stats.never_played_count },
+    { label: 'Never Played',  value: stats.never_played_count, drilldown: 'never_played' },
   ];
 
   const cardsHtml = `<div class="stat-cards" data-section="summary"${!currentPrefs.show_summary ? ' style="display:none"' : ''}>
     ${statDefs.map(c => `
-      <div class="stat-card">
+      <div class="stat-card"${c.drilldown ? ` data-drilldown="${c.drilldown}" title="View in collection"` : ''}>
         <div class="stat-card-value">${c.raw ? c.value : escapeHtml(String(c.value))}</div>
         <div class="stat-card-label">${escapeHtml(c.label)}</div>
       </div>`).join('')}
@@ -1917,7 +1917,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
   };
   const neverPlayedHtml = `
     <div class="stats-section" data-section="never_played"${!currentPrefs.show_never_played ? ' style="display:none"' : ''}>
-      <h3 class="stats-section-title">Shelf of Shame (${neverPlayed.length})</h3>
+      <h3 class="stats-section-title">Shelf of Shame (${neverPlayed.length})${neverPlayed.length > 0 ? ' <button class="drilldown-title-btn" data-drilldown="never_played" type="button">View all →</button>' : ''}</h3>
       <p class="insight-subtext">Owned but never played \u2014 longest owned first</p>
       ${neverPlayed.length
         ? `<div class="insight-game-list">
@@ -1971,7 +1971,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <h3 class="stats-section-title">Top Mechanics</h3>
       <div class="stat-bar-chart">
         ${topMechanics.map(([name, count]) => `
-          <div class="stat-bar-row">
+          <div class="stat-bar-row" data-drilldown="mechanic" data-mechanic-name="${escapeHtml(name)}" title="Filter by ${escapeHtml(name)}">
             <span class="stat-bar-label">${escapeHtml(name)}</span>
             <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(count / maxMechanic * 100)}%"></div></div>
             <span class="stat-bar-count">${count}</span>
