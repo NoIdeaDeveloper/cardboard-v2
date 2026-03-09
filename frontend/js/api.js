@@ -80,4 +80,14 @@ const API = {
 
   // BGG import
   importBGG: (file) => uploadFile('/games/import/bgg', file),
+
+  // Backup
+  downloadBackup: () => {
+    const a = document.createElement('a');
+    a.href = `${API_BASE}/games/backup`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  },
 };
