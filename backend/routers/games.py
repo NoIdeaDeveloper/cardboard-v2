@@ -847,9 +847,11 @@ def download_backup(background_tasks: BackgroundTasks):
     try:
         src = sqlite3.connect(db_path)
         dst = sqlite3.connect(db_tmp)
-        src.backup(dst)
-        dst.close()
-        src.close()
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+            src.close()
 
         with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(db_tmp, "cardboard.db")
