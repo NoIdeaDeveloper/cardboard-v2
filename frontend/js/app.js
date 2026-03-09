@@ -1385,6 +1385,12 @@
       }, 'Importing…');
     });
 
+    const backupBtn = statsView.querySelector('#stats-backup-download');
+    backupBtn.addEventListener('click', () => {
+      API.downloadBackup();
+      showToast('Backup download started…', 'info');
+    });
+
     const wishlistToggle = statsView.querySelector('#added-wishlist-toggle');
     if (wishlistToggle) {
       wishlistToggle.addEventListener('change', () => {
