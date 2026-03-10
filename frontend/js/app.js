@@ -1618,7 +1618,7 @@
           state.statusFilter = 'owned';
           state.filterMechanics = [drilldownEl.dataset.mechanicName];
         }
-        syncUIToState();
+        syncCollectionUI();
         const neverBtn = document.getElementById('filter-never-played');
         if (neverBtn) neverBtn.classList.toggle('active', state.filterNeverPlayed);
         switchView('collection');
