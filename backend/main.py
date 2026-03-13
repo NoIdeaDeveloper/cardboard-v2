@@ -14,7 +14,7 @@ from routers import games, sessions, stats, game_images
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     force=True,
@@ -33,6 +33,15 @@ logger.info("Data directory: %s", os.path.abspath(os.getenv("DATA_DIR", "/app/da
 # Create DB tables on startup
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables verified")
+
+# Verify DB is actually reachable before serving traffic
+try:
+    with engine.connect() as _probe:
+        _probe.execute(text("SELECT 1"))
+    logger.info("Database connectivity verified")
+except Exception as _exc:
+    logger.error("Cannot connect to database at startup: %s", _exc)
+    raise SystemExit(1)
 
 # Migrate existing databases: add any columns that are missing from older schemas.
 # SQLite supports ADD COLUMN but not DROP/MODIFY, so this is safe to run on every start.
@@ -156,6 +165,17 @@ def _migrate_json_tags_to_junction():
 _migrate_json_tags_to_junction()
 
 app = FastAPI(title="Cardboard API", version="1.0.0", docs_url="/api/docs")
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.on_event("shutdown")
+async def _shutdown():
+    engine.dispose()
+    logger.info("Cardboard shutting down — connections closed")
 
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 _ALLOWED_ORIGINS = [o.strip() for o in _raw_origins if o.strip()] or ["*"]

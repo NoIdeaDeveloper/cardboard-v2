@@ -99,8 +99,8 @@ def _cache_game_image(game_id: int, image_url: str) -> None:
                     if downloaded > MAX_IMAGE_SIZE:
                         raise ValueError("Remote image exceeds size limit")
                     f.write(chunk)
-    except Exception as exc:
-        logger.warning("Image cache failed for game %d: %s", game_id, exc)
+    except Exception:
+        logger.exception("Image cache failed for game %d", game_id)
         _delete_cached_image(game_id)  # remove any partial file
         return
 

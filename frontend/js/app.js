@@ -496,7 +496,7 @@
 
         el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
           e.stopPropagation();
-          handleQuickStatusChange(game.id, 'owned');
+          withLoading(e.currentTarget, () => handleQuickStatusChange(game.id, 'owned'));
         });
 
         el.querySelector('.quick-log-btn')?.addEventListener('click', (e) => {

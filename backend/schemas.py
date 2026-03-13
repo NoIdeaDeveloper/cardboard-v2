@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List, Dict
 from datetime import date, datetime
 
@@ -40,6 +40,14 @@ class GameBase(BaseModel):
     last_played: Optional[date] = None
     parent_game_id: Optional[int] = Field(None, ge=1)
 
+    @model_validator(mode='after')
+    def check_min_max(self):
+        if self.min_players and self.max_players and self.min_players > self.max_players:
+            raise ValueError('min_players cannot exceed max_players')
+        if self.min_playtime and self.max_playtime and self.min_playtime > self.max_playtime:
+            raise ValueError('min_playtime cannot exceed max_playtime')
+        return self
+
 
 class GameCreate(GameBase):
     pass
@@ -79,6 +87,14 @@ class GameUpdate(BaseModel):
     scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: Optional[bool] = None
     parent_game_id: Optional[int] = Field(None, ge=1)
+
+    @model_validator(mode='after')
+    def check_min_max(self):
+        if self.min_players and self.max_players and self.min_players > self.max_players:
+            raise ValueError('min_players cannot exceed max_players')
+        if self.min_playtime and self.max_playtime and self.min_playtime > self.max_playtime:
+            raise ValueError('min_playtime cannot exceed max_playtime')
+        return self
 
 
 class GameResponse(GameBase):

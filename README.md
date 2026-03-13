@@ -80,7 +80,7 @@ Open an Unraid terminal and run:
 
 ```bash
 cd /mnt/user/appdata
-git clone https://github.com/your-username/cardboard-v2.git cardboard
+git clone https://github.com/NoIdeaDeveloper/cardboard-v2.git cardboard
 ```
 
 This downloads the code to `/mnt/user/appdata/cardboard`.
@@ -161,6 +161,22 @@ Then restart:
 docker compose down
 docker compose up -d
 ```
+
+---
+
+## Security
+
+By default Cardboard allows requests from any origin (`ALLOWED_ORIGINS=*`). This is fine for home-network use, but if you ever expose it to the internet you should lock it down so other websites cannot make requests to your API on behalf of logged-in users.
+
+Edit `.env` and set `ALLOWED_ORIGINS` to your server's address:
+
+```
+ALLOWED_ORIGINS=http://192.168.1.100:8000
+```
+
+Multiple origins can be comma-separated: `ALLOWED_ORIGINS=http://192.168.1.100:8000,https://cardboard.yourdomain.com`
+
+Restart after changing: `docker compose up -d`
 
 ---
 
