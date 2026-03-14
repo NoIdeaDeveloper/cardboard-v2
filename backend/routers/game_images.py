@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
-from utils import _is_safe_url
+from utils import _is_safe_url, validate_url_safety
 
 logger = logging.getLogger("cardboard.gallery")
 router = APIRouter(prefix="/api/games", tags=["gallery"])
@@ -203,17 +203,21 @@ def add_gallery_image_from_url(
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    parsed = urllib.parse.urlparse(body.url)
-    if parsed.scheme not in ("http", "https"):
-        raise HTTPException(status_code=400, detail="Only http/https URLs are supported")
-    if not _is_safe_url(body.url):
-        logger.warning("Gallery image from URL rejected: private/loopback URL: %s", body.url)
-        raise HTTPException(status_code=400, detail="Private/loopback URLs are not permitted")
+    # Validate URL format and safety using the new validation function
+    is_valid, error_msg = validate_url_safety(body.url)
+    if not is_valid:
+        logger.warning("Gallery image from URL rejected: %s", error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
 
     try:
         req = urllib.request.Request(body.url, headers={"User-Agent": "Cardboard/1.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:
             content_type = resp.headers.get("Content-Type", "image/jpeg")
+            
+            # Validate content type before downloading
+            if not content_type.startswith(('image/', 'application/octet-stream')):
+                raise HTTPException(status_code=400, detail="URL does not point to an image")
+            
             ext = _safe_gallery_ext(body.url, content_type)
             downloaded, chunks = 0, []
             while chunk := resp.read(65536):
@@ -222,6 +226,11 @@ def add_gallery_image_from_url(
                     raise HTTPException(status_code=413, detail="Remote image exceeds 10 MB limit")
                 chunks.append(chunk)
             content = b"".join(chunks)
+            
+            # Basic validation that this is actually an image
+            if len(content) < 100:  # Minimum reasonable image size
+                raise HTTPException(status_code=400, detail="Downloaded content is too small to be a valid image")
+            
     except HTTPException:
         raise
     except Exception as exc:

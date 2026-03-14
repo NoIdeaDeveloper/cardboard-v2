@@ -157,49 +157,54 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
 
     Also keeps the legacy TEXT columns in sync (dual-write).
     """
-    for field, TagModel, PivotModel, fk_attr in _TAG_FIELDS:
-        if field not in data_dict:
-            continue
-        json_str = data_dict[field]
-        try:
-            raw = json.loads(json_str) if json_str else []
-            if not isinstance(raw, list):
+    try:
+        for field, TagModel, PivotModel, fk_attr in _TAG_FIELDS:
+            if field not in data_dict:
                 continue
-            # Deduplicate and clean in one pass
-            seen: dict[str, None] = {}
-            for n in raw:
-                clean = (str(n) if n else "").strip()
-                if clean:
-                    seen[clean] = None
-            names = list(seen)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning("Invalid JSON for tag field %s on game %d: %.80s", field, game_id, str(json_str))
-            continue
+            json_str = data_dict[field]
+            try:
+                raw = json.loads(json_str) if json_str else []
+                if not isinstance(raw, list):
+                    continue
+                # Deduplicate and clean in one pass
+                seen: dict[str, None] = {}
+                for n in raw:
+                    clean = (str(n) if n else "").strip()
+                    if clean:
+                        seen[clean] = None
+                names = list(seen)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning("Invalid JSON for tag field %s on game %d: %.80s", field, game_id, str(json_str))
+                continue
 
-        # Clear existing pivot rows for this game + tag type
-        db.query(PivotModel).filter(PivotModel.game_id == game_id).delete()
+            # Clear existing pivot rows for this game + tag type
+            db.query(PivotModel).filter(PivotModel.game_id == game_id).delete()
 
-        if not names:
-            continue
+            if not names:
+                continue
 
-        # Batch-fetch all existing tags in one query
-        existing = {
-            tag.name: tag
-            for tag in db.query(TagModel).filter(TagModel.name.in_(names)).all()
-        }
+            # Batch-fetch all existing tags in one query
+            existing = {
+                tag.name: tag
+                for tag in db.query(TagModel).filter(TagModel.name.in_(names)).all()
+            }
 
-        # Bulk-create any tags that don't exist yet, then flush once for IDs
-        new_tags = [TagModel(name=name) for name in names if name not in existing]
-        if new_tags:
-            db.add_all(new_tags)
-            db.flush()
-            for tag in new_tags:
-                existing[tag.name] = tag
+            # Bulk-create any tags that don't exist yet, then flush once for IDs
+            new_tags = [TagModel(name=name) for name in names if name not in existing]
+            if new_tags:
+                db.add_all(new_tags)
+                db.flush()
+                for tag in new_tags:
+                    existing[tag.name] = tag
 
-        # Bulk-insert all pivot rows
-        db.add_all([PivotModel(game_id=game_id, **{fk_attr: existing[name].id}) for name in names])
+            # Bulk-insert all pivot rows
+            db.add_all([PivotModel(game_id=game_id, **{fk_attr: existing[name].id}) for name in names])
 
-    db.flush()
+        db.flush()
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to save tags for game %d: %s", game_id, str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to save tags: {str(e)}")
 
 
 def _load_tags(games, db: Session) -> None:
