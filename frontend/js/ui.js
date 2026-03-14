@@ -79,9 +79,9 @@ function clearFieldError(errEl, inputEl) {
 // ===== Display Helpers =====
 
 function renderStars(rating) {
-  const filled = Math.round((rating || 0) / 2);
+  const filled = Math.round(rating || 0);
   let html = '<div class="rating-stars">';
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 10; i++) {
     html += `<svg class="star${i <= filled ? '' : ' empty'}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
   }
   return html + '</div>';
