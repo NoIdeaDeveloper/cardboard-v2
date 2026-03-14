@@ -507,8 +507,8 @@ async def upload_image(game_id: int, file: UploadFile = File(...), db: Session =
     try:
         with open(dest, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write image for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write image for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     db_game.image_url = f"/api/games/{game_id}/image"
@@ -563,8 +563,8 @@ async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Se
     try:
         with open(dest, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write instructions for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write instructions for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save instructions to disk")
 
     db_game.instructions_filename = safe_name
@@ -653,8 +653,8 @@ async def upload_scan(game_id: int, file: UploadFile = File(...), db: Session = 
     try:
         with open(dest, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write USDZ scan for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write USDZ scan for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save scan to disk")
 
     db_game.scan_filename = safe_name
@@ -720,8 +720,8 @@ async def upload_scan_glb(game_id: int, file: UploadFile = File(...), db: Sessio
     try:
         with open(dest, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write GLB scan for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write GLB scan for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save scan to disk")
 
     db_game.scan_glb_filename = safe_name

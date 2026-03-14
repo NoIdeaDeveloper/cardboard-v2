@@ -13,13 +13,17 @@ from routers import games, sessions, stats, game_images
 
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
+_log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+_log_level = getattr(logging, _log_level_name, None)
 logging.basicConfig(
-    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
+    level=_log_level if isinstance(_log_level, int) else logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     force=True,
 )
 logger = logging.getLogger("cardboard")
+if not isinstance(_log_level, int):
+    logger.warning("Invalid LOG_LEVEL=%r, defaulting to INFO", os.getenv("LOG_LEVEL"))
 
 # Ensure data directories exist
 for subdir in ["", "images", "instructions", "scans", "gallery"]:

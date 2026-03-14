@@ -106,8 +106,8 @@ async def upload_gallery_image(
     try:
         with open(dest, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write gallery image for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write gallery image for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     db_img = models.GameImage(game_id=game_id, filename=filename, sort_order=next_order)
@@ -241,8 +241,8 @@ def add_gallery_image_from_url(
     try:
         with open(file_path, "wb") as f:
             f.write(content)
-    except OSError as e:
-        logger.error("Failed to write gallery image (from URL) for game %d: %s", game_id, e)
+    except OSError:
+        logger.exception("Failed to write gallery image (from URL) for game %d", game_id)
         raise HTTPException(status_code=500, detail="Failed to save image to disk")
 
     try:

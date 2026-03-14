@@ -3,13 +3,25 @@ from typing import Optional, List, Dict
 from datetime import date, datetime
 
 
+def _strip_name(v):
+    return v.strip() if isinstance(v, str) else v
+
+
+def _validate_min_max(model):
+    if model.min_players and model.max_players and model.min_players > model.max_players:
+        raise ValueError('min_players cannot exceed max_players')
+    if model.min_playtime and model.max_playtime and model.min_playtime > model.max_playtime:
+        raise ValueError('min_playtime cannot exceed max_playtime')
+    return model
+
+
 class GameBase(BaseModel):
     name: str = Field(..., max_length=255)
 
     @field_validator('name', mode='before')
     @classmethod
     def strip_name(cls, v):
-        return v.strip() if isinstance(v, str) else v
+        return _strip_name(v)
 
     status: str = Field('owned', pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
@@ -42,11 +54,7 @@ class GameBase(BaseModel):
 
     @model_validator(mode='after')
     def check_min_max(self):
-        if self.min_players and self.max_players and self.min_players > self.max_players:
-            raise ValueError('min_players cannot exceed max_players')
-        if self.min_playtime and self.max_playtime and self.min_playtime > self.max_playtime:
-            raise ValueError('min_playtime cannot exceed max_playtime')
-        return self
+        return _validate_min_max(self)
 
 
 class GameCreate(GameBase):
@@ -59,7 +67,7 @@ class GameUpdate(BaseModel):
     @field_validator('name', mode='before')
     @classmethod
     def strip_name(cls, v):
-        return v.strip() if isinstance(v, str) else v
+        return _strip_name(v)
 
     status: Optional[str] = Field(None, pattern='^(owned|wishlist|sold)$')
     year_published: Optional[int] = None
@@ -90,11 +98,7 @@ class GameUpdate(BaseModel):
 
     @model_validator(mode='after')
     def check_min_max(self):
-        if self.min_players and self.max_players and self.min_players > self.max_players:
-            raise ValueError('min_players cannot exceed max_players')
-        if self.min_playtime and self.max_playtime and self.min_playtime > self.max_playtime:
-            raise ValueError('min_playtime cannot exceed max_playtime')
-        return self
+        return _validate_min_max(self)
 
 
 class GameResponse(GameBase):
