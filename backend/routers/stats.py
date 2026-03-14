@@ -2,7 +2,7 @@ import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -91,16 +91,15 @@ def get_stats(db: Session = Depends(get_db)):
     label_counts: dict = {name: count for name, count in label_rows}
 
     # ── Rating distribution ───────────────────────────────────────────────────
-    rated_games = (
-        db.query(models.Game.user_rating).filter(models.Game.user_rating.isnot(None)).all()
-    )
-    buckets = {"1–2": 0, "3–4": 0, "5–6": 0, "7–8": 0, "9–10": 0}
-    for (r,) in rated_games:
-        if r <= 2:   buckets["1–2"]  += 1
-        elif r <= 4: buckets["3–4"]  += 1
-        elif r <= 6: buckets["5–6"]  += 1
-        elif r <= 8: buckets["7–8"]  += 1
-        else:        buckets["9–10"] += 1
+    r = models.Game.user_rating
+    (b1, b2, b3, b4, b5) = db.query(
+        func.count(case((r <= 2,  1))),
+        func.count(case(((r >= 3) & (r <= 4),  1))),
+        func.count(case(((r >= 5) & (r <= 6),  1))),
+        func.count(case(((r >= 7) & (r <= 8),  1))),
+        func.count(case((r >= 9,  1))),
+    ).filter(r.isnot(None)).one()
+    buckets = {"1–2": b1, "3–4": b2, "5–6": b3, "7–8": b4, "9–10": b5}
 
     # ── Build 12-month skeleton (reused for games and sessions) ──────────────
     today = date.today()

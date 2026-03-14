@@ -162,10 +162,16 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
             continue
         json_str = data_dict[field]
         try:
-            names = json.loads(json_str) if json_str else []
-            if not isinstance(names, list):
+            raw = json.loads(json_str) if json_str else []
+            if not isinstance(raw, list):
                 continue
-            names = list(dict.fromkeys(names))  # deduplicate, preserve order
+            # Deduplicate and clean in one pass
+            seen: dict[str, None] = {}
+            for n in raw:
+                clean = (str(n) if n else "").strip()
+                if clean:
+                    seen[clean] = None
+            names = list(seen)
         except (json.JSONDecodeError, TypeError):
             logger.warning("Invalid JSON for tag field %s on game %d: %.80s", field, game_id, str(json_str))
             continue
@@ -173,17 +179,25 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
         # Clear existing pivot rows for this game + tag type
         db.query(PivotModel).filter(PivotModel.game_id == game_id).delete()
 
-        for raw_name in names:
-            name = (str(raw_name) if raw_name else "").strip()
-            if not name:
-                continue
-            # Get or create tag
-            tag = db.query(TagModel).filter(TagModel.name == name).first()
-            if not tag:
-                tag = TagModel(name=name)
-                db.add(tag)
-                db.flush()  # assign tag.id
-            db.add(PivotModel(game_id=game_id, **{fk_attr: tag.id}))
+        if not names:
+            continue
+
+        # Batch-fetch all existing tags in one query
+        existing = {
+            tag.name: tag
+            for tag in db.query(TagModel).filter(TagModel.name.in_(names)).all()
+        }
+
+        # Bulk-create any tags that don't exist yet, then flush once for IDs
+        new_tags = [TagModel(name=name) for name in names if name not in existing]
+        if new_tags:
+            db.add_all(new_tags)
+            db.flush()
+            for tag in new_tags:
+                existing[tag.name] = tag
+
+        # Bulk-insert all pivot rows
+        db.add_all([PivotModel(game_id=game_id, **{fk_attr: existing[name].id}) for name in names])
 
     db.flush()
 
@@ -478,7 +492,7 @@ def get_game_image(game_id: int):
     matches = sorted(glob.glob(os.path.join(IMAGES_DIR, f"{game_id}.*")))
     if not matches:
         raise HTTPException(status_code=404, detail="Image not cached")
-    return FileResponse(matches[0])
+    return FileResponse(matches[0], headers={"Cache-Control": "public, max-age=604800"})
 
 
 # ---------------------------------------------------------------------------
@@ -496,9 +510,11 @@ async def upload_image(game_id: int, file: UploadFile = File(...), db: Session =
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only image files (.jpg, .png, .gif, .webp) are allowed")
 
-    content = await file.read()
-    if len(content) > MAX_IMAGE_SIZE:
+    await file.seek(0, 2)
+    if await file.tell() > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 10 MB limit")
+    await file.seek(0)
+    content = await file.read()
 
     os.makedirs(IMAGES_DIR, exist_ok=True)
     _delete_cached_image(game_id)
@@ -545,9 +561,11 @@ async def upload_instructions(game_id: int, file: UploadFile = File(...), db: Se
     if ext not in ALLOWED_INSTRUCTIONS_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .pdf and .txt files are allowed")
 
-    content = await file.read()
-    if len(content) > MAX_INSTRUCTIONS_SIZE:
+    await file.seek(0, 2)
+    if await file.tell() > MAX_INSTRUCTIONS_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 20 MB limit")
+    await file.seek(0)
+    content = await file.read()
 
     os.makedirs(INSTRUCTIONS_DIR, exist_ok=True)
 
@@ -590,7 +608,10 @@ def get_instructions(game_id: int, db: Session = Depends(get_db)):
     return FileResponse(
         path,
         media_type=media_type,
-        headers={"Content-Disposition": f'{disposition}; filename="{db_game.instructions_filename}"'},
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{db_game.instructions_filename}"',
+            "Cache-Control": "public, max-age=604800",
+        },
     )
 
 
@@ -642,9 +663,11 @@ async def upload_scan(game_id: int, file: UploadFile = File(...), db: Session = 
     if ext not in ALLOWED_SCAN_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .usdz files are allowed")
 
-    content = await file.read()
-    if len(content) > MAX_SCAN_SIZE:
+    await file.seek(0, 2)
+    if await file.tell() > MAX_SCAN_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 200 MB limit")
+    await file.seek(0)
+    content = await file.read()
 
     os.makedirs(SCANS_DIR, exist_ok=True)
     _delete_scan_file(game_id)
@@ -676,7 +699,10 @@ def get_scan(game_id: int, db: Session = Depends(get_db)):
     return FileResponse(
         path,
         media_type="model/vnd.usdz+zip",
-        headers={"Content-Disposition": f'inline; filename="{db_game.scan_filename}"'},
+        headers={
+            "Content-Disposition": f'inline; filename="{db_game.scan_filename}"',
+            "Cache-Control": "public, max-age=604800",
+        },
     )
 
 
@@ -709,9 +735,11 @@ async def upload_scan_glb(game_id: int, file: UploadFile = File(...), db: Sessio
     if ext not in ALLOWED_GLB_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .glb files are allowed")
 
-    content = await file.read()
-    if len(content) > MAX_SCAN_SIZE:
+    await file.seek(0, 2)
+    if await file.tell() > MAX_SCAN_SIZE:
         raise HTTPException(status_code=413, detail="File exceeds 200 MB limit")
+    await file.seek(0)
+    content = await file.read()
 
     os.makedirs(SCANS_DIR, exist_ok=True)
     _delete_glb_file(game_id)
@@ -743,7 +771,10 @@ def get_scan_glb(game_id: int, db: Session = Depends(get_db)):
     return FileResponse(
         path,
         media_type="model/gltf-binary",
-        headers={"Content-Disposition": f'inline; filename="{db_game.scan_glb_filename}"'},
+        headers={
+            "Content-Disposition": f'inline; filename="{db_game.scan_glb_filename}"',
+            "Cache-Control": "public, max-age=604800",
+        },
     )
 
 

@@ -116,6 +116,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     bindNav();
+    bindCollectionContainer();
     bindCollectionControls();
     bindStatusPills();
     bindFilters();
@@ -209,7 +210,8 @@
     sortBy.addEventListener('change', () => {
       state.sortBy = sortBy.value;
       saveCollectionPrefs();
-      loadCollection();
+      state.games = sortGames(state.games, state.sortBy, state.sortDir);
+      renderCollection();
     });
 
     sortDirBtn.addEventListener('click', () => {
@@ -218,7 +220,8 @@
       sortDirBtn.setAttribute('title', state.sortDir === 'asc' ? 'Sort ascending' : 'Sort descending');
       sortDirBtn.querySelector('svg').style.transform = state.sortDir === 'desc' ? 'scaleY(-1)' : '';
       saveCollectionPrefs();
-      loadCollection();
+      state.games = sortGames(state.games, state.sortBy, state.sortDir);
+      renderCollection();
     });
 
     gridBtn.addEventListener('click', () => {
@@ -302,6 +305,29 @@
     });
   }
 
+  // ===== Sort =====
+  function sortGames(games, sortBy, sortDir) {
+    const asc = sortDir !== 'desc';
+    return [...games].sort((a, b) => {
+      let av, bv;
+      if (!sortBy || sortBy === 'name') {
+        const strip = s => (s || '').replace(/^the\s+/i, '').toLowerCase();
+        av = strip(a.name);
+        bv = strip(b.name);
+      } else {
+        av = a[sortBy] ?? null;
+        bv = b[sortBy] ?? null;
+      }
+      // Nulls last in asc, first in desc — matches SQLite default behaviour
+      if (av === null && bv === null) return 0;
+      if (av === null) return asc ? 1 : -1;
+      if (bv === null) return asc ? -1 : 1;
+      if (av < bv) return asc ? -1 : 1;
+      if (av > bv) return asc ? 1 : -1;
+      return 0;
+    });
+  }
+
   // ===== Load Collection =====
   async function loadCollection() {
     const container = document.getElementById('games-container');
@@ -309,7 +335,8 @@
     document.getElementById('empty-state').style.display = 'none';
 
     try {
-      state.games = await API.getGames({ sort_by: state.sortBy, sort_dir: state.sortDir });
+      const raw = await API.getGames({});
+      state.games = sortGames(raw, state.sortBy, state.sortDir);
       buildDataLists();
       renderCollection();
     } catch (err) {
@@ -388,6 +415,60 @@
     renderCollection();
     renderBulkToolbar();
     refreshStatsBackground();
+  }
+
+  function bindCollectionContainer() {
+    const container = document.getElementById('games-container');
+
+    container.addEventListener('click', async (e) => {
+      const card = e.target.closest('[data-game-id]');
+      if (!card) return;
+      const game = state.games.find(g => g.id === +card.dataset.gameId);
+      if (!game) return;
+
+      if (state.bulkMode) {
+        if (e.target.closest('.quick-owned-btn, .quick-log-btn')) return;
+        if (state.selectedGameIds.has(game.id)) {
+          state.selectedGameIds.delete(game.id);
+          card.classList.remove('selected');
+        } else {
+          state.selectedGameIds.add(game.id);
+          card.classList.add('selected');
+        }
+        renderBulkToolbar();
+        return;
+      }
+
+      const scanBtn = e.target.closest('.scan-badge');
+      if (scanBtn) { e.stopPropagation(); openScanViewer(game); return; }
+
+      const ownedBtn = e.target.closest('.quick-owned-btn');
+      if (ownedBtn) { e.stopPropagation(); withLoading(ownedBtn, () => handleQuickStatusChange(game.id, 'owned')); return; }
+
+      const logBtn = e.target.closest('.quick-log-btn');
+      if (logBtn) { e.stopPropagation(); openQuickLogSession(game); return; }
+
+      const cardMedia = e.target.closest('.game-card-image.gallery-clickable');
+      if (cardMedia) {
+        e.stopPropagation();
+        const imgs = await API.getImages(game.id).catch(() => []);
+        if (imgs.length) openGalleryLightbox(imgs, 0);
+        return;
+      }
+
+      if (e.target.closest('model-viewer, .scan-ar-placeholder')) return;
+      openGameModal(game);
+    });
+
+    container.addEventListener('mouseover', (e) => {
+      const card = e.target.closest('[data-game-id]');
+      if (card) hoveredGame = state.games.find(g => g.id === +card.dataset.gameId) || null;
+    });
+
+    container.addEventListener('mouseout', (e) => {
+      const card = e.target.closest('[data-game-id]');
+      if (card && !card.contains(e.relatedTarget)) hoveredGame = null;
+    });
   }
 
   function renderCollection() {
@@ -475,46 +556,11 @@
         cb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
         el.insertBefore(cb, el.firstChild);
         if (state.selectedGameIds.has(game.id)) el.classList.add('selected');
-        el.addEventListener('click', (e) => {
-          if (e.target.closest('.quick-owned-btn, .quick-log-btn')) return;
-          if (state.selectedGameIds.has(game.id)) {
-            state.selectedGameIds.delete(game.id);
-            el.classList.remove('selected');
-          } else {
-            state.selectedGameIds.add(game.id);
-            el.classList.add('selected');
-          }
-          renderBulkToolbar();
-        });
-      } else {
-        el.addEventListener('mouseenter', () => { hoveredGame = game; });
-        el.addEventListener('mouseleave', () => { hoveredGame = null; });
-        el.addEventListener('click', (e) => {
-          if (e.target.closest('model-viewer, .scan-ar-placeholder, .quick-owned-btn, .quick-log-btn')) return;
-          openGameModal(game);
-        });
-
-        el.querySelector('.quick-owned-btn')?.addEventListener('click', (e) => {
-          e.stopPropagation();
-          withLoading(e.currentTarget, () => handleQuickStatusChange(game.id, 'owned'));
-        });
-
-        el.querySelector('.quick-log-btn')?.addEventListener('click', (e) => {
-          e.stopPropagation();
-          openQuickLogSession(game);
-        });
-
-        // Card image area → gallery lightbox (only when gallery images exist)
-        if (state.viewMode === 'grid') {
-          const cardMedia = el.querySelector('.game-card-image');
-          if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
-            cardMedia.classList.add('gallery-clickable');
-            cardMedia.addEventListener('click', async (e) => {
-              e.stopPropagation();
-              const imgs = await API.getImages(game.id).catch(() => []);
-              if (imgs.length) openGalleryLightbox(imgs, 0);
-            });
-          }
+      } else if (state.viewMode === 'grid') {
+        // Mark gallery-clickable for delegation handler to detect
+        const cardMedia = el.querySelector('.game-card-image');
+        if (cardMedia && game.image_url && game.image_url.includes('/images/') && !game.scan_featured) {
+          cardMedia.classList.add('gallery-clickable');
         }
       }
 

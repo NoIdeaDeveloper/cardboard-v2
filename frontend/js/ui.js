@@ -207,6 +207,7 @@ function listThumbHtml(game) {
 function buildGameCard(game) {
   const el = document.createElement('div');
   el.className = 'game-card';
+  el.dataset.gameId = game.id;
 
   const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
   const players  = formatPlayers(game.min_players, game.max_players);
@@ -268,11 +269,6 @@ function buildGameCard(game) {
       </div>
     </div>`;
 
-  if (game.scan_filename || game.scan_glb_filename) {
-    const badge = el.querySelector('.scan-badge');
-    if (badge) badge.addEventListener('click', e => { e.stopPropagation(); openScanViewer(game); });
-  }
-
   return el;
 }
 
@@ -281,6 +277,7 @@ function buildGameCard(game) {
 function buildGameListItem(game) {
   const el = document.createElement('div');
   el.className = 'game-list-item';
+  el.dataset.gameId = game.id;
 
   const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
   const players  = formatPlayers(game.min_players, game.max_players);
@@ -330,11 +327,6 @@ function buildGameListItem(game) {
       ${game.status === 'owned' ? `<button class="quick-log-btn" type="button">+ Log Play</button>` : ''}
     </div>
     <div class="list-rating">${ratingHtml}</div>`;
-
-  if (game.scan_filename || game.scan_glb_filename) {
-    const badge = el.querySelector('.scan-badge-list');
-    if (badge) badge.addEventListener('click', e => { e.stopPropagation(); openScanViewer(game); });
-  }
 
   return el;
 }
