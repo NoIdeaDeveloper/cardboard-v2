@@ -388,7 +388,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
 
   const baseGameEditHtml = isEdit
     ? `<div class="form-group full-width">
-        <label>Base Game <span class="hint">(leave blank if this is a base game)</span></label>
+        <label for="edit-base-game-search">Base Game <span class="hint">(leave blank if this is a base game)</span></label>
         <div class="base-game-picker">
           <input type="text" id="edit-base-game-search" class="form-input" autocomplete="off"
             placeholder="Search base games…"
@@ -511,7 +511,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     ? `<div class="modal-section">
         <div class="section-label">Last Played</div>
         <div class="last-played-row">
-          <input type="date" id="last-played-input" class="date-input" value="${game.last_played || ''}">
+          <input type="date" id="last-played-input" class="date-input" value="${game.last_played || ''}" autocomplete="off" aria-label="Last played date">
           <button class="btn btn-ghost btn-sm" id="today-btn">Today</button>
         </div>
       </div>`
@@ -525,7 +525,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const descriptionSectionHtml = isEdit
     ? `<div class="modal-section">
         <div class="section-label">Description</div>
-        <textarea id="edit-description" class="form-input" rows="3">${escapeHtml(game.description || '')}</textarea>
+        <textarea id="edit-description" class="form-input" rows="3" autocomplete="off" aria-label="Description">${escapeHtml(game.description || '')}</textarea>
       </div>`
     : game.description
       ? `<div class="modal-section">
@@ -538,7 +538,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   const notesSectionHtml = isEdit
     ? `<div class="modal-section">
         <div class="section-label">My Notes</div>
-        <textarea id="user-notes" class="notes-input" rows="3" placeholder="Personal notes, house rules, favourite moments…">${escapeHtml(game.user_notes || '')}</textarea>
+        <textarea id="user-notes" class="notes-input" rows="3" placeholder="Personal notes, house rules, favourite moments…" autocomplete="off" aria-label="My notes">${escapeHtml(game.user_notes || '')}</textarea>
       </div>`
     : game.user_notes
       ? `<div class="modal-section">
@@ -557,7 +557,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           </label>
         </div>
         <div class="gallery-url-row">
-          <input type="url" id="gallery-url-input" class="form-input form-input-sm" placeholder="Add image from URL…">
+          <input type="url" id="gallery-url-input" class="form-input form-input-sm" placeholder="Add image from URL…" autocomplete="off" aria-label="Add image from URL">
           <button class="btn btn-secondary btn-sm" id="gallery-url-add-btn">Add</button>
         </div>
         <div class="gallery-list" id="gallery-list"></div>
@@ -641,78 +641,78 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     ? `<div class="modal-section">
         <div class="edit-form-grid">
           <div class="form-group full-width">
-            <label>Name</label>
-            <input type="text" id="edit-name" class="form-input" value="${escapeHtml(game.name)}">
+            <label for="edit-name">Name</label>
+            <input type="text" id="edit-name" class="form-input" value="${escapeHtml(game.name)}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Status</label>
-            <select id="edit-status" class="form-input">
+            <label for="edit-status">Status</label>
+            <select id="edit-status" class="form-input" autocomplete="off">
               <option value="owned"${game.status === 'owned' || !game.status ? ' selected' : ''}>Owned</option>
               <option value="wishlist"${game.status === 'wishlist' ? ' selected' : ''}>Wishlist</option>
               <option value="sold"${game.status === 'sold' ? ' selected' : ''}>Sold</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Year</label>
-            <input type="number" id="edit-year" class="form-input" value="${game.year_published || ''}">
+            <label for="edit-year">Year</label>
+            <input type="number" id="edit-year" class="form-input" value="${game.year_published || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Min Players</label>
-            <input type="number" id="edit-min-players" class="form-input" value="${game.min_players || ''}">
+            <label for="edit-min-players">Min Players</label>
+            <input type="number" id="edit-min-players" class="form-input" value="${game.min_players || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Max Players</label>
-            <input type="number" id="edit-max-players" class="form-input" value="${game.max_players || ''}">
+            <label for="edit-max-players">Max Players</label>
+            <input type="number" id="edit-max-players" class="form-input" value="${game.max_players || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Min Playtime (min)</label>
-            <input type="number" id="edit-min-playtime" class="form-input" value="${game.min_playtime || ''}">
+            <label for="edit-min-playtime">Min Playtime (min)</label>
+            <input type="number" id="edit-min-playtime" class="form-input" value="${game.min_playtime || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Max Playtime (min)</label>
-            <input type="number" id="edit-max-playtime" class="form-input" value="${game.max_playtime || ''}">
+            <label for="edit-max-playtime">Max Playtime (min)</label>
+            <input type="number" id="edit-max-playtime" class="form-input" value="${game.max_playtime || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Difficulty (1–5)</label>
-            <input type="number" id="edit-difficulty" class="form-input" min="1" max="5" step="0.1" value="${game.difficulty || ''}">
+            <label for="edit-difficulty">Difficulty (1–5)</label>
+            <input type="number" id="edit-difficulty" class="form-input" min="1" max="5" step="0.1" value="${game.difficulty || ''}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Categories <span class="hint">(comma-separated)</span></label>
-            <input type="text" id="edit-categories" class="form-input" value="${escapeHtml(categories.join(', '))}">
+            <label for="edit-categories">Categories <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-categories" class="form-input" value="${escapeHtml(categories.join(', '))}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Mechanics <span class="hint">(comma-separated)</span></label>
-            <input type="text" id="edit-mechanics" class="form-input" value="${escapeHtml(mechanics.join(', '))}">
+            <label for="edit-mechanics">Mechanics <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-mechanics" class="form-input" value="${escapeHtml(mechanics.join(', '))}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Designers <span class="hint">(comma-separated)</span></label>
-            <input type="text" id="edit-designers" class="form-input" value="${escapeHtml(designers.join(', '))}">
+            <label for="edit-designers">Designers <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-designers" class="form-input" value="${escapeHtml(designers.join(', '))}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Publishers <span class="hint">(comma-separated)</span></label>
-            <input type="text" id="edit-publishers" class="form-input" value="${escapeHtml(publishers.join(', '))}">
+            <label for="edit-publishers">Publishers <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-publishers" class="form-input" value="${escapeHtml(publishers.join(', '))}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Labels <span class="hint">(comma-separated)</span></label>
-            <input type="text" id="edit-labels" class="form-input" value="${escapeHtml(modalLabels.join(', '))}">
+            <label for="edit-labels">Labels <span class="hint">(comma-separated)</span></label>
+            <input type="text" id="edit-labels" class="form-input" value="${escapeHtml(modalLabels.join(', '))}" autocomplete="off">
           </div>
           ${baseGameEditHtml}
           <div class="form-group">
-            <label>Purchase Date</label>
-            <input type="date" id="edit-purchase-date" class="form-input date-input" value="${game.purchase_date || ''}">
+            <label for="edit-purchase-date">Purchase Date</label>
+            <input type="date" id="edit-purchase-date" class="form-input date-input" value="${game.purchase_date || ''}" autocomplete="off">
           </div>
           <div class="form-group">
-            <label>Purchase Price ($)</label>
-            <input type="number" id="edit-purchase-price" class="form-input" step="0.01" min="0" value="${game.purchase_price != null ? game.purchase_price : ''}">
+            <label for="edit-purchase-price">Purchase Price ($)</label>
+            <input type="number" id="edit-purchase-price" class="form-input" step="0.01" min="0" value="${game.purchase_price != null ? game.purchase_price : ''}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Purchase Location</label>
-            <input type="text" id="edit-purchase-location" class="form-input" value="${escapeHtml(game.purchase_location || '')}">
+            <label for="edit-purchase-location">Purchase Location</label>
+            <input type="text" id="edit-purchase-location" class="form-input" value="${escapeHtml(game.purchase_location || '')}" autocomplete="off">
           </div>
           <div class="form-group full-width">
-            <label>Storage Location</label>
+            <label for="edit-location">Storage Location</label>
             <div class="input-with-toggle">
-              <input type="text" id="edit-location" class="form-input" placeholder="Shelf 2, Box A…" value="${escapeHtml(game.location || '')}">
+              <input type="text" id="edit-location" class="form-input" placeholder="Shelf 2, Box A…" value="${escapeHtml(game.location || '')}" autocomplete="off">
               <label class="inline-toggle">
                 <input type="checkbox" id="edit-show-location"${game.show_location ? ' checked' : ''}>
                 Show on card
@@ -777,20 +777,20 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         <div class="log-session-form" id="log-session-form" style="display:none">
           <div class="session-form-grid">
             <div class="form-group">
-              <label>Date</label>
-              <input type="date" id="session-date" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+              <label for="session-date">Date</label>
+              <input type="date" id="session-date" class="form-input" value="${new Date().toISOString().split('T')[0]}" autocomplete="off">
             </div>
             <div class="form-group">
-              <label>Players</label>
-              <input type="number" id="session-players" class="form-input" placeholder="4" min="1" max="20">
+              <label for="session-players">Players</label>
+              <input type="number" id="session-players" class="form-input" placeholder="4" min="1" max="20" autocomplete="off">
             </div>
             <div class="form-group">
-              <label>Duration (min)</label>
-              <input type="number" id="session-duration" class="form-input" placeholder="90" min="1">
+              <label for="session-duration">Duration (min)</label>
+              <input type="number" id="session-duration" class="form-input" placeholder="90" min="1" autocomplete="off">
             </div>
             <div class="form-group full-width">
-              <label>Notes</label>
-              <input type="text" id="session-notes" class="form-input" placeholder="Who won? Any highlights?">
+              <label for="session-notes">Notes</label>
+              <input type="text" id="session-notes" class="form-input" placeholder="Who won? Any highlights?" autocomplete="off">
             </div>
           </div>
           <div class="session-form-actions">

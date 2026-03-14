@@ -582,19 +582,19 @@
         <div class="quick-log-form">
           <div class="quick-log-field">
             <label for="ql-date">Date</label>
-            <input type="date" id="ql-date" class="form-input" value="${today}">
+            <input type="date" id="ql-date" class="form-input" value="${today}" autocomplete="off">
           </div>
           <div class="quick-log-field">
             <label for="ql-players">Players</label>
-            <input type="number" id="ql-players" class="form-input" min="1" max="20" placeholder="optional">
+            <input type="number" id="ql-players" class="form-input" min="1" max="20" placeholder="optional" autocomplete="off">
           </div>
           <div class="quick-log-field">
             <label for="ql-duration">Duration (min)</label>
-            <input type="number" id="ql-duration" class="form-input" min="1" placeholder="optional">
+            <input type="number" id="ql-duration" class="form-input" min="1" placeholder="optional" autocomplete="off">
           </div>
           <div class="quick-log-field ql-full">
             <label for="ql-notes">Notes</label>
-            <input type="text" id="ql-notes" class="form-input" placeholder="optional">
+            <input type="text" id="ql-notes" class="form-input" placeholder="optional" autocomplete="off">
           </div>
         </div>
         <div class="quick-log-actions">
@@ -1171,7 +1171,7 @@
           const created = await API.createGame(payload);
           if (file) {
             try {
-              await API.uploadGalleryImage(created.id, file);
+              await API.uploadImage(created.id, file);
             } catch (imgErr) {
               showToast(`Game added but image upload failed: ${imgErr.message}`, 'error');
             }

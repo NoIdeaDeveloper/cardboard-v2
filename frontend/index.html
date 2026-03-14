@@ -85,11 +85,11 @@
           <button class="filter-pill" id="filter-never-played">Never Played</button>
           <div class="filter-field">
             <label class="filter-label" for="filter-players">Players</label>
-            <input type="number" id="filter-players" class="filter-input" min="1" max="99" placeholder="any">
+            <input type="number" id="filter-players" class="filter-input" min="1" max="99" placeholder="any" autocomplete="off">
           </div>
           <div class="filter-field">
             <label class="filter-label" for="filter-time">Time</label>
-            <input type="number" id="filter-time" class="filter-input" min="1" placeholder="any">
+            <input type="number" id="filter-time" class="filter-input" min="1" placeholder="any" autocomplete="off">
             <span class="filter-unit">min</span>
           </div>
           <button class="pick-for-me-btn" id="pick-for-me-btn" style="display:none" aria-label="Pick a random matching game">🎲 Pick for Me</button>
@@ -137,7 +137,7 @@
           <div class="form-grid">
             <div class="form-group full-width">
               <label for="m-name">Game Name *</label>
-              <input type="text" id="m-name" name="name" required placeholder="e.g. Ticket to Ride" />
+              <input type="text" id="m-name" name="name" required placeholder="e.g. Ticket to Ride" autocomplete="off" />
               <span class="field-error" id="err-name"></span>
             </div>
             <div class="form-group">
@@ -150,39 +150,39 @@
             </div>
             <div class="form-group">
               <label for="m-year">Year Published</label>
-              <input type="number" id="m-year" name="year_published" placeholder="2004" min="1800" max="2030" />
+              <input type="number" id="m-year" name="year_published" placeholder="2004" min="1800" max="2030" autocomplete="off" />
             </div>
             <div class="form-group">
               <label for="m-min-players">Min Players</label>
-              <input type="number" id="m-min-players" name="min_players" placeholder="2" min="1" max="20" />
+              <input type="number" id="m-min-players" name="min_players" placeholder="2" min="1" max="20" autocomplete="off" />
             </div>
             <div class="form-group">
               <label for="m-max-players">Max Players</label>
-              <input type="number" id="m-max-players" name="max_players" placeholder="5" min="1" />
+              <input type="number" id="m-max-players" name="max_players" placeholder="5" min="1" autocomplete="off" />
               <span class="field-error" id="err-max-players"></span>
             </div>
             <div class="form-group">
               <label for="m-min-playtime">Min Playtime (min)</label>
-              <input type="number" id="m-min-playtime" name="min_playtime" placeholder="30" min="1" />
+              <input type="number" id="m-min-playtime" name="min_playtime" placeholder="30" min="1" autocomplete="off" />
             </div>
             <div class="form-group">
               <label for="m-max-playtime">Max Playtime (min)</label>
-              <input type="number" id="m-max-playtime" name="max_playtime" placeholder="90" min="1" />
+              <input type="number" id="m-max-playtime" name="max_playtime" placeholder="90" min="1" autocomplete="off" />
               <span class="field-error" id="err-max-playtime"></span>
             </div>
             <div class="form-group">
               <label for="m-difficulty">Difficulty (1–5)</label>
-              <input type="number" id="m-difficulty" name="difficulty" placeholder="2.5" min="1" max="5" step="0.1" />
+              <input type="number" id="m-difficulty" name="difficulty" placeholder="2.5" min="1" max="5" step="0.1" autocomplete="off" />
               <span class="field-error" id="err-difficulty"></span>
             </div>
             <div class="form-group full-width">
-              <label>Cover Image</label>
+              <label for="m-image-url">Cover Image <span class="hint">(displayed on your game card)</span></label>
               <div class="image-edit-area">
                 <div class="image-edit-preview" id="add-image-preview">
                   <span class="image-edit-empty">No image</span>
                 </div>
                 <div class="image-edit-controls">
-                  <input type="url" id="m-image-url" name="image_url" class="form-input" placeholder="Paste image URL…" />
+                  <input type="url" id="m-image-url" name="image_url" class="form-input" placeholder="Paste image URL…" autocomplete="off" />
                   <div class="image-edit-row">
                     <label class="btn btn-secondary btn-sm image-upload-label">
                       <input type="file" id="add-image-file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
@@ -196,7 +196,7 @@
             </div>
             <div class="form-group full-width">
               <label for="m-description">Description</label>
-              <textarea id="m-description" name="description" rows="3" placeholder="A brief description of the game…"></textarea>
+              <textarea id="m-description" name="description" rows="3" placeholder="A brief description of the game…" autocomplete="off"></textarea>
             </div>
             <div class="form-group full-width">
               <label for="m-labels">Labels <span class="hint">(comma-separated, e.g. Favourite, Kid-friendly)</span></label>
@@ -220,20 +220,20 @@
             </div>
             <div class="form-group">
               <label for="m-purchase-date">Purchase Date</label>
-              <input type="date" id="m-purchase-date" name="purchase_date" class="date-input" />
+              <input type="date" id="m-purchase-date" name="purchase_date" class="date-input" autocomplete="off" />
             </div>
             <div class="form-group">
               <label for="m-purchase-price">Purchase Price ($)</label>
-              <input type="number" id="m-purchase-price" name="purchase_price" placeholder="29.99" step="0.01" min="0" />
+              <input type="number" id="m-purchase-price" name="purchase_price" placeholder="29.99" step="0.01" min="0" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-purchase-location">Purchase Location</label>
-              <input type="text" id="m-purchase-location" name="purchase_location" placeholder="Amazon, local game shop…" />
+              <input type="text" id="m-purchase-location" name="purchase_location" placeholder="Amazon, local game shop…" autocomplete="off" />
             </div>
             <div class="form-group full-width">
               <label for="m-location">Storage Location</label>
               <div class="input-with-toggle">
-                <input type="text" id="m-location" name="location" placeholder="Shelf 2, Box A…" />
+                <input type="text" id="m-location" name="location" placeholder="Shelf 2, Box A…" autocomplete="off" />
                 <label class="inline-toggle">
                   <input type="checkbox" id="m-show-location" name="show_location">
                   Show on card
