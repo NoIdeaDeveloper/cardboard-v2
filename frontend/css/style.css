@@ -1550,6 +1550,7 @@ input[type="date"] { color-scheme: dark; }
 .toast-info      { background: var(--bg-4); color: var(--text); border: 1px solid var(--border-hover); }
 .toast-success   { background: var(--success-bg); color: var(--success); border: 1px solid rgba(106,181,114,0.3); }
 .toast-error     { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(224,92,92,0.3); }
+.toast-warning   { background: rgba(232,160,32,0.12); color: var(--warning); border: 1px solid rgba(232,160,32,0.3); }
 .toast-milestone { background: rgba(201,168,76,0.15); color: var(--accent-2); border: 1px solid rgba(201,168,76,0.45); font-weight: 600; }
 
 /* ===== Confirm Dialog ===== */
