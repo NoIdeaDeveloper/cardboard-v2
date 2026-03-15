@@ -118,9 +118,6 @@
     selectedGameIds: new Set(),
   };
 
-  // Undo buffer for destructive actions
-  let _undoBuffer = null;
-
   // ===== Init =====
   function syncCollectionUI() {
     const sortByEl   = document.getElementById('sort-by');
@@ -433,7 +430,7 @@
 
   async function handleBulkDelete() {
     const n = state.selectedGameIds.size;
-    const confirmed = await showConfirm(`Delete ${n} selected game${n !== 1 ? 's' : ''}? This cannot be undone.`);
+    const confirmed = await showConfirm(`Delete ${n} Selected Game${n !== 1 ? 's' : ''}`, `Delete ${n} selected game${n !== 1 ? 's' : ''}? This cannot be undone.`);
     if (!confirmed) return;
     const ids = [...state.selectedGameIds];
     const results = await Promise.allSettled(ids.map(id => API.deleteGame(id)));
@@ -715,12 +712,12 @@
     overlay.querySelector('#ql-cancel').addEventListener('click', close);
     document.addEventListener('keydown', onKeyDown);
 
-    overlay.querySelector('#ql-submit').addEventListener('click', () => {
+    overlay.querySelector('#ql-submit').addEventListener('click', async () => {
       const dateVal = overlay.querySelector('#ql-date').value;
       if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
       const playerNamesRaw = overlay.querySelector('#ql-players-names').value;
       const playerNames = playerNamesRaw.split(',').map(s => s.trim()).filter(Boolean);
-      handleAddSession(game.id, {
+      await handleAddSession(game.id, {
         played_at:        dateVal,
         player_count:     parseInt(overlay.querySelector('#ql-players').value, 10) || null,
         duration_minutes: parseInt(overlay.querySelector('#ql-duration').value, 10) || null,
@@ -1047,7 +1044,7 @@
   function bindModalBackdrop() {
     document.getElementById('modal-backdrop').addEventListener('click', () => { activeModal = null; closeModal(); });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { activeModal = null; closeModal(); }
+      if (e.key === 'Escape' && document.getElementById('game-modal').classList.contains('open')) { activeModal = null; closeModal(); }
     });
   }
 

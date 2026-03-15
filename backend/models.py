@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Text, Date, DateTime, Boolean, ForeignKey
 from database import Base
 
@@ -37,8 +37,8 @@ class Game(Base):
     show_location = Column(Boolean, default=False, nullable=False)
     last_played = Column(Date, nullable=True)
     # Python-side defaults so they work reliably with SQLite
-    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
-    date_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    date_modified = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     parent_game_id = Column(Integer, ForeignKey("games.id"), nullable=True, index=True)
     # New fields
     bgg_id = Column(Integer, nullable=True, index=True)
@@ -57,7 +57,7 @@ class GameImage(Base):
     filename = Column(String(255), nullable=False)
     sort_order = Column(Integer, default=0, nullable=False)
     caption = Column(String(500), nullable=True)
-    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class PlaySession(Base):
@@ -70,7 +70,7 @@ class PlaySession(Base):
     duration_minutes = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     winner = Column(String(255), nullable=True)
-    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Player(Base):
@@ -78,7 +78,7 @@ class Player(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, unique=True)
-    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date_added = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class SessionPlayer(Base):
@@ -93,7 +93,7 @@ class ShareToken(Base):
 
     token = Column(String(64), primary_key=True)
     label = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 # ===== Tag Junction Tables =====

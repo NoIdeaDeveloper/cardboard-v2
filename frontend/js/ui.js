@@ -1536,12 +1536,15 @@ function openGalleryLightbox(images, startIndex = 0) {
   }
   document.addEventListener('keydown', onKey);
 
+  const prevOverflow = document.body.style.overflow;
   function close() {
     document.removeEventListener('keydown', onKey);
+    document.body.style.overflow = prevOverflow;
     overlay.remove();
   }
 
   show(startIndex);
+  document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
 }
 

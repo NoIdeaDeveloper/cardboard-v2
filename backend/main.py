@@ -79,7 +79,7 @@ with engine.connect() as _conn:
     _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(games)"))}
     for _col, _typedef in _GAMES_MIGRATIONS:
         if _col not in _existing:
-            _conn.execute(text("ALTER TABLE games ADD COLUMN :col :typedef").bindparams(col=_col, typedef=_typedef))
+            _conn.execute(text(f"ALTER TABLE games ADD COLUMN {_col} {_typedef}"))
             _conn.commit()
             logger.info("Migration applied: games.%s added", _col)
 
@@ -91,7 +91,7 @@ with engine.connect() as _conn:
     _existing_img = {row[1] for row in _conn.execute(text("PRAGMA table_info(game_images)"))}
     for _col, _typedef in _GAME_IMAGES_MIGRATIONS:
         if _col not in _existing_img:
-            _conn.execute(text("ALTER TABLE game_images ADD COLUMN :col :typedef").bindparams(col=_col, typedef=_typedef))
+            _conn.execute(text(f"ALTER TABLE game_images ADD COLUMN {_col} {_typedef}"))
             _conn.commit()
             logger.info("Migration applied: game_images.%s added", _col)
 
@@ -103,7 +103,7 @@ with engine.connect() as _conn:
     _existing_sess = {row[1] for row in _conn.execute(text("PRAGMA table_info(play_sessions)"))}
     for _col, _typedef in _SESSIONS_MIGRATIONS:
         if _col not in _existing_sess:
-            _conn.execute(text("ALTER TABLE play_sessions ADD COLUMN :col :typedef").bindparams(col=_col, typedef=_typedef))
+            _conn.execute(text(f"ALTER TABLE play_sessions ADD COLUMN {_col} {_typedef}"))
             _conn.commit()
             logger.info("Migration applied: play_sessions.%s added", _col)
 
@@ -131,7 +131,7 @@ def _migrate_json_tags_to_junction():
         for game_col, tag_table, pivot_table, fk_col in _TAG_CONFIG:
             # Per-tag-type idempotency: skip if this pivot table already has data
             try:
-                count = conn.execute(text("SELECT COUNT(*) FROM ") + text(pivot_table)).scalar()
+                count = conn.execute(text(f"SELECT COUNT(*) FROM {pivot_table}")).scalar()
                 if count and count > 0:
                     logger.info("Junction migration [%s] already complete (%d rows), skipping", game_col, count)
                     continue
@@ -139,7 +139,7 @@ def _migrate_json_tags_to_junction():
                 logger.warning("Table %s not found, skipping migration for %s", pivot_table, game_col)
                 continue
             rows = conn.execute(
-                text("SELECT id, ") + text(game_col) + text(" FROM games WHERE ") + text(game_col) + text(" IS NOT NULL")
+                text(f"SELECT id, {game_col} FROM games WHERE {game_col} IS NOT NULL")
             ).fetchall()
 
             migrated = 0
@@ -161,18 +161,18 @@ def _migrate_json_tags_to_junction():
                         continue
                     # Get or create tag
                     existing = conn.execute(
-                        text("SELECT id FROM ") + text(tag_table) + text(" WHERE name = :n"), {"n": name}
+                        text(f"SELECT id FROM {tag_table} WHERE name = :n"), {"n": name}
                     ).first()
                     if existing:
                         tag_id = existing[0]
                     else:
-                        conn.execute(text("INSERT INTO ") + text(tag_table) + text(" (name) VALUES (:n)"), {"n": name})
+                        conn.execute(text(f"INSERT INTO {tag_table} (name) VALUES (:n)"), {"n": name})
                         tag_id = conn.execute(
-                            text("SELECT id FROM ") + text(tag_table) + text(" WHERE name = :n"), {"n": name}
+                            text(f"SELECT id FROM {tag_table} WHERE name = :n"), {"n": name}
                         ).first()[0]
                     # Link game ↔ tag (ignore if already exists)
                     conn.execute(
-                        text("INSERT OR IGNORE INTO ") + text(pivot_table) + text(" (game_id, ") + text(fk_col) + text(") VALUES (:gid, :tid)"),
+                        text(f"INSERT OR IGNORE INTO {pivot_table} (game_id, {fk_col}) VALUES (:gid, :tid)"),
                         {"gid": game_id, "tid": tag_id},
                     )
                     migrated += 1

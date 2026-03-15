@@ -10,7 +10,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
@@ -23,6 +23,7 @@ import models
 import schemas
 from routers.game_images import delete_all_gallery_images
 from utils import _is_safe_url
+from constants import MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS
 
 logger = logging.getLogger("cardboard.games")
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -30,8 +31,6 @@ router = APIRouter(prefix="/api/games", tags=["games"])
 IMAGES_DIR = os.getenv("IMAGES_DIR", "/app/data/images")
 INSTRUCTIONS_DIR = os.getenv("INSTRUCTIONS_DIR", "/app/data/instructions")
 SCANS_DIR = os.getenv("SCANS_DIR", "/app/data/scans")
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_INSTRUCTIONS_SIZE = 20 * 1024 * 1024  # 20 MB
 ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
 MAX_SCAN_SIZE = 200 * 1024 * 1024  # 200 MB
@@ -204,7 +203,7 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
     except Exception as e:
         db.rollback()
         logger.error("Failed to save tags for game %d: %s", game_id, str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to save tags: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save tags")
 
 
 def _load_tags(games, db: Session) -> None:
@@ -329,9 +328,9 @@ def download_backup(background_tasks: BackgroundTasks):
         db_path = os.path.join("/app", db_path)
 
     if not os.path.isfile(db_path):
-        raise HTTPException(status_code=500, detail=f"Database file not found at {db_path}")
+        raise HTTPException(status_code=500, detail="Database file not found")
 
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     zip_filename = f"cardboard-backup-{ts}.zip"
 
     # Write to a named temp file so FileResponse can seek/stat it

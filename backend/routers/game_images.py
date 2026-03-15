@@ -15,13 +15,12 @@ from database import get_db
 import models
 import schemas
 from utils import _is_safe_url, validate_url_safety
+from constants import MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS
 
 logger = logging.getLogger("cardboard.gallery")
 router = APIRouter(prefix="/api/games", tags=["gallery"])
 
 GALLERY_DIR = os.getenv("GALLERY_DIR", "/app/data/gallery")
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
 def _game_gallery_dir(game_id: int, create: bool = False) -> str:

@@ -12,12 +12,24 @@ def _is_safe_url(url: str) -> bool:
             return False
         try:
             ip = ipaddress.ip_address(hostname)  # raw IP literal
+            return not (ip.is_private or ip.is_loopback or ip.is_link_local)
         except ValueError:
+            pass
+        # Resolve all addresses (IPv4 and IPv6) to guard against IPv6 SSRF
+        try:
+            results = socket.getaddrinfo(hostname, None)
+        except (socket.gaierror, socket.timeout, OSError):
+            return False  # unresolvable hostname = block
+        if not results:
+            return False
+        for _family, _type, _proto, _canonname, sockaddr in results:
             try:
-                ip = ipaddress.ip_address(socket.gethostbyname(hostname))
-            except (socket.gaierror, socket.timeout, ValueError):
-                return False  # unresolvable hostname = block
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local)
+                ip = ipaddress.ip_address(sockaddr[0])
+            except ValueError:
+                return False
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                return False
+        return True
     except (socket.gaierror, socket.herror, socket.timeout, ValueError, OSError):
         return False
 

@@ -62,6 +62,7 @@ def get_stats(db: Session = Depends(get_db)):
     never_played_count = (
         db.query(func.count(models.Game.id))
         .filter(models.Game.id.not_in(played_ids))
+        .filter(models.Game.status == "owned")
         .scalar() or 0
     )
 

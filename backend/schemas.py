@@ -24,7 +24,7 @@ class GameBase(BaseModel):
         return _strip_name(v)
 
     status: str = Field('owned', pattern='^(owned|wishlist|sold)$')
-    year_published: Optional[int] = None
+    year_published: Optional[int] = Field(None, ge=1800, le=2099)
     min_players: Optional[int] = Field(None, ge=1)
     max_players: Optional[int] = Field(None, ge=1)
     min_playtime: Optional[int] = Field(None, ge=1)
@@ -76,7 +76,7 @@ class GameUpdate(BaseModel):
         return _strip_name(v)
 
     status: Optional[str] = Field(None, pattern='^(owned|wishlist|sold)$')
-    year_published: Optional[int] = None
+    year_published: Optional[int] = Field(None, ge=1800, le=2099)
     min_players: Optional[int] = Field(None, ge=1)
     max_players: Optional[int] = Field(None, ge=1)
     min_playtime: Optional[int] = Field(None, ge=1)

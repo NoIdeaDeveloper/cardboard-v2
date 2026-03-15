@@ -2,6 +2,7 @@ import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -21,7 +22,10 @@ def get_players(db: Session = Depends(get_db)):
 def create_player(player: schemas.PlayerCreate, db: Session = Depends(get_db)):
     existing = db.query(models.Player).filter(models.Player.name == player.name.strip()).first()
     if existing:
-        return existing
+        return JSONResponse(
+            content=schemas.PlayerResponse.model_validate(existing).model_dump(mode="json"),
+            status_code=200,
+        )
     db_player = models.Player(name=player.name.strip())
     db.add(db_player)
     db.commit()

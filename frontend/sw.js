@@ -35,18 +35,17 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first for static assets and images
+  // Stale-while-revalidate for static assets and images
   e.respondWith(
     caches.match(e.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(e.request).then((resp) => {
-        // Cache successful GET responses for shell/images
+      const networkFetch = fetch(e.request).then((resp) => {
         if (resp.ok && e.request.method === 'GET') {
           const clone = resp.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
         }
         return resp;
       });
+      return cached || networkFetch;
     })
   );
 });
