@@ -6,11 +6,11 @@
 const API_BASE = '/api';
 
 async function request(method, path, body = null) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-  if (body !== null) opts.body = JSON.stringify(body);
+  const opts = { method };
+  if (body !== null) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
 
   const resp = await fetch(`${API_BASE}${path}`, opts);
 
