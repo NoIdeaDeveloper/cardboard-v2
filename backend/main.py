@@ -132,7 +132,7 @@ def _migrate_json_tags_to_junction():
             # Per-tag-type idempotency: skip if this pivot table already has data
             try:
                 count = conn.execute(text(f"SELECT COUNT(*) FROM {pivot_table}")).scalar()
-                if count and count > 0:
+                if count:
                     logger.info("Junction migration [%s] already complete (%d rows), skipping", game_col, count)
                     continue
             except Exception:

@@ -33,7 +33,11 @@ async function uploadFile(path, file) {
   const resp = await fetch(`${API_BASE}${path}`, { method: 'POST', body: fd });
   if (resp.status === 204) return null;
   const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-  if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
+  if (!resp.ok) {
+    const err = new Error(data.detail || `HTTP ${resp.status}`);
+    err.status = resp.status;
+    throw err;
+  }
   return data;
 }
 

@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import asc, case, desc, func
+from sqlalchemy import asc, case, desc, func, or_
 from sqlalchemy.orm import Session
 
 from database import SessionLocal, get_db
@@ -402,18 +402,21 @@ def create_game(
     _validate_parent_game_id(game.parent_game_id, None, db)
     data = game.model_dump()
 
-    # Duplicate check: match by BGG ID (if provided) and/or case-insensitive name
-    if data.get("bgg_id"):
-        existing = db.query(models.Game).filter(models.Game.bgg_id == data["bgg_id"]).first()
-        if existing:
-            raise HTTPException(
-                status_code=409,
-                detail=f"A game with BGG ID {data['bgg_id']} already exists ('{existing.name}').",
-            )
+    # Duplicate check: match by BGG ID (if provided) or case-insensitive name
     name = (data.get("name") or "").strip()
+    dup_filters = []
+    if data.get("bgg_id"):
+        dup_filters.append(models.Game.bgg_id == data["bgg_id"])
     if name:
-        existing = db.query(models.Game).filter(models.Game.name.ilike(name)).first()
+        dup_filters.append(models.Game.name.ilike(name))
+    if dup_filters:
+        existing = db.query(models.Game).filter(or_(*dup_filters)).first()
         if existing:
+            if data.get("bgg_id") and existing.bgg_id == data["bgg_id"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"A game with BGG ID {data['bgg_id']} already exists ('{existing.name}').",
+                )
             raise HTTPException(
                 status_code=409,
                 detail=f"A game named '{existing.name}' already exists.",
