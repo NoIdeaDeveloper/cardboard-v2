@@ -194,6 +194,7 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
 
         db.flush()
     except Exception as e:
+        db.rollback()
         logger.error("Failed to save tags for game %d: %s", game_id, str(e))
         raise HTTPException(status_code=500, detail="Failed to save tags")
 
@@ -1344,11 +1345,11 @@ async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
             if tag_data:
                 _save_tags(game.id, tag_data, db)
 
+            db.commit()
             results["imported"] += 1
 
         except Exception as exc:
+            db.rollback()
             results["errors"].append(str(exc))
-
-    db.commit()
     logger.info("CSV import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
     return results
