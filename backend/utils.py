@@ -1,7 +1,11 @@
 import ipaddress
+import mimetypes
+import os
 import socket
 import urllib.parse
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Set
+
+from constants import ALLOWED_IMAGE_EXTENSIONS
 
 
 def _is_safe_url(url: str) -> bool:
@@ -55,3 +59,14 @@ def validate_url_safety(url: str, max_length: int = 2000) -> Tuple[bool, Optiona
         return False, "Private/loopback URLs are not permitted"
     
     return True, None
+
+
+def safe_image_ext(url: str, content_type: str, allowed: Set[str] = ALLOWED_IMAGE_EXTENSIONS) -> str:
+    """Derive a safe file extension from content-type or URL, falling back to .jpg."""
+    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
+    if ext in (".jpe", ""):
+        url_ext = os.path.splitext(url.split("?")[0])[1].lower()
+        ext = url_ext if url_ext in allowed else ".jpg"
+    if ext not in allowed:
+        ext = ".jpg"
+    return ext

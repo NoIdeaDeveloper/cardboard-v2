@@ -22,8 +22,13 @@ from database import SessionLocal, get_db
 import models
 import schemas
 from routers.game_images import delete_all_gallery_images
-from utils import _is_safe_url
-from constants import MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS
+from utils import _is_safe_url, safe_image_ext
+from constants import (
+    MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS,
+    MAX_INSTRUCTIONS_SIZE, ALLOWED_INSTRUCTIONS_EXTENSIONS,
+    MAX_SCAN_SIZE, ALLOWED_SCAN_EXTENSIONS, ALLOWED_GLB_EXTENSIONS,
+    BGG_IMPORT_MAX_BYTES, BGG_PLAYS_MAX_BYTES,
+)
 
 logger = logging.getLogger("cardboard.games")
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -31,11 +36,6 @@ router = APIRouter(prefix="/api/games", tags=["games"])
 IMAGES_DIR = os.getenv("IMAGES_DIR", "/app/data/images")
 INSTRUCTIONS_DIR = os.getenv("INSTRUCTIONS_DIR", "/app/data/instructions")
 SCANS_DIR = os.getenv("SCANS_DIR", "/app/data/scans")
-MAX_INSTRUCTIONS_SIZE = 20 * 1024 * 1024  # 20 MB
-ALLOWED_INSTRUCTIONS_EXTENSIONS = {".pdf", ".txt"}
-MAX_SCAN_SIZE = 200 * 1024 * 1024  # 200 MB
-ALLOWED_SCAN_EXTENSIONS = {".usdz"}
-ALLOWED_GLB_EXTENSIONS = {".glb"}
 
 
 # ---------------------------------------------------------------------------
@@ -49,14 +49,7 @@ def _safe_filename(name: str) -> str:
     return name[:200]  # cap length
 
 
-def _safe_ext(url: str, content_type: str) -> str:
-    """Derive a safe file extension from content-type or URL."""
-    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
-    if ext in (".jpe", ""):
-        # Fall back to URL extension
-        url_ext = os.path.splitext(url.split("?")[0])[1].lower()
-        ext = url_ext if url_ext in (".jpg", ".jpeg", ".png", ".gif", ".webp") else ".jpg"
-    return ext
+_safe_ext = safe_image_ext  # backward-compatible alias
 
 
 def _cache_game_image(game_id: int, image_url: str) -> None:
@@ -201,7 +194,6 @@ def _save_tags(game_id: int, data_dict: dict, db: Session) -> None:
 
         db.flush()
     except Exception as e:
-        db.rollback()
         logger.error("Failed to save tags for game %d: %s", game_id, str(e))
         raise HTTPException(status_code=500, detail="Failed to save tags")
 
@@ -488,7 +480,7 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
     # Clean up files
     _delete_cached_image(game_id)
     _delete_scan_file(game_id)
-    _delete_glb_file(game_id)
+    _delete_scan_file(game_id, ".glb")
     if db_game.instructions_filename:
         instr_path = _instructions_path(game_id, db_game.instructions_filename)
         try:
@@ -661,16 +653,8 @@ def delete_instructions(game_id: int, db: Session = Depends(get_db)):
 # 3D scan endpoints
 # ---------------------------------------------------------------------------
 
-def _delete_scan_file(game_id: int) -> None:
-    path = os.path.join(SCANS_DIR, f"{game_id}.usdz")
-    try:
-        os.remove(path)
-    except OSError:
-        pass
-
-
-def _delete_glb_file(game_id: int) -> None:
-    path = os.path.join(SCANS_DIR, f"{game_id}.glb")
+def _delete_scan_file(game_id: int, ext: str = ".usdz") -> None:
+    path = os.path.join(SCANS_DIR, f"{game_id}{ext}")
     try:
         os.remove(path)
     except OSError:
@@ -767,7 +751,7 @@ async def upload_scan_glb(game_id: int, file: UploadFile = File(...), db: Sessio
     content = await file.read()
 
     os.makedirs(SCANS_DIR, exist_ok=True)
-    _delete_glb_file(game_id)
+    _delete_scan_file(game_id, ".glb")
 
     dest = os.path.join(SCANS_DIR, f"{game_id}.glb")
     try:
@@ -809,7 +793,7 @@ def delete_scan_glb(game_id: int, db: Session = Depends(get_db)):
     if not db_game or not db_game.scan_glb_filename:
         raise HTTPException(status_code=404, detail="No GLB scan to delete")
 
-    _delete_glb_file(game_id)
+    _delete_scan_file(game_id, ".glb")
     db_game.scan_glb_filename = None
     if not db_game.scan_filename:
         db_game.scan_featured = False
@@ -818,8 +802,6 @@ def delete_scan_glb(game_id: int, db: Session = Depends(get_db)):
 
 
 # ===== BGG XML Import =====
-
-BGG_IMPORT_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post("/import/bgg")
@@ -1188,8 +1170,6 @@ def suggest_games(body: schemas.SuggestRequest, db: Session = Depends(get_db)):
 
 # ===== BGG Play History Import =====
 
-BGG_PLAYS_MAX_BYTES = 20 * 1024 * 1024
-
 
 @router.post("/import/bgg-plays")
 async def import_bgg_plays(file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -1210,6 +1190,7 @@ async def import_bgg_plays(file: UploadFile = File(...), db: Session = Depends(g
         raise HTTPException(status_code=400, detail="No play records found — is this a BGG plays export?")
 
     results = {"imported": 0, "skipped": 0, "errors": []}
+    affected_game_ids = set()
 
     for play in plays:
         try:
@@ -1234,6 +1215,8 @@ async def import_bgg_plays(file: UploadFile = File(...), db: Session = Depends(g
             if not game:
                 results["skipped"] += 1
                 continue
+
+            affected_game_ids.add(game.id)
 
             date_str = play.get("date", "")
             try:
@@ -1273,25 +1256,6 @@ async def import_bgg_plays(file: UploadFile = File(...), db: Session = Depends(g
             results["errors"].append(str(exc))
 
     db.commit()
-
-    # Sync last_played for all affected games
-    affected_game_ids = set()
-    for play in plays:
-        item_el = play.find("item")
-        if item_el is None:
-            continue
-        bgg_object_id = item_el.get("objectid")
-        game_name = (item_el.get("name") or "").strip()
-        game = None
-        if bgg_object_id:
-            try:
-                game = db.query(models.Game).filter(models.Game.bgg_id == int(bgg_object_id)).first()
-            except (ValueError, TypeError):
-                pass
-        if not game and game_name:
-            game = db.query(models.Game).filter(models.Game.name.ilike(game_name)).first()
-        if game:
-            affected_game_ids.add(game.id)
 
     for gid in affected_game_ids:
         _sync_last_played(gid, db)

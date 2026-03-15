@@ -75,37 +75,27 @@ _GAMES_MIGRATIONS = [
 ]
 
 # NOTE: _col and _typedef are hardcoded above — never from user input.
-with engine.connect() as _conn:
-    _existing = {row[1] for row in _conn.execute(text("PRAGMA table_info(games)"))}
-    for _col, _typedef in _GAMES_MIGRATIONS:
-        if _col not in _existing:
-            _conn.execute(text(f"ALTER TABLE games ADD COLUMN {_col} {_typedef}"))
-            _conn.commit()
-            logger.info("Migration applied: games.%s added", _col)
+def _apply_column_migrations(table_name, migrations):
+    """Apply column migrations for a table, skipping columns that already exist."""
+    with engine.connect() as conn:
+        existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table_name})"))}
+        for col, typedef in migrations:
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col} {typedef}"))
+                conn.commit()
+                logger.info("Migration applied: %s.%s added", table_name, col)
 
 _GAME_IMAGES_MIGRATIONS = [
     ("caption", "VARCHAR(500)"),
 ]
 
-with engine.connect() as _conn:
-    _existing_img = {row[1] for row in _conn.execute(text("PRAGMA table_info(game_images)"))}
-    for _col, _typedef in _GAME_IMAGES_MIGRATIONS:
-        if _col not in _existing_img:
-            _conn.execute(text(f"ALTER TABLE game_images ADD COLUMN {_col} {_typedef}"))
-            _conn.commit()
-            logger.info("Migration applied: game_images.%s added", _col)
-
 _SESSIONS_MIGRATIONS = [
     ("winner", "VARCHAR(255)"),
 ]
 
-with engine.connect() as _conn:
-    _existing_sess = {row[1] for row in _conn.execute(text("PRAGMA table_info(play_sessions)"))}
-    for _col, _typedef in _SESSIONS_MIGRATIONS:
-        if _col not in _existing_sess:
-            _conn.execute(text(f"ALTER TABLE play_sessions ADD COLUMN {_col} {_typedef}"))
-            _conn.commit()
-            logger.info("Migration applied: play_sessions.%s added", _col)
+_apply_column_migrations("games", _GAMES_MIGRATIONS)
+_apply_column_migrations("game_images", _GAME_IMAGES_MIGRATIONS)
+_apply_column_migrations("play_sessions", _SESSIONS_MIGRATIONS)
 
 # ── Migrate JSON tag columns → junction tables (one-time, idempotent) ─────────
 _TAG_CONFIG = [

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 import schemas
-from utils import _is_safe_url, validate_url_safety
+from utils import _is_safe_url, validate_url_safety, safe_image_ext
 from constants import MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS
 
 logger = logging.getLogger("cardboard.gallery")
@@ -46,14 +46,7 @@ def _primary_url(game_id: int, first_img: models.GameImage) -> str:
     return f"/api/games/{game_id}/images/{first_img.id}/file"
 
 
-def _safe_gallery_ext(url: str, content_type: str) -> str:
-    ext = mimetypes.guess_extension(content_type.split(";")[0].strip()) or ""
-    if ext in (".jpe", ""):
-        url_ext = os.path.splitext(url.split("?")[0])[1].lower()
-        ext = url_ext if url_ext in ALLOWED_IMAGE_EXTENSIONS else ".jpg"
-    if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        ext = ".jpg"
-    return ext
+_safe_gallery_ext = safe_image_ext  # backward-compatible alias
 
 
 # ---------------------------------------------------------------------------
