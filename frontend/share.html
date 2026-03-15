@@ -241,20 +241,26 @@
           : `<div class="modal-hero-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>`;
       }
 
-      inner.querySelector('#share-modal-close').addEventListener('click', () => {
-        modal.classList.remove('open');
-        setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = ''; }, 200);
-      });
+      inner.querySelector('#share-modal-close').addEventListener('click', closeGameDetail);
 
-      modal.style.display = '';
+      modal.style.display = 'flex';
       requestAnimationFrame(() => modal.classList.add('open'));
       document.body.style.overflow = 'hidden';
     }
 
-    document.getElementById('modal-backdrop').addEventListener('click', () => {
+    function closeGameDetail() {
       const modal = document.getElementById('game-modal');
       modal.classList.remove('open');
       setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = ''; }, 200);
+    }
+
+    document.getElementById('modal-backdrop').addEventListener('click', closeGameDetail);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('game-modal');
+        if (modal.classList.contains('open')) closeGameDetail();
+      }
     });
 
     // Controls

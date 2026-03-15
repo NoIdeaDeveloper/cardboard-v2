@@ -3208,21 +3208,53 @@ input[type="date"] { color-scheme: dark; }
   border: 1px solid rgba(255,183,77,0.3);
   color: #ffb74d;
 }
-.share-manage-panel { display: flex; flex-direction: column; gap: 12px; }
+/* Share modal hero */
+.share-manage-panel { display: flex; flex-direction: column; }
+.share-modal-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+  background: var(--surface-2);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  position: relative;
+}
+.share-modal-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+.share-modal-hero-text h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+.share-modal-hero-text p { font-size: 0.8rem; color: var(--text-3); margin: 4px 0 0; }
+.share-modal-hero .modal-close-btn { position: absolute; top: 14px; right: 14px; }
+
+/* Token list */
 .share-token-list { display: flex; flex-direction: column; gap: 8px; }
-.share-empty { font-size: 0.875rem; color: var(--text-3); padding: 8px 0; }
+.share-empty { font-size: 0.85rem; color: var(--text-3); padding: 12px 0; text-align: center; }
 .share-token-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--bg-2);
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-3);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition);
 }
+.share-token-row.expired { opacity: 0.5; }
 .share-token-info { flex: 1; min-width: 0; }
+.share-token-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .share-token-label { font-size: 0.85rem; font-weight: 600; }
-.share-token-date  { font-size: 0.72rem; color: var(--text-3); }
+.share-token-expiry { font-size: 0.72rem; color: var(--text-3); }
+.share-token-expiry.expired { color: var(--danger); font-weight: 600; }
+.share-token-expiry.expiring { color: var(--warning, #e8a300); }
+.share-token-expiry.never { color: var(--success, #22c55e); }
 .share-link-input {
   all: unset;
   display: block;
@@ -3230,25 +3262,32 @@ input[type="date"] { color-scheme: dark; }
   box-sizing: border-box;
   font-size: 0.75rem;
   color: var(--text-2);
-  background: var(--bg-3);
+  background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  margin-top: 4px;
+  padding: 5px 8px;
+  margin-top: 6px;
   cursor: text;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .share-token-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* Create link section */
+.share-create-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.share-create-section .section-label { margin-bottom: 8px; }
 .share-create-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
 }
 .share-create-row .form-input { flex: 1; }
+.share-create-row .select { width: auto; min-width: 90px; }
 
 /* ===== Undo Toast ===== */
 .toast-undo {

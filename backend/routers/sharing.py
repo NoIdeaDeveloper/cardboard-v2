@@ -1,6 +1,7 @@
 import json
 import logging
 import secrets
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -38,13 +39,21 @@ def list_tokens(db: Session = Depends(get_db)):
 
 
 @router.post("/tokens", response_model=schemas.ShareTokenResponse, status_code=201)
-def create_token(label: Optional[str] = None, db: Session = Depends(get_db)):
+ALLOWED_EXPIRY_MINUTES = (10, 30, 60)
+
+
+def create_token(label: Optional[str] = None, expires_in: Optional[int] = None, db: Session = Depends(get_db)):
+    if expires_in is not None and expires_in not in ALLOWED_EXPIRY_MINUTES:
+        raise HTTPException(status_code=400, detail=f"expires_in must be one of {ALLOWED_EXPIRY_MINUTES} or omitted")
     token = secrets.token_urlsafe(32)
-    share = models.ShareToken(token=token, label=label)
+    expires_at = None
+    if expires_in is not None:
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in)
+    share = models.ShareToken(token=token, label=label, expires_at=expires_at)
     db.add(share)
     db.commit()
     db.refresh(share)
-    logger.info("Share token created: %s", token[:8] + "...")
+    logger.info("Share token created: %s (expires: %s)", token[:8] + "...", expires_at or "never")
     return share
 
 
@@ -58,19 +67,26 @@ def delete_token(token: str, db: Session = Depends(get_db)):
     logger.info("Share token revoked: %s", token[:8] + "...")
 
 
-@router.get("/{token}/games", response_model=List[schemas.GameResponse])
-def get_shared_games(token: str, db: Session = Depends(get_db)):
+def _validate_token(token: str, db: Session) -> models.ShareToken:
     share = db.query(models.ShareToken).filter(models.ShareToken.token == token).first()
     if not share:
         raise HTTPException(status_code=404, detail="Invalid share link")
+    if share.expires_at:
+        exp = share.expires_at if share.expires_at.tzinfo else share.expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > exp:
+        raise HTTPException(status_code=404, detail="This share link has expired")
+    return share
+
+
+@router.get("/{token}/games", response_model=List[schemas.GameResponse])
+def get_shared_games(token: str, db: Session = Depends(get_db)):
+    _validate_token(token, db)
     return _build_game_list(db)
 
 
 @router.get("/{token}/games/{game_id}", response_model=schemas.GameResponse)
 def get_shared_game(token: str, game_id: int, db: Session = Depends(get_db)):
-    share = db.query(models.ShareToken).filter(models.ShareToken.token == token).first()
-    if not share:
-        raise HTTPException(status_code=404, detail="Invalid share link")
+    _validate_token(token, db)
     game = db.query(models.Game).filter(models.Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")

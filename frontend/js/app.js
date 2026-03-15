@@ -1906,20 +1906,39 @@
     let tokens = [];
     try { tokens = await API.getShareTokens(); } catch (_) {}
 
+    function formatExpiry(t) {
+      if (!t.expires_at) return '<span class="share-token-expiry never">Never expires</span>';
+      const exp = new Date(t.expires_at);
+      const now = new Date();
+      if (exp <= now) return '<span class="share-token-expiry expired">Expired</span>';
+      const diffMin = Math.round((exp - now) / 60000);
+      if (diffMin < 1) return '<span class="share-token-expiry expiring">Expires in &lt;1 min</span>';
+      if (diffMin < 60) return `<span class="share-token-expiry expiring">Expires in ${diffMin} min</span>`;
+      const diffHrs = Math.round(diffMin / 60);
+      return `<span class="share-token-expiry">Expires in ${diffHrs}h</span>`;
+    }
+
+    function isExpired(t) {
+      return t.expires_at && new Date(t.expires_at) <= new Date();
+    }
+
     function renderTokenList(container, list) {
       if (!list.length) {
-        container.innerHTML = '<p class="share-empty">No share links yet. Create one to share your collection.</p>';
+        container.innerHTML = '<p class="share-empty">No share links yet. Create one below to share your collection.</p>';
         return;
       }
       const origin = window.location.origin;
       container.innerHTML = list.map(t => `
-        <div class="share-token-row" data-token="${escapeHtml(t.token)}">
+        <div class="share-token-row${isExpired(t) ? ' expired' : ''}" data-token="${escapeHtml(t.token)}">
           <div class="share-token-info">
-            <span class="share-token-label">${escapeHtml(t.label || 'Untitled')}</span>
+            <div class="share-token-header">
+              <span class="share-token-label">${escapeHtml(t.label || 'Untitled')}</span>
+              ${formatExpiry(t)}
+            </div>
             <input class="share-link-input" type="text" readonly value="${escapeHtml(origin + '/share.html?token=' + t.token)}" aria-label="Share link">
           </div>
           <div class="share-token-actions">
-            <button class="btn btn-secondary btn-sm share-copy-btn">Copy</button>
+            <button class="btn btn-secondary btn-sm share-copy-btn"${isExpired(t) ? ' disabled' : ''}>Copy</button>
             <button class="btn btn-danger btn-sm share-revoke-btn">Revoke</button>
           </div>
         </div>`).join('');
@@ -1946,18 +1965,35 @@
     const el = document.createElement('div');
     el.className = 'share-manage-panel';
     el.innerHTML = `
-      <div class="modal-hero" style="background:var(--surface-2);min-height:56px;display:flex;align-items:center;padding:0 20px;">
-        <h2 style="font-size:1.1rem;font-weight:600;margin:0">Share Collection</h2>
-        <button class="modal-close-btn" id="share-modal-close" aria-label="Close" style="margin-left:auto">
+      <div class="share-modal-hero">
+        <div class="share-modal-hero-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </div>
+        <div class="share-modal-hero-text">
+          <h2>Share Collection</h2>
+          <p>Create read-only links to share your collection with others.</p>
+        </div>
+        <button class="modal-close-btn" id="share-modal-close" aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       <div class="modal-body">
-        <p class="hint" style="margin-bottom:12px">Share links let anyone view your collection without being able to edit it.</p>
         <div class="share-token-list" id="share-token-list"></div>
-        <div class="share-create-row" style="margin-top:16px;display:flex;gap:8px">
-          <input type="text" id="share-label-input" class="form-input" placeholder="Label (optional)" style="flex:1">
-          <button class="btn btn-primary" id="share-create-btn">Create Link</button>
+        <div class="share-create-section">
+          <div class="section-label">New Link</div>
+          <div class="share-create-row">
+            <input type="text" id="share-label-input" class="form-input" placeholder="Label (optional)">
+            <select id="share-expiry-select" class="select">
+              <option value="">Never</option>
+              <option value="10">10 min</option>
+              <option value="30">30 min</option>
+              <option value="60">60 min</option>
+            </select>
+            <button class="btn btn-primary" id="share-create-btn">Create Link</button>
+          </div>
         </div>
       </div>`;
 
@@ -1966,12 +2002,14 @@
 
     el.querySelector('#share-create-btn').addEventListener('click', async () => {
       const label = el.querySelector('#share-label-input').value.trim() || null;
+      const expiresIn = el.querySelector('#share-expiry-select').value || null;
       const btn = el.querySelector('#share-create-btn');
       await withLoading(btn, async () => {
-        const newToken = await API.createShareToken(label);
+        const newToken = await API.createShareToken(label, expiresIn);
         tokens.push(newToken);
         renderTokenList(el.querySelector('#share-token-list'), tokens);
         el.querySelector('#share-label-input').value = '';
+        el.querySelector('#share-expiry-select').value = '';
         showToast('Share link created!', 'success');
       }, 'Creating…');
     });

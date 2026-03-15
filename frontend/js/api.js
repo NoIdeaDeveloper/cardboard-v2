@@ -106,7 +106,13 @@ const API = {
 
   // Collection sharing
   getShareTokens:    ()              => request('GET',    '/share/tokens'),
-  createShareToken:  (label)         => request('POST',   `/share/tokens${label ? '?label=' + encodeURIComponent(label) : ''}`),
+  createShareToken:  (label, expiresIn) => {
+    const params = new URLSearchParams();
+    if (label) params.set('label', label);
+    if (expiresIn) params.set('expires_in', expiresIn);
+    const qs = params.toString();
+    return request('POST', `/share/tokens${qs ? '?' + qs : ''}`);
+  },
   deleteShareToken:  (token)         => request('DELETE', `/share/tokens/${token}`),
   getSharedGames:    (token)         => request('GET',    `/share/${token}/games`),
   getSharedGame:     (token, gameId) => request('GET',    `/share/${token}/games/${gameId}`),

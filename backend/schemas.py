@@ -184,6 +184,7 @@ class ShareTokenResponse(BaseModel):
     token: str
     label: Optional[str] = None
     created_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

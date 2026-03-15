@@ -94,6 +94,7 @@ class ShareToken(Base):
     token = Column(String(64), primary_key=True)
     label = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime, nullable=True)
 
 
 # ===== Tag Junction Tables =====

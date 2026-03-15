@@ -93,9 +93,14 @@ _SESSIONS_MIGRATIONS = [
     ("winner", "VARCHAR(255)"),
 ]
 
+_SHARE_TOKENS_MIGRATIONS = [
+    ("expires_at", "DATETIME"),
+]
+
 _apply_column_migrations("games", _GAMES_MIGRATIONS)
 _apply_column_migrations("game_images", _GAME_IMAGES_MIGRATIONS)
 _apply_column_migrations("play_sessions", _SESSIONS_MIGRATIONS)
+_apply_column_migrations("share_tokens", _SHARE_TOKENS_MIGRATIONS)
 
 # ── Migrate JSON tag columns → junction tables (one-time, idempotent) ─────────
 _TAG_CONFIG = [
