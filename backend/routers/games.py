@@ -403,7 +403,7 @@ def create_game(
     _validate_parent_game_id(game.parent_game_id, None, db)
     data = game.model_dump()
 
-    # Duplicate check: match by BGG ID (if provided) or case-insensitive name
+    # Duplicate check: match by BGG ID (if provided) and/or case-insensitive name
     if data.get("bgg_id"):
         existing = db.query(models.Game).filter(models.Game.bgg_id == data["bgg_id"]).first()
         if existing:
@@ -411,11 +411,9 @@ def create_game(
                 status_code=409,
                 detail=f"A game with BGG ID {data['bgg_id']} already exists ('{existing.name}').",
             )
-    else:
-        name_lower = (data.get("name") or "").strip().lower()
-        existing = db.query(models.Game).filter(
-            func.lower(models.Game.name) == name_lower
-        ).first()
+    name = (data.get("name") or "").strip()
+    if name:
+        existing = db.query(models.Game).filter(models.Game.name.ilike(name)).first()
         if existing:
             raise HTTPException(
                 status_code=409,

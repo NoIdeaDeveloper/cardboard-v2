@@ -1313,7 +1313,7 @@
           refreshStatsBackground();
         }, 'Adding…');
       } catch (err) {
-        if (err.message && err.message.toLowerCase().includes('already exists')) {
+        if (err.status === 409) {
           showToast(`Duplicate: ${err.message}`, 'warning');
         } else {
           showToast(`Failed to add game: ${err.message}`, 'error');

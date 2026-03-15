@@ -20,7 +20,9 @@ async function request(method, path, body = null) {
 
   if (!resp.ok) {
     const msg = data.detail || `HTTP ${resp.status}`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    err.status = resp.status;
+    throw err;
   }
   return data;
 }
