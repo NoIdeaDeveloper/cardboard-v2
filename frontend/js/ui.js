@@ -128,6 +128,17 @@ function parseList(json) {
   try { return JSON.parse(json) || []; } catch { return []; }
 }
 
+function buildSkeletonGrid(count = 12) {
+  const cards = Array.from({ length: count }, () => `
+    <div class="skeleton-card">
+      <div class="skeleton-block skeleton-image"></div>
+      <div class="skeleton-block skeleton-line"></div>
+      <div class="skeleton-block skeleton-line-short"></div>
+    </div>
+  `).join('');
+  return `<div class="skeleton-grid">${cards}</div>`;
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)
@@ -1630,7 +1641,7 @@ function buildAddedByMonthHtml(games, includeWishlist) {
   const max = Math.max(...entries.map(e => e.count), 1);
   return entries.map(e => `<div class="stat-bar-row" data-month="${escapeHtml(e.month)}" data-type="added" data-count="${e.count}">
           <span class="stat-bar-label">${escapeHtml(e.month)}</span>
-          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${e.count ? Math.round(e.count / max * 100) : 0}%"></div></div>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${e.count ? Math.round(e.count / max * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${e.count}</span>
         </div>`).join('');
 }
@@ -1740,7 +1751,7 @@ function buildCollectionValueSection(games, sessionCounts, visible) {
         <div class="most-played-rank">${i + 1}</div>
         <div class="most-played-info">
           <div class="most-played-name">${escapeHtml(g.name)}</div>
-          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${maxSessions ? (g.sessions / maxSessions * 100) : 0}%"></div></div>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${maxSessions ? (g.sessions / maxSessions * 100) : 0}%"></div></div>
         </div>
         <div class="most-played-count cost-per-play">$${g.cpp.toFixed(2)}/play</div>
       </div>`).join('');
@@ -1870,7 +1881,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
             <div class="most-played-rank">${i + 1}</div>
             <div class="most-played-info">
               <div class="most-played-name">${escapeHtml(entry.name)}</div>
-              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${pct}%"></div></div>
             </div>
             <div class="most-played-count">${entry.count} play${entry.count !== 1 ? 's' : ''}</div>
           </div>`;
@@ -1887,7 +1898,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <div class="stat-bar-chart">
         ${ratingEntries.map(([bucket, count]) => `<div class="stat-bar-row" data-bucket="${escapeHtml(bucket)}" data-count="${count}">
           <span class="stat-bar-label">${escapeHtml(bucket)}</span>
-          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${count ? Math.round(count / maxRating * 100) : 0}%"></div></div>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${count ? Math.round(count / maxRating * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${count}</span>
         </div>`).join('')}
       </div>
@@ -1902,7 +1913,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <div class="stat-bar-chart">
         ${labelEntries.map(([label, count]) => `<div class="stat-bar-row">
           <span class="stat-bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
-          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(count / maxLabel * 100)}%"></div></div>
+          <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${Math.round(count / maxLabel * 100)}%"></div></div>
           <span class="stat-bar-count">${count}</span>
         </div>`).join('')}
       </div>
@@ -1932,7 +1943,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <div class="stat-bar-chart">
         ${stats.sessions_by_month.map(entry => `<div class="stat-bar-row" data-month="${escapeHtml(entry.month)}" data-type="sessions" data-count="${entry.count}" data-game-ids='${JSON.stringify(entry.game_ids || [])}'>
           <span class="stat-bar-label">${escapeHtml(entry.month)}</span>
-          <div class="stat-bar-track"><div class="stat-bar-fill stat-bar-fill-sessions" style="width:${entry.count ? Math.round(entry.count / sessionsMax * 100) : 0}%"></div></div>
+          <div class="stat-bar-track"><div class="stat-bar-fill stat-bar-fill-sessions" style="width:0%" data-target-width="${entry.count ? Math.round(entry.count / sessionsMax * 100) : 0}%"></div></div>
           <span class="stat-bar-count">${entry.count}</span>
         </div>`).join('')}
       </div>
@@ -2041,7 +2052,7 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
         ${topMechanics.map(([name, count]) => `
           <div class="stat-bar-row" data-drilldown="mechanic" data-mechanic-name="${escapeHtml(name)}" title="Filter by ${escapeHtml(name)}">
             <span class="stat-bar-label">${escapeHtml(name)}</span>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(count / maxMechanic * 100)}%"></div></div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0%" data-target-width="${Math.round(count / maxMechanic * 100)}%"></div></div>
             <span class="stat-bar-count">${count}</span>
           </div>`).join('')}
       </div>

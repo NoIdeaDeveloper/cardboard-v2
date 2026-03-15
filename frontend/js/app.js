@@ -362,7 +362,7 @@
   // ===== Load Collection =====
   async function loadCollection() {
     const container = document.getElementById('games-container');
-    container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading your collection…</p></div>`;
+    container.innerHTML = buildSkeletonGrid(12);
     document.getElementById('empty-state').style.display = 'none';
 
     try {
@@ -1871,6 +1871,16 @@
     sectionsGrid.insertBefore(milestonesEl, nextEl); // insertBefore(el, null) === appendChild
   }
 
+  function _animateStatBars(container) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.querySelectorAll('.stat-bar-fill[data-target-width]').forEach(el => {
+          el.style.width = el.dataset.targetWidth;
+        });
+      });
+    });
+  }
+
   async function loadStats() {
     const el = document.getElementById('stats-content');
     el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading statistics…</p></div>';
@@ -1882,6 +1892,7 @@
       el.appendChild(statsView);
       wireStatsView(statsView);
       _injectMilestonesIntoGrid(statsView, prefs);
+      _animateStatBars(el);
     } catch (err) {
       el.innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">Failed to load stats: ${escapeHtml(err.message)}</p></div>`;
     }
@@ -1898,6 +1909,7 @@
       el.appendChild(statsView);
       wireStatsView(statsView);
       _injectMilestonesIntoGrid(statsView, prefs);
+      _animateStatBars(el);
     } catch (_) { /* non-fatal */ }
   }
 
