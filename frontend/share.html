@@ -163,8 +163,7 @@
         ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
         : `<span class="unrated">Unrated</span>`;
       const labels = parseList(game.labels).slice(0,3).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('');
-      const statusVal = game.status || 'owned';
-      const status = statusVal !== 'owned' ? `<span class="status-badge status-${escapeHtml(statusVal)}">${escapeHtml(statusVal.charAt(0).toUpperCase()+statusVal.slice(1))}</span>` : '';
+      const status = game.status && game.status !== 'owned' ? `<span class="status-badge status-${escapeHtml(game.status)}">${escapeHtml(game.status.charAt(0).toUpperCase()+game.status.slice(1))}</span>` : '';
       el.innerHTML = `
         <div class="game-card-image">
           ${game.image_url ? `<img src="${escapeHtml(game.image_url)}" alt="" loading="lazy">` : '<div class="placeholder-image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>'}
