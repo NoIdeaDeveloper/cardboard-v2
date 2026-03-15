@@ -38,10 +38,10 @@ def list_tokens(db: Session = Depends(get_db)):
     return db.query(models.ShareToken).all()
 
 
-@router.post("/tokens", response_model=schemas.ShareTokenResponse, status_code=201)
 ALLOWED_EXPIRY_MINUTES = (10, 30, 60)
 
 
+@router.post("/tokens", response_model=schemas.ShareTokenResponse, status_code=201)
 def create_token(label: Optional[str] = None, expires_in: Optional[int] = None, db: Session = Depends(get_db)):
     if expires_in is not None and expires_in not in ALLOWED_EXPIRY_MINUTES:
         raise HTTPException(status_code=400, detail=f"expires_in must be one of {ALLOWED_EXPIRY_MINUTES} or omitted")
@@ -74,7 +74,7 @@ def _validate_token(token: str, db: Session) -> models.ShareToken:
     if share.expires_at:
         exp = share.expires_at if share.expires_at.tzinfo else share.expires_at.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) > exp:
-        raise HTTPException(status_code=404, detail="This share link has expired")
+            raise HTTPException(status_code=404, detail="This share link has expired")
     return share
 
 
