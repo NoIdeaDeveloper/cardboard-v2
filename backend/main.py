@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 
 from database import engine, Base
-from routers import games, sessions, stats, game_images
+from routers import games, sessions, stats, game_images, players, sharing
 
 # force=True ensures our format wins even if another library called basicConfig first.
 # PYTHONUNBUFFERED=1 (set in Docker env) makes stdout unbuffered so logs appear immediately.
@@ -66,6 +66,12 @@ _GAMES_MIGRATIONS = [
     ("location",              "VARCHAR(255)"),
     ("show_location",         "INTEGER NOT NULL DEFAULT 0"),
     ("parent_game_id",        "INTEGER"),
+    ("bgg_id",                "INTEGER"),
+    ("bgg_rating",            "REAL"),
+    ("priority",              "INTEGER"),
+    ("target_price",          "REAL"),
+    ("condition",             "VARCHAR(20)"),
+    ("edition",               "VARCHAR(255)"),
 ]
 
 # NOTE: _col and _typedef are hardcoded above — never from user input.
@@ -88,6 +94,18 @@ with engine.connect() as _conn:
             _conn.execute(text("ALTER TABLE game_images ADD COLUMN :col :typedef").bindparams(col=_col, typedef=_typedef))
             _conn.commit()
             logger.info("Migration applied: game_images.%s added", _col)
+
+_SESSIONS_MIGRATIONS = [
+    ("winner", "VARCHAR(255)"),
+]
+
+with engine.connect() as _conn:
+    _existing_sess = {row[1] for row in _conn.execute(text("PRAGMA table_info(play_sessions)"))}
+    for _col, _typedef in _SESSIONS_MIGRATIONS:
+        if _col not in _existing_sess:
+            _conn.execute(text("ALTER TABLE play_sessions ADD COLUMN :col :typedef").bindparams(col=_col, typedef=_typedef))
+            _conn.commit()
+            logger.info("Migration applied: play_sessions.%s added", _col)
 
 # ── Migrate JSON tag columns → junction tables (one-time, idempotent) ─────────
 _TAG_CONFIG = [
@@ -214,6 +232,8 @@ app.include_router(games.router)
 app.include_router(game_images.router)
 app.include_router(sessions.router)
 app.include_router(stats.router)
+app.include_router(players.router)
+app.include_router(sharing.router)
 
 # Serve frontend static files
 FRONTEND_PATH = os.getenv("FRONTEND_PATH", "/app/frontend")

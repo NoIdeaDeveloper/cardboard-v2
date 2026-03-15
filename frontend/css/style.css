@@ -2595,10 +2595,18 @@ input[type="date"] { color-scheme: dark; }
   border-radius: var(--radius);
   padding: 8px 10px;
   transition: background 0.15s;
+  cursor: grab;
 }
-
-.gallery-list-item:hover {
-  background: var(--bg-3);
+.gallery-list-item:hover { background: var(--bg-3); }
+.gallery-list-item.dragging { opacity: 0.35; cursor: grabbing; }
+.gallery-list-item.drag-over { border-color: var(--accent); background: var(--bg-3); }
+.gallery-drag-handle {
+  font-size: 1.1rem;
+  color: var(--text-3);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .gallery-thumb {
@@ -3042,6 +3050,214 @@ input[type="date"] { color-scheme: dark; }
   padding: 8px 16px 0;
   min-height: 1.4em;
 }
+
+/* ===== BGG Rating ===== */
+.bgg-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: rgba(var(--accent-rgb, 100,160,255), 0.12);
+  border: 1px solid rgba(var(--accent-rgb, 100,160,255), 0.25);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.bgg-rating-detail {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+/* ===== Wishlist Priority + Target Price ===== */
+.wishlist-priority {
+  display: inline-flex;
+  gap: 1px;
+  font-size: 0.75rem;
+}
+.wishlist-target-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: rgba(72, 199, 116, 0.12);
+  border: 1px solid rgba(72, 199, 116, 0.25);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #48c774;
+  white-space: nowrap;
+}
+
+/* ===== Condition Badge ===== */
+.condition-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.condition-new    { background: rgba(72,199,116,0.15); border-color: rgba(72,199,116,0.3); color: #48c774; }
+.condition-good   { background: rgba(100,160,255,0.12); border-color: rgba(100,160,255,0.25); color: var(--accent); }
+.condition-fair   { background: rgba(255,183,77,0.12); border-color: rgba(255,183,77,0.3); color: #ffb74d; }
+.condition-poor   { background: rgba(255,82,82,0.12); border-color: rgba(255,82,82,0.3); color: #ff5252; }
+
+/* ===== Game Night Modal ===== */
+.game-night-header {
+  margin-bottom: 16px;
+}
+.game-night-inputs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.game-night-inputs .form-group {
+  flex: 1;
+  min-width: 120px;
+}
+.game-night-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+}
+.game-night-empty {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.875rem;
+  padding: 32px 0;
+}
+.game-night-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.game-night-item:hover {
+  background: var(--bg-3);
+  border-color: var(--border-hover);
+}
+.game-night-rank {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  text-align: center;
+}
+.game-night-info { flex: 1; min-width: 0; }
+.game-night-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-night-meta {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.game-night-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.reason-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  background: rgba(var(--accent-rgb, 100,160,255), 0.12);
+  border: 1px solid rgba(var(--accent-rgb, 100,160,255), 0.2);
+  color: var(--accent);
+}
+
+/* ===== Share / Readonly ===== */
+.share-readonly-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255,183,77,0.12);
+  border: 1px solid rgba(255,183,77,0.3);
+  color: #ffb74d;
+}
+.share-manage-panel { display: flex; flex-direction: column; gap: 12px; }
+.share-token-list { display: flex; flex-direction: column; gap: 8px; }
+.share-empty { font-size: 0.875rem; color: var(--text-3); padding: 8px 0; }
+.share-token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.share-token-info { flex: 1; min-width: 0; }
+.share-token-label { font-size: 0.85rem; font-weight: 600; }
+.share-token-date  { font-size: 0.72rem; color: var(--text-3); }
+.share-link-input {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  color: var(--text-2);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin-top: 4px;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share-token-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.share-create-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.share-create-row .form-input { flex: 1; }
+
+/* ===== Undo Toast ===== */
+.toast-undo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toast-undo-btn {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.toast-undo-btn:hover { opacity: 0.8; }
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {

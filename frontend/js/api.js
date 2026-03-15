@@ -81,6 +81,30 @@ const API = {
   // BGG import
   importBGG: (file) => uploadFile('/games/import/bgg', file),
 
+  // BGG refresh
+  refreshFromBGG: (gameId) => request('POST', `/games/${gameId}/refresh-bgg`),
+
+  // BGG play history import
+  importBGGPlays: (file) => uploadFile('/games/import/bgg-plays', file),
+
+  // CSV import
+  importCSV: (file) => uploadFile('/games/import/csv', file),
+
+  // Game night suggestions
+  suggestGames: (playerCount, maxMinutes) => request('POST', '/games/suggest', { player_count: playerCount, max_minutes: maxMinutes }),
+
+  // Players
+  getPlayers:    ()           => request('GET',    '/players/'),
+  createPlayer:  (name)       => request('POST',   '/players/', { name }),
+  deletePlayer:  (id)         => request('DELETE', `/players/${id}`),
+
+  // Collection sharing
+  getShareTokens:    ()              => request('GET',    '/share/tokens'),
+  createShareToken:  (label)         => request('POST',   `/share/tokens${label ? '?label=' + encodeURIComponent(label) : ''}`),
+  deleteShareToken:  (token)         => request('DELETE', `/share/tokens/${token}`),
+  getSharedGames:    (token)         => request('GET',    `/share/${token}/games`),
+  getSharedGame:     (token, gameId) => request('GET',    `/share/${token}/games/${gameId}`),
+
   // Backup
   downloadBackup: () => {
     const a = document.createElement('a');

@@ -869,8 +869,17 @@ async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)
             min_playtime = _int_attr(stats_el, "minplaytime")
             max_playtime = _int_attr(stats_el, "maxplaytime")
 
+            # BGG object ID
+            bgg_id = None
+            try:
+                bgg_id_str = item.get("objectid") or ""
+                bgg_id = int(bgg_id_str) if bgg_id_str else None
+            except (ValueError, TypeError):
+                pass
+
             # User rating
             user_rating = None
+            bgg_rating = None
             rating_el = item.find(".//stats/rating") if stats_el is not None else None
             if rating_el is not None:
                 val = rating_el.get("value", "N/A")
@@ -878,6 +887,14 @@ async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)
                     try:
                         user_rating = round(min(10.0, max(1.0, float(val))), 1)
                     except ValueError:
+                        pass
+                # BGG community average
+                avg_el = rating_el.find("average")
+                if avg_el is not None:
+                    try:
+                        avg_val = float(avg_el.get("value", "0") or "0")
+                        bgg_rating = round(min(10.0, max(1.0, avg_val)), 2) if avg_val > 0 else None
+                    except (ValueError, TypeError):
                         pass
 
             # Notes / comment
@@ -898,6 +915,8 @@ async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)
                 min_playtime=min_playtime,
                 max_playtime=max_playtime,
                 user_rating=user_rating,
+                bgg_id=bgg_id,
+                bgg_rating=bgg_rating,
                 user_notes=notes,
                 image_url=image_url,
             )
@@ -909,4 +928,443 @@ async def import_bgg(file: UploadFile = File(...), db: Session = Depends(get_db)
 
     db.commit()
     logger.info("BGG import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
+    return results
+
+
+# ===== BGG Metadata Refresh =====
+
+BGG_API_URL = "https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}&stats=1"
+BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search?query={query}&type=boardgame&exact=1"
+
+
+def _fetch_bgg_thing(bgg_id: int) -> Optional[ET.Element]:
+    """Fetch BGG XML for a thing ID. Returns the <item> element or None."""
+    url = BGG_API_URL.format(bgg_id=bgg_id)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Cardboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content = resp.read(5 * 1024 * 1024)
+        root = ET.fromstring(content)
+        return root.find("item")
+    except Exception as exc:
+        logger.warning("BGG fetch failed for id=%d: %s", bgg_id, exc)
+        return None
+
+
+def _parse_bgg_item(item: ET.Element) -> dict:
+    """Extract game fields from a BGG <item> element."""
+    def _int_val(tag, attr="value"):
+        el = item.find(tag)
+        if el is None:
+            return None
+        try:
+            v = int(el.get(attr, "0") or el.text or "0")
+            return v if v > 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    def _float_val(tag, attr="value"):
+        el = item.find(tag)
+        if el is None:
+            return None
+        try:
+            return float(el.get(attr) or el.text or "")
+        except (ValueError, TypeError):
+            return None
+
+    # Primary name
+    name_el = item.find("name[@type='primary']") or item.find("name")
+    name = name_el.get("value", "").strip() if name_el is not None else ""
+
+    # Description
+    desc_el = item.find("description")
+    description = (desc_el.text or "").strip()[:5000] if desc_el is not None else None
+
+    # Year
+    year = _int_val("yearpublished")
+
+    # Players / playtime / difficulty
+    min_players = _int_val("minplayers")
+    max_players = _int_val("maxplayers")
+    min_playtime = _int_val("minplaytime")
+    max_playtime = _int_val("maxplaytime")
+
+    difficulty = None
+    weight_el = item.find(".//averageweight")
+    if weight_el is not None:
+        try:
+            w = float(weight_el.get("value", "0"))
+            difficulty = round(min(5.0, max(1.0, w)), 2) if w > 0 else None
+        except (ValueError, TypeError):
+            pass
+
+    # BGG community rating
+    bgg_rating = None
+    avg_el = item.find(".//average")
+    if avg_el is not None:
+        try:
+            r = float(avg_el.get("value", "0"))
+            bgg_rating = round(min(10.0, max(1.0, r)), 2) if r > 0 else None
+        except (ValueError, TypeError):
+            pass
+
+    # Tags
+    def _links(link_type):
+        return json.dumps([el.get("value", "") for el in item.findall(f"link[@type='{link_type}']") if el.get("value")])
+
+    categories = _links("boardgamecategory")
+    mechanics = _links("boardgamemechanic")
+    designers = _links("boardgamedesigner")
+    publishers = _links("boardgamepublisher")
+
+    # Image
+    img_el = item.find("image")
+    image_url = (img_el.text or "").strip() if img_el is not None else None
+    if image_url and image_url.startswith("//"):
+        image_url = "https:" + image_url
+
+    return {
+        "name": name,
+        "description": description,
+        "year_published": year,
+        "min_players": min_players,
+        "max_players": max_players,
+        "min_playtime": min_playtime,
+        "max_playtime": max_playtime,
+        "difficulty": difficulty,
+        "bgg_rating": bgg_rating,
+        "categories": categories,
+        "mechanics": mechanics,
+        "designers": designers,
+        "publishers": publishers,
+        "image_url": image_url,
+    }
+
+
+@router.post("/{game_id}/refresh-bgg", response_model=schemas.GameResponse)
+def refresh_from_bgg(
+    game_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Re-fetch metadata from BGG and update the game record."""
+    db_game = db.query(models.Game).filter(models.Game.id == game_id).first()
+    if not db_game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if not db_game.bgg_id:
+        raise HTTPException(status_code=400, detail="Game has no BGG ID — add it manually first")
+
+    item = _fetch_bgg_thing(db_game.bgg_id)
+    if item is None:
+        raise HTTPException(status_code=502, detail="Could not fetch data from BoardGameGeek")
+
+    data = _parse_bgg_item(item)
+    tag_data = {k: data.pop(k) for k in ["categories", "mechanics", "designers", "publishers"]}
+
+    for field, value in data.items():
+        if value is not None:
+            setattr(db_game, field, value)
+
+    db.flush()
+    _save_tags(game_id, tag_data, db)
+    db.commit()
+    db.refresh(db_game)
+    _load_tags([db_game], db)
+
+    new_image = db_game.image_url
+    if new_image and not new_image.startswith("/api/"):
+        background_tasks.add_task(_cache_game_image, game_id, new_image)
+
+    logger.info("BGG refresh: game_id=%d bgg_id=%d", game_id, db_game.bgg_id)
+    return _attach_parent_name(db_game, db)
+
+
+# ===== Game Night Suggest =====
+
+@router.post("/suggest", response_model=List[schemas.GameSuggestion])
+def suggest_games(body: schemas.SuggestRequest, db: Session = Depends(get_db)):
+    """Return up to 5 game suggestions ranked for a game night."""
+    from datetime import date, timedelta
+    from routers.sessions import _get_session_players  # avoid circular at module level
+
+    query = db.query(models.Game).filter(
+        models.Game.status == "owned",
+        models.Game.parent_game_id.is_(None),
+    )
+
+    if body.player_count:
+        query = query.filter(
+            (models.Game.min_players.is_(None)) | (models.Game.min_players <= body.player_count),
+            (models.Game.max_players.is_(None)) | (models.Game.max_players >= body.player_count),
+        )
+
+    if body.max_minutes:
+        query = query.filter(
+            (models.Game.min_playtime.is_(None)) | (models.Game.min_playtime <= body.max_minutes),
+        )
+
+    games = query.all()
+
+    # Count sessions per game
+    from sqlalchemy import func as sqlfunc
+    session_counts = {
+        row.game_id: row.count
+        for row in db.query(
+            models.PlaySession.game_id,
+            sqlfunc.count(models.PlaySession.id).label("count")
+        ).group_by(models.PlaySession.game_id).all()
+    }
+
+    today = date.today()
+    recent_cutoff = today - timedelta(days=30)
+
+    scored = []
+    for g in games:
+        score = 0.0
+        reasons = []
+        count = session_counts.get(g.id, 0)
+
+        if count == 0:
+            score += 3
+            reasons.append("Never Played")
+
+        if g.user_rating:
+            score += g.user_rating / 2
+            if g.user_rating >= 8:
+                reasons.append("High Rating")
+
+        if g.last_played and g.last_played >= recent_cutoff:
+            score -= 1  # played recently, penalise slightly
+        elif count > 0 and g.last_played:
+            reasons.append("Long Overdue" if (today - g.last_played).days > 180 else "Not Recently Played")
+
+        if body.max_minutes and g.min_playtime and g.min_playtime <= body.max_minutes // 2:
+            reasons.append("Quick Game")
+
+        if g.difficulty and g.difficulty <= 2.0:
+            reasons.append("Easy to Learn")
+
+        scored.append((score, g, reasons))
+
+    scored.sort(key=lambda x: -x[0])
+
+    results = []
+    for score, g, reasons in scored[:5]:
+        results.append(schemas.GameSuggestion(
+            id=g.id,
+            name=g.name,
+            image_url=g.image_url,
+            min_players=g.min_players,
+            max_players=g.max_players,
+            min_playtime=g.min_playtime,
+            max_playtime=g.max_playtime,
+            difficulty=g.difficulty,
+            user_rating=g.user_rating,
+            last_played=g.last_played,
+            reasons=reasons[:3],
+        ))
+    return results
+
+
+# ===== BGG Play History Import =====
+
+BGG_PLAYS_MAX_BYTES = 20 * 1024 * 1024
+
+
+@router.post("/import/bgg-plays")
+async def import_bgg_plays(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Import play history from a BGG plays XML export."""
+    from routers.sessions import _sync_last_played
+
+    content = await file.read(BGG_PLAYS_MAX_BYTES + 1)
+    if len(content) > BGG_PLAYS_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 20 MB)")
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid XML: {exc}")
+
+    plays = root.findall("play")
+    if not plays:
+        raise HTTPException(status_code=400, detail="No play records found — is this a BGG plays export?")
+
+    results = {"imported": 0, "skipped": 0, "errors": []}
+
+    for play in plays:
+        try:
+            item_el = play.find("item")
+            if item_el is None:
+                results["skipped"] += 1
+                continue
+
+            game_name = (item_el.get("name") or "").strip()
+            bgg_object_id = item_el.get("objectid")
+
+            # Match game by bgg_id first, then by name
+            game = None
+            if bgg_object_id:
+                try:
+                    game = db.query(models.Game).filter(models.Game.bgg_id == int(bgg_object_id)).first()
+                except (ValueError, TypeError):
+                    pass
+            if not game and game_name:
+                game = db.query(models.Game).filter(models.Game.name.ilike(game_name)).first()
+
+            if not game:
+                results["skipped"] += 1
+                continue
+
+            date_str = play.get("date", "")
+            try:
+                from datetime import date as date_cls
+                played_at = date_cls.fromisoformat(date_str)
+            except (ValueError, TypeError):
+                results["skipped"] += 1
+                continue
+
+            quantity = int(play.get("quantity", "1") or "1")
+            player_count = None
+            players_el = play.find("players")
+            if players_el is not None:
+                player_count = len(players_el.findall("player")) or None
+
+            duration = None
+            try:
+                dur = int(play.get("length", "0") or "0")
+                duration = dur if dur > 0 else None
+            except (ValueError, TypeError):
+                pass
+
+            comment = (play.findtext("comments") or "").strip() or None
+
+            for _ in range(quantity):
+                db_session = models.PlaySession(
+                    game_id=game.id,
+                    played_at=played_at,
+                    player_count=player_count,
+                    duration_minutes=duration,
+                    notes=comment,
+                )
+                db.add(db_session)
+                results["imported"] += 1
+
+        except Exception as exc:
+            results["errors"].append(str(exc))
+
+    db.commit()
+
+    # Sync last_played for all affected games
+    affected_game_ids = set()
+    for play in plays:
+        item_el = play.find("item")
+        if item_el is None:
+            continue
+        bgg_object_id = item_el.get("objectid")
+        game_name = (item_el.get("name") or "").strip()
+        game = None
+        if bgg_object_id:
+            try:
+                game = db.query(models.Game).filter(models.Game.bgg_id == int(bgg_object_id)).first()
+            except (ValueError, TypeError):
+                pass
+        if not game and game_name:
+            game = db.query(models.Game).filter(models.Game.name.ilike(game_name)).first()
+        if game:
+            affected_game_ids.add(game.id)
+
+    for gid in affected_game_ids:
+        _sync_last_played(gid, db)
+
+    logger.info("BGG plays import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
+    return results
+
+
+# ===== CSV Import =====
+
+import csv
+import io
+
+
+@router.post("/import/csv")
+async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Import games from a CSV file. Columns: name, status, user_rating, notes, labels, categories, mechanics."""
+    content = await file.read(5 * 1024 * 1024 + 1)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 5 MB)")
+
+    try:
+        text_content = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(text_content))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}")
+
+    results = {"imported": 0, "skipped": 0, "errors": []}
+
+    VALID_STATUSES = {"owned", "wishlist", "sold"}
+
+    for row in reader:
+        try:
+            name = (row.get("name") or row.get("Name") or "").strip()
+            if not name:
+                results["skipped"] += 1
+                continue
+
+            if db.query(models.Game).filter(models.Game.name.ilike(name)).first():
+                results["skipped"] += 1
+                continue
+
+            status_raw = (row.get("status") or row.get("Status") or "owned").strip().lower()
+            status = status_raw if status_raw in VALID_STATUSES else "owned"
+
+            user_rating = None
+            rating_raw = (row.get("user_rating") or row.get("rating") or "").strip()
+            if rating_raw:
+                try:
+                    user_rating = round(min(10.0, max(1.0, float(rating_raw))), 1)
+                except ValueError:
+                    pass
+
+            notes = (row.get("notes") or row.get("comment") or "").strip() or None
+
+            def _csv_to_json(val):
+                val = (val or "").strip()
+                if not val:
+                    return None
+                items = [x.strip() for x in val.split(";") if x.strip()]
+                return json.dumps(items) if items else None
+
+            categories = _csv_to_json(row.get("categories") or row.get("Categories"))
+            mechanics = _csv_to_json(row.get("mechanics") or row.get("Mechanics"))
+            labels = _csv_to_json(row.get("labels") or row.get("Labels"))
+
+            game = models.Game(
+                name=name,
+                status=status,
+                user_rating=user_rating,
+                user_notes=notes,
+                categories=categories,
+                mechanics=mechanics,
+                labels=labels,
+            )
+            db.add(game)
+            db.flush()
+
+            tag_data = {}
+            if categories:
+                tag_data["categories"] = categories
+            if mechanics:
+                tag_data["mechanics"] = mechanics
+            if labels:
+                tag_data["labels"] = labels
+            if tag_data:
+                _save_tags(game.id, tag_data, db)
+
+            results["imported"] += 1
+
+        except Exception as exc:
+            results["errors"].append(str(exc))
+
+    db.commit()
+    logger.info("CSV import: imported=%d skipped=%d errors=%d", results["imported"], results["skipped"], len(results["errors"]))
     return results

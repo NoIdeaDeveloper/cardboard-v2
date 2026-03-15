@@ -51,6 +51,12 @@ class GameBase(BaseModel):
     user_notes: Optional[str] = Field(None, max_length=2000)
     last_played: Optional[date] = None
     parent_game_id: Optional[int] = Field(None, ge=1)
+    bgg_id: Optional[int] = None
+    bgg_rating: Optional[float] = Field(None, ge=1, le=10)
+    priority: Optional[int] = Field(None, ge=1, le=5)
+    target_price: Optional[float] = Field(None, ge=0)
+    condition: Optional[str] = Field(None, pattern='^(New|Good|Fair|Poor)$')
+    edition: Optional[str] = Field(None, max_length=255)
 
     @model_validator(mode='after')
     def check_min_max(self):
@@ -95,6 +101,12 @@ class GameUpdate(BaseModel):
     scan_glb_filename: Optional[str] = Field(None, max_length=255)
     scan_featured: Optional[bool] = None
     parent_game_id: Optional[int] = Field(None, ge=1)
+    bgg_id: Optional[int] = None
+    bgg_rating: Optional[float] = Field(None, ge=1, le=10)
+    priority: Optional[int] = Field(None, ge=1, le=5)
+    target_price: Optional[float] = Field(None, ge=0)
+    condition: Optional[str] = Field(None, pattern='^(New|Good|Fair|Poor)$')
+    edition: Optional[str] = Field(None, max_length=255)
 
     @model_validator(mode='after')
     def check_min_max(self):
@@ -141,15 +153,59 @@ class PlaySessionCreate(BaseModel):
     player_count: Optional[int] = Field(None, ge=1)
     duration_minutes: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = Field(None, max_length=2000)
+    winner: Optional[str] = Field(None, max_length=255)
+    player_names: Optional[List[str]] = None  # names to link/create as players
 
 
 class PlaySessionResponse(PlaySessionCreate):
     id: int
     game_id: int
     date_added: Optional[datetime] = None
+    players: List[str] = []  # resolved player names
 
     class Config:
         from_attributes = True
+
+
+class PlayerCreate(BaseModel):
+    name: str = Field(..., max_length=255)
+
+
+class PlayerResponse(BaseModel):
+    id: int
+    name: str
+    date_added: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ShareTokenResponse(BaseModel):
+    token: str
+    label: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class GameSuggestion(BaseModel):
+    id: int
+    name: str
+    image_url: Optional[str] = None
+    min_players: Optional[int] = None
+    max_players: Optional[int] = None
+    min_playtime: Optional[int] = None
+    max_playtime: Optional[int] = None
+    difficulty: Optional[float] = None
+    user_rating: Optional[float] = None
+    last_played: Optional[date] = None
+    reasons: List[str] = []
+
+
+class SuggestRequest(BaseModel):
+    player_count: Optional[int] = Field(None, ge=1)
+    max_minutes: Optional[int] = Field(None, ge=1)
 
 
 class MostPlayedEntry(BaseModel):

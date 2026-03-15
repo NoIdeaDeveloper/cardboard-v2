@@ -6,7 +6,37 @@
   'use strict';
 
   // ===== Theme =====
-  const THEME_KEY = 'cardboard_theme';
+  const THEME_KEY     = 'cardboard_theme';
+  const THEME_SET_KEY = 'cardboard_theme_manual'; // set when user explicitly chose a theme
+
+  function applyTheme(isLight) {
+    if (isLight) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    const userSet = localStorage.getItem(THEME_SET_KEY);
+    if (saved && userSet) {
+      // User previously made an explicit choice — respect it
+      applyTheme(saved === 'light');
+    } else {
+      // No manual choice — follow OS preference
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(!prefersDark);
+    }
+    // Listen for OS changes and follow automatically if user hasn't set manually
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem(THEME_SET_KEY)) {
+          applyTheme(!e.matches);
+        }
+      });
+    }
+  }
 
   function bindThemeToggle() {
     const btn = document.getElementById('theme-toggle-btn');
@@ -18,13 +48,9 @@
     update();
     btn.addEventListener('click', () => {
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      if (isLight) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem(THEME_KEY, 'dark');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem(THEME_KEY, 'light');
-      }
+      applyTheme(!isLight);
+      localStorage.setItem(THEME_KEY, !isLight ? 'light' : 'dark');
+      localStorage.setItem(THEME_SET_KEY, '1'); // mark as manual
       update();
     });
   }
@@ -76,6 +102,7 @@
   const _cp = loadCollectionPrefs();
   let state = {
     games: [],
+    players: [],     // known player names for autocomplete
     viewMode: _cp.viewMode,
     sortBy: _cp.sortBy,
     sortDir: _cp.sortDir,
@@ -90,6 +117,9 @@
     bulkMode: false,
     selectedGameIds: new Set(),
   };
+
+  // Undo buffer for destructive actions
+  let _undoBuffer = null;
 
   // ===== Init =====
   function syncCollectionUI() {
@@ -115,6 +145,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     bindNav();
     bindCollectionContainer();
     bindCollectionControls();
@@ -126,7 +157,10 @@
     bindKeyboardShortcuts();
     bindShortcutsOverlay();
     bindThemeToggle();
+    bindGameNightModal();
     syncCollectionUI();
+    // Load players for autocomplete (non-blocking)
+    API.getPlayers().then(p => { state.players = p.map(pl => pl.name); }).catch(() => {});
     const initialView = location.hash.replace('#', '') || 'collection';
     const validViews = ['collection', 'add', 'stats'];
     switchView(validViews.includes(initialView) ? initialView : 'collection');
@@ -578,8 +612,12 @@
     const images   = imgResult.status  === 'fulfilled' ? imgResult.value  : [];
 
     const onSwitchToEdit = () => openGameModal(game, 'edit', onBack);
-    const onSwitchToView = () => {
-      const fresh = state.games.find(g => g.id === game.id) || game;
+    const onSwitchToView = (freshGame) => {
+      if (freshGame) {
+        const idx = state.games.findIndex(g => g.id === freshGame.id);
+        if (idx !== -1) state.games[idx] = freshGame;
+      }
+      const fresh = state.games.find(g => g.id === game.id) || freshGame || game;
       openGameModal(fresh, 'view', onBack);
     };
 
@@ -642,6 +680,15 @@
             <label for="ql-notes">Notes</label>
             <input type="text" id="ql-notes" class="form-input" placeholder="optional" autocomplete="off">
           </div>
+          <div class="quick-log-field ql-full">
+            <label for="ql-winner">Winner</label>
+            <input type="text" id="ql-winner" class="form-input" placeholder="optional" autocomplete="off" list="ql-player-list">
+            <datalist id="ql-player-list">${state.players.map(p => `<option value="${escapeHtml(p)}">`).join('')}</datalist>
+          </div>
+          <div class="quick-log-field ql-full">
+            <label for="ql-players-names">Who played?</label>
+            <input type="text" id="ql-players-names" class="form-input" placeholder="comma-separated names" autocomplete="off">
+          </div>
         </div>
         <div class="quick-log-actions">
           <button class="btn btn-primary btn-sm" id="ql-submit">Log Play</button>
@@ -671,14 +718,22 @@
     overlay.querySelector('#ql-submit').addEventListener('click', () => {
       const dateVal = overlay.querySelector('#ql-date').value;
       if (!dateVal) { showToast('Please enter a date.', 'error'); return; }
+      const playerNamesRaw = overlay.querySelector('#ql-players-names').value;
+      const playerNames = playerNamesRaw.split(',').map(s => s.trim()).filter(Boolean);
       handleAddSession(game.id, {
         played_at:        dateVal,
         player_count:     parseInt(overlay.querySelector('#ql-players').value, 10) || null,
         duration_minutes: parseInt(overlay.querySelector('#ql-duration').value, 10) || null,
         notes:            overlay.querySelector('#ql-notes').value.trim() || null,
+        winner:           overlay.querySelector('#ql-winner').value.trim() || null,
+        player_names:     playerNames.length ? playerNames : null,
       }, () => {
         renderCollection();
         refreshStatsBackground();
+        // Refresh players list
+        if (playerNames.length) {
+          API.getPlayers().then(p => { state.players = p.map(pl => pl.name); }).catch(() => {});
+        }
       });
       close();
     });
@@ -715,17 +770,32 @@
   async function handleDeleteGame(gameId, gameName) {
     const confirmed = await showConfirm(
       'Remove Game',
-      `Are you sure you want to remove "${gameName}" from your collection? This cannot be undone.`
+      `Are you sure you want to remove "${gameName}" from your collection?`
     );
     if (!confirmed) return;
     try {
+      const deletedGame = state.games.find(g => g.id === gameId);
       await API.deleteGame(gameId);
-      showToast(`"${gameName}" removed from collection.`, 'success');
       activeModal = null;
       closeModal();
       state.games = state.games.filter(g => g.id !== gameId);
       renderCollection();
       refreshStatsBackground();
+
+      // Undo toast — note: re-creating does NOT restore media files
+      showUndoToast(`"${gameName}" removed.`, async () => {
+        if (!deletedGame) return;
+        try {
+          const { id: _id, date_added: _da, date_modified: _dm, image_cached: _ic, parent_game_name: _pgn, ...payload } = deletedGame;
+          const restored = await API.createGame(payload);
+          state.games.push(restored);
+          state.games = sortGames(state.games, state.sortBy, state.sortDir);
+          renderCollection();
+          showToast(`"${gameName}" restored.`, 'success');
+        } catch (err) {
+          showToast(`Could not restore game: ${err.message}`, 'error');
+        }
+      });
     } catch (err) {
       showToast(`Failed to remove: ${err.message}`, 'error');
     }
@@ -1212,6 +1282,17 @@
         return d > max ? d : max;
       }, new Date(0));
 
+      // Duplicate detection: check local state for same name (case-insensitive)
+      const nameLower = payload.name.toLowerCase();
+      const dup = state.games.find(g => g.name.toLowerCase() === nameLower);
+      if (dup) {
+        const proceed = await showConfirm(
+          'Possible Duplicate',
+          `"${dup.name}" is already in your collection. Add it again anyway?`
+        );
+        if (!proceed) return;
+      }
+
       try {
         await withLoading(submitBtn, async () => {
           const created = await API.createGame(payload);
@@ -1298,16 +1379,11 @@
     const playersEl  = document.getElementById('filter-players');
     const timeEl     = document.getElementById('filter-time');
     const clearBtn   = document.getElementById('filter-clear-all');
-    const pickBtn    = document.getElementById('pick-for-me-btn');
 
     function hasActiveFilters() {
       return state.filterNeverPlayed || state.filterPlayers !== null ||
         state.filterTime !== null || state.filterMechanics.length > 0 ||
         state.filterCategories.length > 0;
-    }
-
-    function updatePickBtn() {
-      pickBtn.style.display = (state.filterPlayers !== null || state.filterTime !== null) ? '' : 'none';
     }
 
     function openPanel()  { renderFilterChips(); panel.classList.add('open'); }
@@ -1331,7 +1407,6 @@
       clearTimeout(playerDebounce);
       playerDebounce = setTimeout(() => {
         state.filterPlayers = playersEl.value ? parseInt(playersEl.value, 10) : null;
-        updatePickBtn();
         renderCollection();
       }, 300);
     });
@@ -1340,37 +1415,8 @@
       clearTimeout(timeDebounce);
       timeDebounce = setTimeout(() => {
         state.filterTime = timeEl.value ? parseInt(timeEl.value, 10) : null;
-        updatePickBtn();
         renderCollection();
       }, 300);
-    });
-
-    pickBtn.addEventListener('click', () => {
-      const search = (state.search || '').toLowerCase();
-      const matching = state.games.filter(g => {
-        if (g.parent_game_id) return false;  // expansions can't be played standalone
-        if (state.statusFilter !== 'all' && g.status !== state.statusFilter) return false;
-        if (search && !g.name.toLowerCase().includes(search)) return false;
-        if (state.filterNeverPlayed && g.last_played) return false;
-        if (state.filterPlayers !== null) {
-          const p = state.filterPlayers;
-          if (p < (g.min_players ?? 1) || p > (g.max_players ?? Infinity)) return false;
-        }
-        if (state.filterTime !== null) {
-          const t = state.filterTime;
-          if (t < (g.min_playtime ?? 0) || t > (g.max_playtime ?? Infinity)) return false;
-        }
-        if (state.filterMechanics.length > 0) {
-          if (!state.filterMechanics.some(m => parseList(g.mechanics).includes(m))) return false;
-        }
-        if (state.filterCategories.length > 0) {
-          if (!state.filterCategories.some(c => parseList(g.categories).includes(c))) return false;
-        }
-        return true;
-      });
-      if (!matching.length) { showToast('No matching games found.', 'error'); return; }
-      const picked = matching[Math.floor(Math.random() * matching.length)];
-      openGameModal(picked);
     });
 
     clearBtn.addEventListener('click', () => {
@@ -1384,9 +1430,95 @@
       timeEl.value = '';
       document.querySelectorAll('#filter-mechanics-chips .filter-pill, #filter-categories-chips .filter-pill')
         .forEach(el => el.classList.remove('active'));
-      updatePickBtn();
       panel.classList.remove('open');
       renderCollection();
+    });
+  }
+
+  // ===== Game Night Planner =====
+  function bindGameNightModal() {
+    const btn = document.getElementById('game-night-btn');
+    if (!btn) return;
+    btn.addEventListener('click', openGameNightModal);
+  }
+
+  function openGameNightModal() {
+    const modal   = document.getElementById('game-night-modal');
+    const inner   = document.getElementById('game-night-inner');
+    const backdrop = document.getElementById('game-night-backdrop');
+
+    inner.innerHTML = `
+      <div class="game-night-panel">
+        <div class="game-night-header">
+          <h2 id="game-night-title">🎲 Game Night</h2>
+          <button class="modal-close-btn" id="game-night-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="game-night-inputs">
+          <div class="filter-field">
+            <label class="filter-label" for="gn-players">Players</label>
+            <input type="number" id="gn-players" class="filter-input" min="1" max="20" placeholder="any" value="${state.filterPlayers || ''}" autocomplete="off">
+          </div>
+          <div class="filter-field">
+            <label class="filter-label" for="gn-time">Max time</label>
+            <input type="number" id="gn-time" class="filter-input" min="1" placeholder="any" value="${state.filterTime || ''}" autocomplete="off">
+            <span class="filter-unit">min</span>
+          </div>
+          <button class="btn btn-primary" id="gn-suggest-btn">Suggest Games</button>
+        </div>
+        <div id="gn-results"></div>
+      </div>`;
+
+    modal.style.display = '';
+    requestAnimationFrame(() => modal.classList.add('open'));
+    document.body.style.overflow = 'hidden';
+    inner.querySelector('#gn-players').focus();
+
+    function close() {
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = ''; }, 200);
+      backdrop.removeEventListener('click', close);
+    }
+
+    backdrop.addEventListener('click', close);
+    inner.querySelector('#game-night-close').addEventListener('click', close);
+
+    inner.querySelector('#gn-suggest-btn').addEventListener('click', async () => {
+      const playerCount = parseInt(inner.querySelector('#gn-players').value, 10) || null;
+      const maxMinutes  = parseInt(inner.querySelector('#gn-time').value, 10) || null;
+      const resultsEl   = inner.querySelector('#gn-results');
+      const btn         = inner.querySelector('#gn-suggest-btn');
+      await withLoading(btn, async () => {
+        const suggestions = await API.suggestGames(playerCount, maxMinutes);
+        if (!suggestions.length) {
+          resultsEl.innerHTML = '<p class="game-night-empty">No matching games found. Try adjusting the filters.</p>';
+          return;
+        }
+        resultsEl.innerHTML = suggestions.map(s => `
+          <div class="game-night-item" data-game-id="${s.id}" role="button" tabindex="0">
+            <div class="game-night-thumb">
+              ${s.image_url ? `<img src="${escapeHtml(s.image_url)}" alt="" loading="lazy">` : placeholderSvg()}
+            </div>
+            <div class="game-night-info">
+              <div class="game-night-name">${escapeHtml(s.name)}</div>
+              <div class="game-night-meta">
+                ${s.min_players || s.max_players ? `<span>${formatPlayers(s.min_players, s.max_players)}</span>` : ''}
+                ${s.min_playtime || s.max_playtime ? `<span>${formatPlaytime(s.min_playtime, s.max_playtime)}</span>` : ''}
+                ${s.difficulty ? `<span>Difficulty ${s.difficulty.toFixed(1)}</span>` : ''}
+                ${s.user_rating ? `<span>★ ${s.user_rating.toFixed(1)}</span>` : ''}
+              </div>
+              <div class="game-night-reasons">${s.reasons.map(r => `<span class="reason-chip">${escapeHtml(r)}</span>`).join('')}</div>
+            </div>
+          </div>`).join('');
+
+        resultsEl.querySelectorAll('.game-night-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const game = state.games.find(g => g.id === +el.dataset.gameId);
+            if (game) { close(); openGameModal(game); }
+          });
+        });
+      }, 'Finding games…');
     });
   }
 
@@ -1550,11 +1682,55 @@
       }, 'Importing…');
     });
 
+    // Share management
+    const shareManageBtn = statsView.querySelector('#stats-share-manage');
+    if (shareManageBtn) {
+      shareManageBtn.addEventListener('click', openShareManageModal);
+    }
+
     const backupBtn = statsView.querySelector('#stats-backup-download');
     backupBtn.addEventListener('click', () => {
       API.downloadBackup();
       showToast('Backup download started…', 'info');
     });
+
+    // BGG plays import
+    const bggPlaysBtn   = statsView.querySelector('#stats-import-bgg-plays');
+    const bggPlaysInput = statsView.querySelector('#stats-import-bgg-plays-file');
+    if (bggPlaysBtn && bggPlaysInput) {
+      bggPlaysBtn.addEventListener('click', () => bggPlaysInput.click());
+      bggPlaysInput.addEventListener('change', async () => {
+        const file = bggPlaysInput.files[0];
+        if (!file) return;
+        bggPlaysInput.value = '';
+        await withLoading(bggPlaysBtn, async () => {
+          const result = await API.importBGGPlays(file);
+          const parts = [`${result.imported} plays imported`, `${result.skipped} skipped`];
+          if (result.errors && result.errors.length) parts.push(`${result.errors.length} error(s)`);
+          showToast(parts.join(' · '), result.imported > 0 ? 'success' : 'info');
+          if (result.imported > 0) { await loadCollection(); await loadStats(); }
+        }, 'Importing…');
+      });
+    }
+
+    // CSV import
+    const csvImportBtn   = statsView.querySelector('#stats-import-csv');
+    const csvImportInput = statsView.querySelector('#stats-import-csv-file');
+    if (csvImportBtn && csvImportInput) {
+      csvImportBtn.addEventListener('click', () => csvImportInput.click());
+      csvImportInput.addEventListener('change', async () => {
+        const file = csvImportInput.files[0];
+        if (!file) return;
+        csvImportInput.value = '';
+        await withLoading(csvImportBtn, async () => {
+          const result = await API.importCSV(file);
+          const parts = [`${result.imported} imported`, `${result.skipped} skipped`];
+          if (result.errors && result.errors.length) parts.push(`${result.errors.length} error(s)`);
+          showToast(parts.join(' · '), result.imported > 0 ? 'success' : 'info');
+          if (result.imported > 0) await loadCollection();
+        }, 'Importing…');
+      });
+    }
 
     const wishlistToggle = statsView.querySelector('#added-wishlist-toggle');
     if (wishlistToggle) {
@@ -1722,6 +1898,107 @@
       wireStatsView(statsView);
       _injectMilestonesIntoGrid(statsView, prefs);
     } catch (_) { /* non-fatal */ }
+  }
+
+  // ===== Share Management =====
+  async function openShareManageModal() {
+    let tokens = [];
+    try { tokens = await API.getShareTokens(); } catch (_) {}
+
+    function renderTokenList(container, list) {
+      if (!list.length) {
+        container.innerHTML = '<p class="share-empty">No share links yet. Create one to share your collection.</p>';
+        return;
+      }
+      const origin = window.location.origin;
+      container.innerHTML = list.map(t => `
+        <div class="share-token-row" data-token="${escapeHtml(t.token)}">
+          <div class="share-token-info">
+            <span class="share-token-label">${escapeHtml(t.label || 'Untitled')}</span>
+            <input class="share-link-input" type="text" readonly value="${escapeHtml(origin + '/share.html?token=' + t.token)}" aria-label="Share link">
+          </div>
+          <div class="share-token-actions">
+            <button class="btn btn-secondary btn-sm share-copy-btn">Copy</button>
+            <button class="btn btn-danger btn-sm share-revoke-btn">Revoke</button>
+          </div>
+        </div>`).join('');
+
+      container.querySelectorAll('.share-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const input = btn.closest('.share-token-row').querySelector('.share-link-input');
+          navigator.clipboard.writeText(input.value).then(() => showToast('Link copied!', 'success')).catch(() => showToast('Copy failed', 'error'));
+        });
+      });
+      container.querySelectorAll('.share-revoke-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const token = btn.closest('.share-token-row').dataset.token;
+          const ok = await showConfirm('Revoke Link', 'This will break anyone using this link. Continue?');
+          if (!ok) return;
+          await API.deleteShareToken(token);
+          tokens = tokens.filter(t => t.token !== token);
+          renderTokenList(container, tokens);
+          showToast('Share link revoked.', 'success');
+        });
+      });
+    }
+
+    const el = document.createElement('div');
+    el.className = 'share-manage-panel';
+    el.innerHTML = `
+      <div class="modal-hero" style="background:var(--surface-2);min-height:56px;display:flex;align-items:center;padding:0 20px;">
+        <h2 style="font-size:1.1rem;font-weight:600;margin:0">Share Collection</h2>
+        <button class="modal-close-btn" id="share-modal-close" aria-label="Close" style="margin-left:auto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="hint" style="margin-bottom:12px">Share links let anyone view your collection without being able to edit it.</p>
+        <div class="share-token-list" id="share-token-list"></div>
+        <div class="share-create-row" style="margin-top:16px;display:flex;gap:8px">
+          <input type="text" id="share-label-input" class="form-input" placeholder="Label (optional)" style="flex:1">
+          <button class="btn btn-primary" id="share-create-btn">Create Link</button>
+        </div>
+      </div>`;
+
+    el.querySelector('#share-modal-close').addEventListener('click', closeModal);
+    renderTokenList(el.querySelector('#share-token-list'), tokens);
+
+    el.querySelector('#share-create-btn').addEventListener('click', async () => {
+      const label = el.querySelector('#share-label-input').value.trim() || null;
+      const btn = el.querySelector('#share-create-btn');
+      await withLoading(btn, async () => {
+        const newToken = await API.createShareToken(label);
+        tokens.push(newToken);
+        renderTokenList(el.querySelector('#share-token-list'), tokens);
+        el.querySelector('#share-label-input').value = '';
+        showToast('Share link created!', 'success');
+      }, 'Creating…');
+    });
+
+    openModal(el);
+  }
+
+  // ===== Undo Toast =====
+  function showUndoToast(message, onUndo, duration = 5000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-success toast-undo';
+    toast.innerHTML = `<span class="toast-msg">${escapeHtml(message)}</span><button class="toast-undo-btn">Undo</button>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    let timer = setTimeout(dismiss, duration);
+
+    function dismiss() {
+      clearTimeout(timer);
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }
+
+    toast.querySelector('.toast-undo-btn').addEventListener('click', () => {
+      dismiss();
+      onUndo();
+    });
   }
 
 })();

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>(function(){var t=localStorage.getItem('cardboard_theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shared Collection – Cardboard</title>
+  <link rel="icon" type="image/png" href="/cardboard-icon.png" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <img class="logo-icon" src="/cardboard-icon.png" alt="Cardboard" />
+        <span class="logo-text">Cardboard</span>
+      </div>
+      <span class="share-readonly-badge">Shared Collection (read-only)</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="view-collection" class="view active">
+      <div class="collection-toolbar">
+        <div class="search-wrapper">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="collection-search" class="search-input" placeholder="Search collection…" autocomplete="off" aria-label="Search" />
+          <button class="clear-search" id="clear-search" title="Clear search" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="toolbar-controls">
+          <div class="sort-group">
+            <label class="sort-label" for="sort-by">Sort by</label>
+            <select id="sort-by" class="select">
+              <option value="name">Name</option>
+              <option value="date_added">Date Added</option>
+              <option value="user_rating">Rating</option>
+              <option value="min_playtime">Playtime</option>
+              <option value="min_players">Players</option>
+              <option value="difficulty">Difficulty</option>
+            </select>
+            <button id="sort-dir" class="icon-btn sort-dir-btn" title="Toggle sort direction" data-dir="asc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+            </button>
+          </div>
+          <div class="view-toggle">
+            <button class="icon-btn active" id="view-grid" title="Grid view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="icon-btn" id="view-list" title="List view">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-pills" id="status-pills">
+        <button class="pill active" data-status="all">All</button>
+        <button class="pill" data-status="owned">Owned</button>
+        <button class="pill" data-status="wishlist">Wishlist</button>
+        <button class="pill" data-status="sold">Sold</button>
+      </div>
+
+      <div id="collection-stats" class="collection-stats"></div>
+
+      <div id="games-container" class="games-grid">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Loading shared collection…</p>
+        </div>
+      </div>
+
+      <div id="empty-state" class="empty-state" style="display:none">
+        <h2>No games found</h2>
+        <p>This shared collection is empty.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Game Detail Modal (read-only) -->
+  <div id="game-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-container">
+      <div class="modal-inner" id="modal-inner"></div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <span class="footer-link">Powered by Cardboard</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/js/model-viewer.min.js"></script>
+  <script>
+    // Minimal API for shared view
+    const token = new URLSearchParams(location.search).get('token');
+    if (!token) {
+      document.querySelector('.loading-spinner p').textContent = 'Invalid share link.';
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function parseList(json) {
+      try { const v = JSON.parse(json || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+    }
+    function formatDate(d) {
+      if (!d) return '';
+      const dt = new Date(d + 'T00:00:00');
+      return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    function formatPlayers(min, max) {
+      if (!min && !max) return '';
+      if (min === max) return `${min} players`;
+      if (!max) return `${min}+ players`;
+      return `${min}–${max} players`;
+    }
+    function formatPlaytime(min, max) {
+      if (!min && !max) return '';
+      if (min === max || !max) return `${min} min`;
+      return `${min}–${max} min`;
+    }
+    function renderStars(rating) {
+      if (!rating) return '';
+      const filled = Math.round(rating);
+      return Array.from({length:10}, (_,i) =>
+        `<svg viewBox="0 0 24 24" class="star${i<filled?' filled':''}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+      ).join('');
+    }
+
+    // Shared state
+    let games = [];
+    let viewMode = 'grid';
+    let sortBy = 'name';
+    let sortDir = 'asc';
+    let search = '';
+    let statusFilter = 'all';
+
+    function sortGames(arr) {
+      const asc = sortDir !== 'desc';
+      return [...arr].sort((a, b) => {
+        let av = sortBy === 'name' ? (a.name||'').replace(/^the\s+/i,'').toLowerCase() : (a[sortBy] ?? null);
+        let bv = sortBy === 'name' ? (b.name||'').replace(/^the\s+/i,'').toLowerCase() : (b[sortBy] ?? null);
+        if (av===null && bv===null) return 0;
+        if (av===null) return asc ? 1 : -1;
+        if (bv===null) return asc ? -1 : 1;
+        return asc ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
+      });
+    }
+
+    function buildCard(game) {
+      const el = document.createElement('div');
+      el.className = 'game-card';
+      el.dataset.gameId = game.id;
+      const players = formatPlayers(game.min_players, game.max_players);
+      const playtime = formatPlaytime(game.min_playtime, game.max_playtime);
+      const rating = game.user_rating
+        ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
+        : `<span class="unrated">Unrated</span>`;
+      const labels = parseList(game.labels).slice(0,3).map(l => `<span class="label-chip">${escapeHtml(l)}</span>`).join('');
+      const status = game.status !== 'owned' ? `<span class="status-badge status-${game.status}">${game.status.charAt(0).toUpperCase()+game.status.slice(1)}</span>` : '';
+      el.innerHTML = `
+        <div class="game-card-image">
+          ${game.image_url ? `<img src="${escapeHtml(game.image_url)}" alt="" loading="lazy">` : '<div class="placeholder-image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>'}
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-title-row">
+            <div class="game-card-title">${escapeHtml(game.name)}</div>
+            ${status}
+          </div>
+          <div class="game-card-meta">
+            ${players ? `<span class="chip">${escapeHtml(players)}</span>` : ''}
+            ${playtime ? `<span class="chip">${escapeHtml(playtime)}</span>` : ''}
+          </div>
+          <div class="game-card-footer">
+            <div class="rating-row">${rating}</div>
+            ${labels ? `<div class="label-chips">${labels}</div>` : ''}
+          </div>
+        </div>`;
+      el.addEventListener('click', () => openGameDetail(game));
+      return el;
+    }
+
+    function render() {
+      const container = document.getElementById('games-container');
+      const emptyState = document.getElementById('empty-state');
+      const statsEl = document.getElementById('collection-stats');
+      const q = search.toLowerCase();
+      const filtered = sortGames(games).filter(g => {
+        if (statusFilter !== 'all' && g.status !== statusFilter) return false;
+        if (q && !g.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      statsEl.textContent = `${games.length} game${games.length !== 1 ? 's' : ''}${filtered.length !== games.length ? `, ${filtered.length} shown` : ''}`;
+      container.innerHTML = '';
+      container.className = viewMode === 'grid' ? 'games-grid' : 'games-list';
+      if (!filtered.length) { emptyState.style.display = 'block'; return; }
+      emptyState.style.display = 'none';
+      filtered.forEach(g => container.appendChild(buildCard(g)));
+    }
+
+    function openGameDetail(game) {
+      const modal = document.getElementById('game-modal');
+      const inner = document.getElementById('modal-inner');
+      const categories = parseList(game.categories);
+      const mechanics = parseList(game.mechanics);
+      const labels = parseList(game.labels);
+
+      // Load sessions
+      fetch(`/api/share/${encodeURIComponent(token)}/games/${game.id}`)
+        .then(r => r.ok ? r.json() : game)
+        .then(fresh => {
+          // Load sessions from share if needed — not exposed, just show what we have
+        }).catch(() => {});
+
+      inner.innerHTML = `
+        <div class="modal-hero">
+          ${fresh_img(game)}
+          <button class="modal-close-btn" id="share-modal-close" aria-label="Close" style="position:absolute;top:12px;right:12px;z-index:10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-title-row">
+            <h2 class="modal-title" id="modal-title">${escapeHtml(game.name)}</h2>
+            ${game.year_published ? `<span class="modal-year">${game.year_published}</span>` : ''}
+          </div>
+          <div class="modal-chips">
+            ${game.min_players || game.max_players ? `<span class="chip">${escapeHtml(formatPlayers(game.min_players, game.max_players))}</span>` : ''}
+            ${game.min_playtime || game.max_playtime ? `<span class="chip">${escapeHtml(formatPlaytime(game.min_playtime, game.max_playtime))}</span>` : ''}
+          </div>
+          ${categories.length ? `<div class="modal-section"><div class="section-label">Categories</div><div class="tag-chips">${categories.map(c=>`<span class="tag-chip">${escapeHtml(c)}</span>`).join('')}</div></div>` : ''}
+          ${mechanics.length ? `<div class="modal-section"><div class="section-label">Mechanics</div><div class="tag-chips">${mechanics.map(m=>`<span class="tag-chip">${escapeHtml(m)}</span>`).join('')}</div></div>` : ''}
+          ${labels.length ? `<div class="modal-section"><div class="section-label">Labels</div><div class="label-chips">${labels.map(l=>`<span class="label-chip">${escapeHtml(l)}</span>`).join('')}</div></div>` : ''}
+          ${game.user_rating ? `<div class="modal-section"><div class="section-label">Rating</div><div class="rating-display-only">${renderStars(game.user_rating)}<span class="rating-text">${game.user_rating}/10</span></div></div>` : ''}
+          ${game.description ? `<div class="modal-section"><div class="section-label">Description</div><p>${escapeHtml(game.description)}</p></div>` : ''}
+          ${game.user_notes ? `<div class="modal-section"><div class="section-label">Notes</div><p class="notes-display">${escapeHtml(game.user_notes)}</p></div>` : ''}
+        </div>`;
+
+      function fresh_img(g) {
+        return g.image_url
+          ? `<img src="${escapeHtml(g.image_url)}" alt="${escapeHtml(g.name)}" class="modal-hero-image" loading="lazy">`
+          : `<div class="modal-hero-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>`;
+      }
+
+      inner.querySelector('#share-modal-close').addEventListener('click', () => {
+        modal.classList.remove('open');
+        setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = ''; }, 200);
+      });
+
+      modal.style.display = '';
+      requestAnimationFrame(() => modal.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+    }
+
+    document.getElementById('modal-backdrop').addEventListener('click', () => {
+      const modal = document.getElementById('game-modal');
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; document.body.style.overflow = ''; }, 200);
+    });
+
+    // Controls
+    const searchEl = document.getElementById('collection-search');
+    const clearBtn = document.getElementById('clear-search');
+    searchEl.addEventListener('input', () => { search = searchEl.value; clearBtn.style.display = search ? 'flex' : 'none'; render(); });
+    clearBtn.addEventListener('click', () => { search = ''; searchEl.value = ''; clearBtn.style.display = 'none'; render(); });
+    document.getElementById('sort-by').addEventListener('change', e => { sortBy = e.target.value; render(); });
+    document.getElementById('sort-dir').addEventListener('click', () => {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      document.getElementById('sort-dir').dataset.dir = sortDir;
+      render();
+    });
+    document.getElementById('view-grid').addEventListener('click', () => { viewMode='grid'; document.getElementById('view-grid').classList.add('active'); document.getElementById('view-list').classList.remove('active'); render(); });
+    document.getElementById('view-list').addEventListener('click', () => { viewMode='list'; document.getElementById('view-list').classList.add('active'); document.getElementById('view-grid').classList.remove('active'); render(); });
+    document.querySelectorAll('#status-pills .pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        statusFilter = btn.dataset.status;
+        document.querySelectorAll('#status-pills .pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+      });
+    });
+
+    // Load shared collection
+    if (token) {
+      fetch(`/api/share/${encodeURIComponent(token)}/games`)
+        .then(r => {
+          if (!r.ok) throw new Error(r.status === 404 ? 'Invalid or expired share link.' : `HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          games = data;
+          render();
+        })
+        .catch(err => {
+          document.getElementById('games-container').innerHTML = `<div class="loading-spinner"><p style="color:var(--danger)">${escapeHtml(err.message)}</p></div>`;
+        });
+    }
+  </script>
+</body>
+</html>

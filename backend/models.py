@@ -40,6 +40,13 @@ class Game(Base):
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
     date_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     parent_game_id = Column(Integer, ForeignKey("games.id"), nullable=True, index=True)
+    # New fields
+    bgg_id = Column(Integer, nullable=True, index=True)
+    bgg_rating = Column(Float, nullable=True)  # BGG community average rating
+    priority = Column(Integer, nullable=True)  # 1-5 wishlist priority
+    target_price = Column(Float, nullable=True)  # wishlist target price
+    condition = Column(String(20), nullable=True)  # New/Good/Fair/Poor
+    edition = Column(String(255), nullable=True)  # edition/version string
 
 
 class GameImage(Base):
@@ -62,7 +69,31 @@ class PlaySession(Base):
     player_count = Column(Integer, nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
+    winner = Column(String(255), nullable=True)
     date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class Player(Base):
+    __tablename__ = "players"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, unique=True)
+    date_added = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SessionPlayer(Base):
+    __tablename__ = "session_players"
+
+    session_id = Column(Integer, ForeignKey("play_sessions.id", ondelete="CASCADE"), primary_key=True)
+    player_id = Column(Integer, ForeignKey("players.id", ondelete="CASCADE"), primary_key=True)
+
+
+class ShareToken(Base):
+    __tablename__ = "share_tokens"
+
+    token = Column(String(64), primary_key=True)
+    label = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 # ===== Tag Junction Tables =====

@@ -221,6 +221,19 @@ function buildGameCard(game) {
     ? `${renderStars(game.user_rating)}<span class="rating-num">${game.user_rating}</span>`
     : `<span class="unrated">Unrated</span>`;
 
+  const bggRatingHtml = game.bgg_rating
+    ? `<span class="bgg-rating-badge" title="BGG community rating">BGG ${game.bgg_rating.toFixed(1)}</span>`
+    : '';
+  const wishlistPriorityHtml = (game.status === 'wishlist' && game.priority)
+    ? `<span class="wishlist-priority">Priority ${'★'.repeat(game.priority)}${'☆'.repeat(5 - game.priority)}</span>`
+    : '';
+  const wishlistTargetHtml = (game.status === 'wishlist' && game.target_price != null)
+    ? `<span class="wishlist-target-price">Target $${game.target_price.toFixed(2)}</span>`
+    : '';
+  const conditionHtml = game.condition
+    ? `<span class="condition-badge condition-${game.condition.toLowerCase()}">${escapeHtml(game.condition)}</span>`
+    : '';
+
   const lastPlayedHtml = game.last_played
     ? `<span class="last-played-line">Played ${escapeHtml(formatDate(game.last_played))}</span>`
     : '';
@@ -259,8 +272,10 @@ function buildGameCard(game) {
       ${partOfTagHtml}
       ${metaHtml ? `<div class="game-card-meta">${metaHtml}</div>` : ''}
       <div class="game-card-footer">
-        <div class="rating-row">${ratingHtml}</div>
+        <div class="rating-row">${ratingHtml}${bggRatingHtml}</div>
         ${lastPlayedHtml}
+        ${conditionHtml}
+        ${wishlistPriorityHtml}${wishlistTargetHtml}
         ${cardLabelsHtml}
         ${cardLocationHtml}
         ${expansionBadgeHtml}
@@ -489,12 +504,13 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
           <button class="btn btn-ghost btn-sm" id="rating-clear">Clear</button>
         </div>
       </div>`
-    : game.user_rating
+    : (game.user_rating || game.bgg_rating)
       ? `<div class="modal-section">
-          <div class="section-label">My Rating</div>
+          <div class="section-label">Rating</div>
           <div class="rating-display-only">
-            ${renderStars(game.user_rating)}
-            <span class="rating-text">${game.user_rating}/10</span>
+            ${game.user_rating ? renderStars(game.user_rating) : ''}
+            ${game.user_rating ? `<span class="rating-text">${game.user_rating}/10</span>` : ''}
+            ${game.bgg_rating ? `<span class="bgg-rating-detail">BGG ${game.bgg_rating.toFixed(1)}</span>` : ''}
           </div>
         </div>`
       : '';
@@ -711,6 +727,33 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
               </label>
             </div>
           </div>
+          <div class="form-group">
+            <label for="edit-condition">Condition</label>
+            <select id="edit-condition" class="form-input">
+              <option value="">— None —</option>
+              ${['New','Good','Fair','Poor'].map(c => `<option value="${c}"${game.condition === c ? ' selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-edition">Edition / Version</label>
+            <input type="text" id="edit-edition" class="form-input" placeholder="1st Edition, KS…" value="${escapeHtml(game.edition || '')}" autocomplete="off">
+          </div>
+          ${game.status === 'wishlist' ? `
+          <div class="form-group">
+            <label for="edit-priority">Wishlist Priority</label>
+            <select id="edit-priority" class="form-input">
+              <option value="">— None —</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}"${game.priority === n ? ' selected' : ''}>${'★'.repeat(n)} (${n})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-target-price">Target Price ($)</label>
+            <input type="number" id="edit-target-price" class="form-input" step="0.01" min="0" placeholder="25.00" value="${game.target_price != null ? game.target_price : ''}" autocomplete="off">
+          </div>` : ''}
+          <div class="form-group">
+            <label for="edit-bgg-id">BGG ID <span class="hint">(for metadata refresh)</span></label>
+            <input type="number" id="edit-bgg-id" class="form-input" placeholder="12345" value="${game.bgg_id || ''}" autocomplete="off">
+          </div>
         </div>
       </div>`
     : '';
@@ -726,6 +769,7 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     : `<div class="modal-actions">
         <button class="btn btn-danger" id="delete-game-btn">Remove from Collection</button>
         <div class="modal-actions-right">
+          ${game.bgg_id ? `<button class="btn btn-secondary" id="refresh-bgg-btn" title="Re-fetch metadata from BoardGameGeek">↻ Refresh BGG</button>` : ''}
           <button class="btn btn-primary" id="edit-game-btn">Edit Game</button>
         </div>
       </div>`;
@@ -879,6 +923,17 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
   if (!isEdit) {
     // ===== View mode wiring =====
     el.querySelector('#edit-game-btn').addEventListener('click', () => onSwitchToEdit());
+
+    const refreshBggBtn = el.querySelector('#refresh-bgg-btn');
+    if (refreshBggBtn) {
+      refreshBggBtn.addEventListener('click', async () => {
+        await withLoading(refreshBggBtn, async () => {
+          const updated = await API.refreshFromBGG(game.id);
+          showToast('Metadata refreshed from BGG!', 'success');
+          onSwitchToView && onSwitchToView(updated);
+        }, 'Refreshing…');
+      });
+    }
 
     // Expansion: "Part of [Base]" link
     const partOfBtn = el.querySelector('.modal-part-of .expansion-link-btn');
@@ -1131,22 +1186,57 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
     // Gallery
     let galleryImages = Array.isArray(images) ? [...images] : [];
 
-    function buildGalleryItemEl(img, index, total) {
+    let _dragSrcImgId = null;
+
+    function buildGalleryItemEl(img, index) {
       const item = document.createElement('div');
       item.className = 'gallery-list-item';
       item.dataset.imgId = img.id;
+      item.draggable = true;
       item.innerHTML = `
+        <span class="gallery-drag-handle" aria-hidden="true">⠿</span>
         <img class="gallery-thumb" src="/api/games/${game.id}/images/${img.id}/file" loading="lazy" alt="">
         <div class="gallery-item-info">
           ${index === 0 ? '<span class="gallery-featured-badge">★ Featured</span>' : '<span class="gallery-item-num">#' + (index + 1) + '</span>'}
         </div>
         <div class="gallery-item-controls">
-          <button class="btn btn-ghost btn-sm gallery-move-up"${index === 0 ? ' disabled' : ''} title="Move up">↑</button>
-          <button class="btn btn-ghost btn-sm gallery-move-down"${index === total - 1 ? ' disabled' : ''} title="Move down">↓</button>
-          <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo">Remove</button>
+          <button class="btn btn-ghost btn-sm gallery-delete" title="Remove photo" aria-label="Remove photo">Remove</button>
         </div>
         <input type="text" class="gallery-caption-input form-input form-input-sm"
                placeholder="Add caption…" value="${escapeHtml(img.caption || '')}">`;
+
+      item.addEventListener('dragstart', e => {
+        _dragSrcImgId = img.id;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        el.querySelectorAll('.gallery-list-item.drag-over').forEach(r => r.classList.remove('drag-over'));
+      });
+      item.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (img.id !== _dragSrcImgId) item.classList.add('drag-over');
+      });
+      item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+      item.addEventListener('drop', e => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        if (!_dragSrcImgId || _dragSrcImgId === img.id) return;
+        const srcIdx = galleryImages.findIndex(g => g.id === _dragSrcImgId);
+        const dstIdx = galleryImages.findIndex(g => g.id === img.id);
+        if (srcIdx === -1 || dstIdx === -1) return;
+        const newOrder = [...galleryImages];
+        const [moved] = newOrder.splice(srcIdx, 1);
+        newOrder.splice(dstIdx, 0, moved);
+        const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
+        onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
+          galleryImages.splice(0, galleryImages.length, ...newOrder);
+          renderGallery();
+          onGalleryPrimaryChanged(newPrimaryUrl);
+        });
+      });
+
       return item;
     }
 
@@ -1158,30 +1248,8 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         return;
       }
       galleryImages.forEach((img, i) => {
-        const item = buildGalleryItemEl(img, i, galleryImages.length);
+        const item = buildGalleryItemEl(img, i);
         list.appendChild(item);
-
-        item.querySelector('.gallery-move-up').addEventListener('click', () => {
-          const newOrder = [...galleryImages];
-          [newOrder[i - 1], newOrder[i]] = [newOrder[i], newOrder[i - 1]];
-          const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
-          onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
-            galleryImages.splice(0, galleryImages.length, ...newOrder);
-            renderGallery();
-            onGalleryPrimaryChanged(newPrimaryUrl);
-          });
-        });
-
-        item.querySelector('.gallery-move-down').addEventListener('click', () => {
-          const newOrder = [...galleryImages];
-          [newOrder[i], newOrder[i + 1]] = [newOrder[i + 1], newOrder[i]];
-          const newPrimaryUrl = `/api/games/${game.id}/images/${newOrder[0].id}/file`;
-          onReorderGalleryImages(game.id, newOrder.map(g => g.id), newPrimaryUrl, () => {
-            galleryImages.splice(0, galleryImages.length, ...newOrder);
-            renderGallery();
-            onGalleryPrimaryChanged(newPrimaryUrl);
-          });
-        });
 
         const captionInput = item.querySelector('.gallery-caption-input');
         captionInput.addEventListener('blur', () => {
@@ -1303,6 +1371,11 @@ function buildModalContent(game, sessions, onSave, onDelete, onAddSession, onDel
         location:           el.querySelector('#edit-location').value.trim() || null,
         show_location:      el.querySelector('#edit-show-location').checked,
         parent_game_id:     parseInt(el.querySelector('#edit-base-game-id').value, 10) || null,
+        condition:          el.querySelector('#edit-condition')?.value || null,
+        edition:            el.querySelector('#edit-edition')?.value.trim() || null,
+        priority:           el.querySelector('#edit-priority')?.value ? parseInt(el.querySelector('#edit-priority').value, 10) : null,
+        target_price:       el.querySelector('#edit-target-price')?.value !== '' ? parseFloat(el.querySelector('#edit-target-price')?.value) || null : null,
+        bgg_id:             el.querySelector('#edit-bgg-id')?.value ? parseInt(el.querySelector('#edit-bgg-id').value, 10) || null : null,
       };
       withLoading(saveBtn, () => onSave(game.id, payload), 'Saving…');
     });
@@ -2021,8 +2094,23 @@ function buildStatsView(stats, games, prefs = {}, onPrefsChange = null) {
       <div class="stats-export-group">
         <span class="stats-export-label">Import from BGG</span>
         <div class="stats-export-btns">
-          <button class="btn btn-secondary btn-sm" id="stats-import-bgg">Import XML</button>
+          <button class="btn btn-secondary btn-sm" id="stats-import-bgg">Collection XML</button>
           <input type="file" id="stats-import-bgg-file" accept=".xml" style="display:none" aria-hidden="true">
+          <button class="btn btn-secondary btn-sm" id="stats-import-bgg-plays">Plays XML</button>
+          <input type="file" id="stats-import-bgg-plays-file" accept=".xml" style="display:none" aria-hidden="true">
+        </div>
+      </div>
+      <div class="stats-export-group">
+        <span class="stats-export-label">Import CSV</span>
+        <div class="stats-export-btns">
+          <button class="btn btn-secondary btn-sm" id="stats-import-csv">Import CSV</button>
+          <input type="file" id="stats-import-csv-file" accept=".csv" style="display:none" aria-hidden="true">
+        </div>
+      </div>
+      <div class="stats-export-group">
+        <span class="stats-export-label">Share collection</span>
+        <div class="stats-export-btns">
+          <button class="btn btn-secondary btn-sm" id="stats-share-manage">Manage Share Links</button>
         </div>
       </div>
       <div class="stats-export-group">
